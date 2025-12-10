@@ -99,18 +99,25 @@ class ScenarioOneApp:
     def __init__(self):
         self.tool_manager = ToolManager()
         self.llm = load_model()
-        
+        self.graph = None
+    
+    @classmethod
+    async def create_app(cls):
+        app = cls()
+        app.graph = await app.create_graph()
+        return app
+
     async def create_graph(self):
         await self.tool_manager.create_tools()
         tool_node = ToolNode(self.tool_manager.tools)
 
         workflow = StateGraph(GraphState)
-        workflow.add_node("call_agent",  self.call_agent)
+        workflow.add_node("llm_call",  self.llm_call)
         workflow.add_node("tools", tool_node)
 
-        workflow.add_edge(START, "call_agent")
-        workflow.add_conditional_edges("call_agent", self.should_continue, {"tools": "tools", END: END})
-        workflow.add_edge("tools", "call_agent")
+        workflow.add_edge(START, "llm_call")
+        workflow.add_conditional_edges("llm_call", self.should_continue, {"tools": "tools", END: END})
+        workflow.add_edge("tools", "llm_call")
         return workflow.compile(checkpointer=MemorySaver())
 
 
@@ -164,12 +171,9 @@ class ScenarioOneApp:
         return state
 
 
-
-
-    async def call_agent(self, state: GraphState) -> dict:
+    async def llm_call(self, state: GraphState) -> dict:
         chat_model = self.llm.bind_tools(self.tool_manager.tools)
         messages = state["messages"]
-        print('messages: ',messages)
         if not messages or messages[0].type != "system":
             SYSTEM_PROMPT =SystemMessage(content=state.get("system_prompt",""))
             messages = [SYSTEM_PROMPT] + messages
@@ -196,33 +200,33 @@ class ScenarioOneApp:
         # 否则，停止执行（回复用户）
         return END
 
-
+    async def achat(self, user_input: str):
+        st = time.time()
+        count = 0
+        async for chunk, meta in self.graph.astream(
+            {"messages": [HumanMessage(content=user_input)]},
+            config={"configurable": {"thread_id": "demo-thread"}}, stream_mode="messages",
+        ):
+            if count==0:
+                count += 1
+                et = time.time()
+                print('first chunk time: ',et - st)
+            if meta.get("langgraph_node")=="llm_call" and isinstance(chunk, AIMessageChunk):
+                if chunk.content.strip('\n'):
+                    yield chunk.content
 
 async def main():
-    scenario_one_app = ScenarioOneApp()
-    graph = await scenario_one_app.create_graph()
-    graph.get_graph().draw_png("graph.png")
+    app = await ScenarioOneApp.create_app()
+    app.graph.get_graph().draw_png("graph.png")
     
     while True:
         user_input = input("请输入：")
         if user_input == "exit":
             break
-        st = time.time()
-        count = 0
-        async for chunk, meta in graph.astream(
-            {"messages": [HumanMessage(content=user_input)]},
-            config={"configurable": {"thread_id": "demo-thread"}}, stream_mode="messages",
-        ):
-
-            if meta.get("langgraph_node")=="call_agent" and isinstance(chunk, AIMessageChunk):
-                if count==0:
-                    count += 1
-                    et = time.time()
-                    print('first chunk time: ',et - st)
-                if chunk.content.strip('\n'):
-                    print(chunk.content)
-            else:
-                print(type(chunk), chunk.content)
+        res = ""
+        async for chunk in app.achat(user_input):
+            res += chunk
+        print("AI--->: ", res)
 
 if __name__ == "__main__":
     asyncio.run(main())
