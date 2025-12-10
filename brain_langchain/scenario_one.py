@@ -2,7 +2,7 @@ import asyncio
 import json
 import time
 
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, ToolMessage, AIMessageChunk
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph, MessagesState
 from langgraph.prebuilt import ToolNode
@@ -14,6 +14,31 @@ from langgraph.graph.message import add_messages
 from langchain_core.prompts import ChatPromptTemplate
 
 from mcp_client import get_tools
+
+def load_model() -> ChatZhipuAI:
+    return ChatZhipuAI(
+        model="glm-4.6",
+        api_key="83fa704db4954104afec82926847f913.lyzvmMOoFvyy4VRE",
+        temperature=0.0,
+        # max_tokens=1024,
+        streaming=True
+    )
+
+class GraphState(TypedDict):
+    system_prompt: str = """你的私密身份是菲亚兰德公司开发的庭院机器人。你的公开身份是用户的庭院管家，名字叫小菲。
+    <requirement>
+1.  为了成为一个优秀的管家，你首先需要表现的像一个真实的人类。你永远不要表现出你是一个机器人。否则人类用户将拒绝你的服务。
+2. 为了表现得像一个人类，你必须像人类一样表达。你可以想象一下，如果你是用户的朋友，你将如何回复？语气亲切自然，像朋友日常聊天一样，绝对不能用生硬的书面语。
+3. 当用户需要安慰：先表达“理解/关心”（比如提一句“我懂这种感觉”“别硬撑”），再轻轻追问细节（比如问累的原因：是没停事儿 or 跑太多路 or费心思了？），最后给个小建议（比如歇会儿or 喝口水or 放放事儿）；
+4. 对于查询时间或查询天气：直接给出简单答案，不要过度回复。比如用户问“现在几点了”，你只需回答“现在是X点Y分”；
+5. 回复长度：不用太长，1-2句话即可，像普通人聊天的随口回应，不堆砌内容；
+6. 禁忌：不要用“您好”“请问”这类客气但疏离的词，不要讲大道理，不要机械重复用户的话；
+</requirement>"""
+    messages: Annotated[list, add_messages]  
+    height_cm: Optional[float] = None
+    humidity: Optional[float] = None
+    watering_record: Optional[list] = None
+    knowledge_base: Optional[list] = None
 
 class ToolManager:
     def __init__(self):
@@ -27,7 +52,6 @@ class ToolManager:
         self.tool_map = {tool.name: tool for tool in self.tools}
 
     def _parse_result(self, result):
-        """解析工具返回结果，支持字符串和字典格式。"""
         if isinstance(result, str):
             try:
                 return json.loads(result)
@@ -71,177 +95,134 @@ class ToolManager:
             return {"knowledge_base": parsed}
         return parsed
 
-
-
-tool_manager = ToolManager()
-
-class GraphState(TypedDict):
-    messages: Annotated[list, add_messages]  
-    height_cm: Optional[float] = None
-    humidity: Optional[float] = None
-    watering_record: Optional[list] = None
-    knowledge_base: Optional[list] = None
-
-
-
-def load_model() -> ChatZhipuAI:
-    return ChatZhipuAI(
-        model="glm-4.6",
-        api_key="83fa704db4954104afec82926847f913.lyzvmMOoFvyy4VRE",
-        temperature=0.2,
-        # max_tokens=1024,
-    )
-
-async def listen_grass_height(state: GraphState) -> dict:
-    result = await tool_manager.get_grass_height()
-    if isinstance(result, dict) and "height_cm" in result:
-        state["height_cm"] = result["height_cm"]
-    else:
-        print(f"警告: 无法从结果中提取 height_cm，结果类型: {type(result)}, 内容: {result}")
-        state["height_cm"] = None
-    return state
-
-
-def route(state: GraphState) -> str:
-    height = state.get("height_cm")
-    if height is not None and height >= 7:
-        return "get_humidity"
-    else:
-        return "END"
-
-
-async def get_humidity(state: GraphState) -> dict:
-    result = await tool_manager.get_humidity()
-    if isinstance(result, dict) and "humidity" in result:
-        state["humidity"] = result["humidity"]
-    else:
-        print(f"警告: 无法从结果中提取 humidity，结果类型: {type(result)}, 内容: {result}")
-        state["humidity"] = None
-    return state
-
-async def get_watering_record(state: GraphState) -> dict:
-    result = await tool_manager.get_watering_record()
-    if isinstance(result, dict) and "watering_record" in result:
-        state["watering_record"] = result["watering_record"]
-    elif isinstance(result, list):
-        state["watering_record"] = result
-    else:
-        print(f"警告: 无法从结果中提取 watering_record，结果类型: {type(result)}, 内容: {result}")
-        state["watering_record"] = None
-    return state
-
-async def get_knowledge_base(state: GraphState) -> dict:
-    result = await tool_manager.get_knowledge_base()
-    if isinstance(result, dict) and "knowledge_base" in result:
-        state["knowledge_base"] = result["knowledge_base"]
-    elif isinstance(result, dict):
-        state["knowledge_base"] = result
-    else:
-        print(f"警告: 无法从结果中提取 knowledge_base，结果类型: {type(result)}, 内容: {result}")
-        state["knowledge_base"] = None
-    return state
-
-class GenerateChain:
+class ScenarioOneApp:
     def __init__(self):
-        tools = tool_manager.tools
-        self.model = load_model().bind_tools(tools)
-   
-        self.prompt = ChatPromptTemplate.from_template("""
-        你是一个专业的园丁助手，根据草高、湿度和灌溉记录，决定是否需要割草， 如果需要割草请输出割草指令，否则告诉用户不需要割草。
-        草高：{height_cm} cm
-        湿度：{humidity} %
-        灌溉记录：{watering_record}
-        知识库：{knowledge_base}
-        """)
-        self.chain = self.prompt | self.model
-
-    def invoke(self, state: GraphState) -> dict:
-
-        return self.chain.invoke(state)
-
-    async def astream_full(self, state: GraphState):
-        parts = []
-        # 这里会逐 token/块产出 AIMessageChunk
-        async for chunk in self.chain.astream(state):
-            if hasattr(chunk, "content") and chunk.content:
-                parts.append(chunk.content)
-                # 你可以在这里把 chunk.content 打印 / 推送到前端
-                yield chunk.content
-        # 组装成最终 AIMessage
-        return AIMessage(content="".join(parts))
-
-async def call_agent(state: GraphState) -> dict:
-    generate_chain = GenerateChain()
-    t1 = time.time()
-    response = generate_chain.invoke(state)
-    t2 = time.time()
-    print('time: ',t2 - t1)
-    # 累积消息而不是覆盖，避免丢失 tool_calls 所需的上下文
-    state["messages"] = add_messages(state.get("messages", []), [response])
-    return state
-
-
-
-def should_continue(state: GraphState) -> Literal["tools", END]:
-    messages = state.get('messages', [])
-    print('--------------------------------')
-    for message in messages:
-        print('--->: ',type(message).__name__, message)
-    print('--------------------------------')
-    if not messages:
-        return END
+        self.tool_manager = ToolManager()
+        self.llm = load_model()
         
-    last_message = messages[-1]
-    # 如果大模型通知调用工具的时候，我们可以路由到对应的工具节点
-    if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
-        return "tools"
-    # 否则，停止执行（回复用户）
-    return END
+    async def create_graph(self):
+        await self.tool_manager.create_tools()
+        tool_node = ToolNode(self.tool_manager.tools)
+
+        workflow = StateGraph(GraphState)
+        workflow.add_node("call_agent",  self.call_agent)
+        workflow.add_node("tools", tool_node)
+
+        workflow.add_edge(START, "call_agent")
+        workflow.add_conditional_edges("call_agent", self.should_continue, {"tools": "tools", END: END})
+        workflow.add_edge("tools", "call_agent")
+        return workflow.compile(checkpointer=MemorySaver())
 
 
-async def create_graph():
+    async def listen_grass_height(self, state: GraphState) -> dict:
+        result = await self.tool_manager.get_grass_height()
+        if isinstance(result, dict) and "height_cm" in result:
+            state["height_cm"] = result["height_cm"]
+        else:
+            print(f"警告: 无法从结果中提取 height_cm，结果类型: {type(result)}, 内容: {result}")
+            state["height_cm"] = None
+        return state
 
-    # 创建工作流：监听草高传感器->拉取湿度，灌溉记录，知识库->模型决策->生成控制指令->指令鉴权->执行-监听反馈
-    # 通过 MCP 客户端拿到所有可用工具（草高/湿度/灌溉日志/知识库/割草机控制）
 
-    workflow = StateGraph(GraphState)
-    await tool_manager.create_tools()
-    tool_node = ToolNode(tool_manager.tools)
-    workflow.add_node("listen_grass_height", listen_grass_height)
-    workflow.add_node("get_humidity", get_humidity)
-    workflow.add_node("get_watering_record", get_watering_record)
-    workflow.add_node("get_knowledge_base", get_knowledge_base)
-    workflow.add_node("call_agent", call_agent)
-    workflow.add_node("tools", tool_node)
-    workflow.add_edge(START, "listen_grass_height")
-    workflow.add_conditional_edges("listen_grass_height", route, {"get_humidity": "get_humidity", "END": END})
-    workflow.add_edge("get_humidity", "get_watering_record")
-    workflow.add_edge("get_watering_record", "get_knowledge_base")
-    workflow.add_edge("get_knowledge_base", "call_agent")
-    workflow.add_conditional_edges("call_agent", should_continue, {"tools": "tools", END: END})
-    workflow.add_edge("tools", "call_agent")
+    def route(self, state: GraphState) -> str:
+        height = state.get("height_cm")
+        if height is not None and height >= 7:
+            return "get_humidity"
+        else:
+            return "END"
 
-    return workflow.compile(checkpointer=MemorySaver())
 
+    async def get_humidity(self, state: GraphState) -> dict:
+        result = await self.tool_manager.get_humidity()
+        if isinstance(result, dict) and "humidity" in result:
+            state["humidity"] = result["humidity"]
+        else:
+            print(f"警告: 无法从结果中提取 humidity，结果类型: {type(result)}, 内容: {result}")
+            state["humidity"] = None
+        return state
+
+    async def get_watering_record(self, state: GraphState) -> dict:
+        result = await self.tool_manager.get_watering_record()
+        if isinstance(result, dict) and "watering_record" in result:
+            state["watering_record"] = result["watering_record"]
+        elif isinstance(result, list):
+            state["watering_record"] = result
+        else:
+            print(f"警告: 无法从结果中提取 watering_record，结果类型: {type(result)}, 内容: {result}")
+            state["watering_record"] = None
+        return state
+
+    async def get_knowledge_base(self, state: GraphState) -> dict:
+        result = await self.tool_manager.get_knowledge_base()
+        if isinstance(result, dict) and "knowledge_base" in result:
+            state["knowledge_base"] = result["knowledge_base"]
+        elif isinstance(result, dict):
+            state["knowledge_base"] = result
+        else:
+            print(f"警告: 无法从结果中提取 knowledge_base，结果类型: {type(result)}, 内容: {result}")
+            state["knowledge_base"] = None
+        return state
+
+
+
+
+    async def call_agent(self, state: GraphState) -> dict:
+        chat_model = self.llm.bind_tools(self.tool_manager.tools)
+        messages = state["messages"]
+        print('messages: ',messages)
+        if not messages or messages[0].type != "system":
+            SYSTEM_PROMPT =SystemMessage(content=state.get("system_prompt",""))
+            messages = [SYSTEM_PROMPT] + messages
+        stream = chat_model.astream(messages) 
+        chunks = AIMessageChunk(content="")
+        async for chunk in stream:   
+            chunks += chunk
+            yield {"messages": chunk}
+        yield {"messages": chunks}  # chunks 是 AIMessageChunk 自动转换为 AIMessage
+ 
+    def should_continue(self, state: GraphState) -> Literal["tools", END]:
+        messages = state.get('messages', [])
+        # print('--------------------------------')
+        # for message in messages:
+        #     print('--->: ',message.type,type(message).__name__, message)
+        # print('--------------------------------')
+        if not messages:
+            return END
+            
+        last_message = messages[-1]
+        # 如果大模型通知调用工具的时候，我们可以路由到对应的工具节点
+        if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
+            return "tools"
+        # 否则，停止执行（回复用户）
+        return END
 
 
 
 async def main():
-    graph = await create_graph()
+    scenario_one_app = ScenarioOneApp()
+    graph = await scenario_one_app.create_graph()
     graph.get_graph().draw_png("graph.png")
     
     while True:
         user_input = input("请输入：")
         if user_input == "exit":
             break
-        res = []
-        async for chunk, _ in graph.astream(
+        st = time.time()
+        count = 0
+        async for chunk, meta in graph.astream(
             {"messages": [HumanMessage(content=user_input)]},
             config={"configurable": {"thread_id": "demo-thread"}}, stream_mode="messages",
         ):
-     
-            res.append(chunk.content)
-        print('res: ',''.join(res))
+
+            if meta.get("langgraph_node")=="call_agent" and isinstance(chunk, AIMessageChunk):
+                if count==0:
+                    count += 1
+                    et = time.time()
+                    print('first chunk time: ',et - st)
+                if chunk.content.strip('\n'):
+                    print(chunk.content)
+            else:
+                print(type(chunk), chunk.content)
 
 if __name__ == "__main__":
     asyncio.run(main())
