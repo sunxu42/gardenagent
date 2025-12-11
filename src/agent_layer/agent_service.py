@@ -8,13 +8,13 @@ from src.log import setup_logger
 from src.agent_layer.agents.agent_factory import AgentFactory
 import uuid
 
-
+# TODO 兼容只支持最终文本的agent
 class AgentService:
     def __init__(self, agent_config: Optional[Dict[str, Any]] = None):
         self.is_running = False
         self.query_cache = set()
         self.is_new_session = True
-        self.agent = AgentFactory.create_agent(agent_type="robot",)
+        self.agent = None
         self.queue = asyncio.Queue(maxsize=1000)
         self.result_callback = None
     
@@ -23,6 +23,10 @@ class AgentService:
 
     async def start(self):
         try:
+            agent_config = {
+                "agent_type": "garden_robot",
+            }   
+            self.agent = await AgentFactory.async_create_app(agent_config)
             self.is_running = True
             logger.info(f"Agent 服务已启动")
         except Exception as e:

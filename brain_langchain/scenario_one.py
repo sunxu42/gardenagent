@@ -13,7 +13,9 @@ from typing_extensions import TypedDict
 from langgraph.graph.message import add_messages
 from langchain_core.prompts import ChatPromptTemplate
 
-from mcp_client import get_tools
+from .mcp_client import get_tools
+from loguru import logger
+
 
 def load_model() -> ChatZhipuAI:
     return ChatZhipuAI(
@@ -50,6 +52,7 @@ class ToolManager:
         self.tools = await get_tools()
         self.tool_node = ToolNode(self.tools)
         self.tool_map = {tool.name: tool for tool in self.tools}
+        logger.info(f"tool_names: {self.tool_map.keys()}")
 
     def _parse_result(self, result):
         if isinstance(result, str):
@@ -96,20 +99,24 @@ class ToolManager:
         return parsed
 
 class ScenarioOneApp:
-    def __init__(self):
+    def __init__(self, config=None):
+        self.config = config
         self.tool_manager = ToolManager()
         self.llm = load_model()
         self.graph = None
     
     @classmethod
-    async def create_app(cls):
-        app = cls()
+    async def create(cls, config=None):
+        app = cls(config)
+        await app.tool_manager.create_tools()
+        app.tools = app.tool_manager.tools
         app.graph = await app.create_graph()
+        
         return app
 
     async def create_graph(self):
-        await self.tool_manager.create_tools()
-        tool_node = ToolNode(self.tool_manager.tools)
+        
+        tool_node = ToolNode(self.tools)
 
         workflow = StateGraph(GraphState)
         workflow.add_node("llm_call",  self.llm_call)
@@ -174,6 +181,8 @@ class ScenarioOneApp:
     async def llm_call(self, state: GraphState) -> dict:
         chat_model = self.llm.bind_tools(self.tool_manager.tools)
         messages = state["messages"]
+        logger.debug(f"llm_call messages: {messages}")
+        logger.debug(f"--------------------------------")
         if not messages or messages[0].type != "system":
             SYSTEM_PROMPT =SystemMessage(content=state.get("system_prompt",""))
             messages = [SYSTEM_PROMPT] + messages
@@ -214,13 +223,19 @@ class ScenarioOneApp:
             if meta.get("langgraph_node")=="llm_call" and isinstance(chunk, AIMessageChunk):
                 if chunk.content.strip('\n'):
                     yield chunk.content
-
+            else:
+                logger.debug(f"type(chunk): {type(chunk)}, chunk.content: {chunk.content}")
 async def main():
-    app = await ScenarioOneApp.create_app()
+    app = await ScenarioOneApp.create()
     app.graph.get_graph().draw_png("graph.png")
-    
+    init_message = "检测到草坪高度大于7cm，请检查草坪是否需要修剪"
+    count = 0
     while True:
-        user_input = input("请输入：")
+        if count == 0:
+            user_input = init_message
+            count += 1
+        else:
+            user_input = input("请输入：")
         if user_input == "exit":
             break
         res = ""
