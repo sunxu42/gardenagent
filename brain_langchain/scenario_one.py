@@ -260,11 +260,11 @@ async def main():
         if user_input == "exit":
             break
         res = ""
-        await app.achat(user_input)
-        # async for chunk in app.achat(user_input):
+
+        async for chunk in app.achat(user_input):
            
-        #     res += chunk
-        # print("AI--->: ", res)
+            res += chunk
+        print("AI--->: ", res)
 
 if __name__ == "__main__":
     asyncio.run(main())
