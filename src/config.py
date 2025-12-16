@@ -31,6 +31,7 @@ class Config:
     WEBSOCKET_HOST = _get_env('WEBSOCKET_HOST', '0.0.0.0')
     WEBSOCKET_PORT = _get_int('WEBSOCKET_PORT', 8005)
     WEBSOCKET_LOG_FILE = _get_env('LOG_FILE', 'logs/websocket_server.log')
+    HANDLER_TYPE = _get_env('HANDLER_TYPE', 'default')
     
     # ==================== ZeroMQ 配置 ====================
     ASR_LISTEN_ADDRESS = _get_env('ASR_LISTEN_ADDRESS', 'ipc:///tmp/asr_listen')
@@ -83,6 +84,7 @@ class WebSocketConfig:
     audio_bits_per_sample = Config.AUDIO_BITS_PER_SAMPLE
     log_level = Config.LOG_LEVEL
     log_file = Config.WEBSOCKET_LOG_FILE
+    handler_type = Config.HANDLER_TYPE
 
 
 class TTSConfig:

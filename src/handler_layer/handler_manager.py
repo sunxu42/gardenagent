@@ -1,20 +1,24 @@
 from typing import Dict
 from loguru import logger
 from src.transport_layer.base import TransportBase
-from src.handler_layer.handler import Handler
+# from src.handler_layer.handler import Handler
+from src.handler_layer.text_in_text_out_handler import Handler # 只支持文本输入的handler
+from src.handler_layer.handler_factory import load_class
 
 class HandlerManager:
     
-    def __init__(self, transport: TransportBase):
+    def __init__(self, transport: TransportBase, handler_type: str):
         self.transport = transport
-        self.handlers: Dict[str, Handler] = {}  # client_id -> Handler
+        self.handlers = {}  # client_id -> Handler
+        self.handler_type = handler_type
     
     async def create_handler(self, client_id: str):
         if client_id in self.handlers:
             logger.warning(f"客户端 {client_id} 的 Handler 已存在")
             return
-        logger.debug(f"正在创建 Handler")
-        handler = Handler(self.transport, client_id)
+        logger.debug(f"正在创建 {self.handler_type} Handler")
+        handler_class = load_class(self.handler_type)
+        handler = handler_class(self.transport, client_id)
         self.handlers[client_id] = handler
         
         # 启动服务

@@ -1,24 +1,18 @@
-## 目标
-- 商用端到端接口（语音文本进->语音文本出）
-- 低延时，低耦合, 高稳定，高并发
-- 多客户端，多协议
+1. 使用conda 新建python环境
+2. cd gardenAgent
+3. 运行安装命令 pip install -e .
+
+4. 启动mcp 服务器 
+```
+cd gardenAgent/brain_langchain
+python mcp_server.py 
+```
+5. 运行demo，命令行对话
+```
+cd gardenAgent/brain_langchain
+
+python scenario_one.py 
+```
 
 
-logs
-- 2025.10.18 开始
-- 2025.12.01 支持多客户端，多协议
-
-TODO
-- 增加vad可选
-- 实时语音打断
-- 支持文本
-- 支持超时断开
-
-Bug
-- 发送文本并没有等待启动成功后再发送，一旦启动失败，就会卡住
-    -- 失败后应该清理全部历史，然后重试，直到成功
-- 前端开始播放时拿到的样本量大多为16000, 有点不正常。
-    -- 添加流控
-- aliyun tts 超时bug
-    -- 不提前发送SentenceStart，但是有延迟
-- asr 长期监听后，第一次反应不灵敏
+ 

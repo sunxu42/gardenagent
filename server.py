@@ -4,6 +4,7 @@ from src.handler_layer.handler_manager import HandlerManager
 from src.log import setup_logger
 
 from loguru import logger
+from src.config import WebSocketConfig
 setup_logger(log_level='DEBUG',disable_modules=['src.agent_layer',"fairland_brain"])
 
 
@@ -13,8 +14,8 @@ setup_logger(log_level='DEBUG',disable_modules=['src.agent_layer',"fairland_brai
 class Server:
     
     def __init__(self):
-        self.transport = WebSocketTransport()
-        self.handler_manager = HandlerManager(self.transport)
+        self.transport = WebSocketTransport(host=WebSocketConfig.host, port=WebSocketConfig.port)
+        self.handler_manager = HandlerManager(self.transport, WebSocketConfig.handler_type)
     
     async def start(self):
         # 注册连接和断开回调

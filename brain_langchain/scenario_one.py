@@ -231,18 +231,18 @@ class ScenarioOneApp:
             else:
                 logger.debug(f"type(chunk): {type(chunk)}, chunk.content: {chunk.content}")
 
-    async def achat(self, user_input: str):
-        async for event in self.graph.astream(
-                    {"messages": [{"role": "user", "content": user_input}]},
-                    version="v2",
-                    config={"configurable": {"thread_id": "demo-thread"}},
-                    stream_mode="updates",
-                ):
-                print(event)
-                # print(event["name"], event["event"])
-                # print(event["data"])
-                # print("--------------------------------")
-                pass
+    # async def achat(self, user_input: str):
+    #     async for event in self.graph.astream(
+    #                 {"messages": [{"role": "user", "content": user_input}]},
+    #                 version="v2",
+    #                 config={"configurable": {"thread_id": "demo-thread"}},
+    #                 stream_mode="updates",
+    #             ):
+    #             print(event)
+    #             # print(event["name"], event["event"])
+    #             # print(event["data"])
+    #             # print("--------------------------------")
+    #             pass
   
 
 

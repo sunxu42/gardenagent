@@ -15,16 +15,14 @@ from typing import Dict, Set, Optional, Callable, Any
 from loguru import logger
 import websockets
 from websockets.server import WebSocketServerProtocol
-
-from src.config import WebSocketConfig
 from .base import TransportBase
 
 
 class WebSocketTransport(TransportBase):
     
     def __init__(self, host: str = None, port: int = None, ping_interval: int = 20, ping_timeout: int = 10):
-        self.host = host or WebSocketConfig.host
-        self.port = port or WebSocketConfig.port
+        self.host = host 
+        self.port = port
         self.ping_interval = ping_interval
         self.ping_timeout = ping_timeout
         
