@@ -11,3 +11,4 @@ lmdb==1.7.5
 librosa==0.10.1
 pydub>=0.25.1
 pyaudio==0.2.11
+streamlit==1.51.0

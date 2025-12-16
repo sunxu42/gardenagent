@@ -216,17 +216,22 @@ class ScenarioOneApp:
 
     async def achat(self, user_input: str):
         st = time.time()
-        count = 0
+        count = -1
         async for chunk, meta in self.graph.astream(
             {"messages": [HumanMessage(content=user_input)]},
             config={"configurable": {"thread_id": "demo-thread"}}, stream_mode="messages",
         ):
-            if count==0:
-                count += 1
-                et = time.time()
-                print('first chunk time: ',et - st)
-            if meta.get("langgraph_node")=="llm_call" and isinstance(chunk, AIMessageChunk):
+            if  count==0 or count==-1:
+                if count==-1:
+                    count += 1
+                    et = time.time()
+                    print(f'first empty chunk time: {et - st}, chunk: {chunk.content}')
                 if chunk.content.strip('\n'):
+                    count += 1
+                    et = time.time()
+                    print(f'first chunk time: {et - st}, chunk: {chunk.content}')
+            if meta.get("langgraph_node")=="llm_call" and isinstance(chunk, AIMessageChunk):
+                if chunk.content:
                     yield chunk.content
             else:
                 logger.debug(f"type(chunk): {type(chunk)}, chunk.content: {chunk.content}")

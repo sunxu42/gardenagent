@@ -70,6 +70,8 @@ class Handler:
             elif message_type == 'listen':
                 await self.handle_listen(data)
             else:
+                ## 临时处理，后续修改
+                await self.handle_llm_format_text(data)
                 logger.warning(f"未知消息类型: {message_type}, 消息: {message}")
         except json.JSONDecodeError as e:
             logger.error(f"解析 JSON 消息失败: {e}, 消息: {message}")
@@ -89,8 +91,18 @@ class Handler:
         await self.transport.send_to_client(self.client_id, json.dumps(response))
         logger.info(f"发送 hello 响应到客户端")
 
+    async def handle_llm_format_text(self, data: Dict[str, Any]):
+        text = data.get('content', '')
+        if self.agent_service and self.agent_service.queue:
+            message = {
+                'text': text,
+                'is_final': True,
+                'timestamp': time.time(),
+                'source': 'user'
+            }
+            await self.agent_service.queue.put(message)
+            logger.debug(f"用户文本已发送到 Agent 队列: {text}")
     async def handle_listen(self, data: Dict[str, Any]):
-        """处理客户端发送的文本消息"""
         mode = data.get('mode', '')
         state = data.get('state', '')
         text = data.get('text', '')
