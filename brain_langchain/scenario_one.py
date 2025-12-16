@@ -4,6 +4,7 @@ import time
 
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, ToolMessage, AIMessageChunk
 from langgraph.checkpoint.memory import MemorySaver
+from langchain_core.messages.utils import convert_to_openai_messages
 from langgraph.graph import END, START, StateGraph, MessagesState
 from langgraph.prebuilt import ToolNode
 from langchain_community.chat_models import ChatZhipuAI
@@ -12,8 +13,10 @@ from typing import Literal, Annotated, Optional
 from typing_extensions import TypedDict
 from langgraph.graph.message import add_messages
 from langchain_core.prompts import ChatPromptTemplate
-
-from .mcp_client import get_tools
+try:
+    from mcp_client import get_tools
+except ImportError:
+    from .mcp_client import get_tools
 from loguru import logger
 
 
@@ -29,7 +32,7 @@ def load_model() -> ChatZhipuAI:
 class GraphState(TypedDict):
     system_prompt: str = """你的私密身份是菲亚兰德公司开发的庭院机器人。你的公开身份是用户的庭院管家，名字叫小菲。
     <requirement>
-1.  为了成为一个优秀的管家，你首先需要表现的像一个真实的人类。你永远不要表现出你是一个机器人。否则人类用户将拒绝你的服务。
+1. 为了成为一个优秀的管家，你首先需要表现的像一个真实的人类。你永远不要表现出你是一个机器人。否则人类用户将拒绝你的服务。
 2. 为了表现得像一个人类，你必须像人类一样表达。你可以想象一下，如果你是用户的朋友，你将如何回复？语气亲切自然，像朋友日常聊天一样，绝对不能用生硬的书面语。
 3. 当用户需要安慰：先表达“理解/关心”（比如提一句“我懂这种感觉”“别硬撑”），再轻轻追问细节（比如问累的原因：是没停事儿 or 跑太多路 or费心思了？），最后给个小建议（比如歇会儿or 喝口水or 放放事儿）；
 4. 对于查询时间或查询天气：直接给出简单答案，不要过度回复。比如用户问“现在几点了”，你只需回答“现在是X点Y分”；
@@ -104,6 +107,7 @@ class ScenarioOneApp:
         self.tool_manager = ToolManager()
         self.llm = load_model()
         self.graph = None
+
     
     @classmethod
     async def create(cls, config=None):
@@ -180,9 +184,10 @@ class ScenarioOneApp:
 
     async def llm_call(self, state: GraphState) -> dict:
         chat_model = self.llm.bind_tools(self.tool_manager.tools)
+
         messages = state["messages"]
-        logger.debug(f"llm_call messages: {messages}")
-        logger.debug(f"--------------------------------")
+        # logger.debug(f"llm_call messages: {convert_to_openai_messages(messages)}")
+        # logger.debug(f"--------------------------------")
         if not messages or messages[0].type != "system":
             SYSTEM_PROMPT =SystemMessage(content=state.get("system_prompt",""))
             messages = [SYSTEM_PROMPT] + messages
@@ -195,7 +200,7 @@ class ScenarioOneApp:
  
     def should_continue(self, state: GraphState) -> Literal["tools", END]:
         messages = state.get('messages', [])
-        # print('--------------------------------')
+        print('--------------------------------')
         # for message in messages:
         #     print('--->: ',message.type,type(message).__name__, message)
         # print('--------------------------------')
@@ -225,11 +230,27 @@ class ScenarioOneApp:
                     yield chunk.content
             else:
                 logger.debug(f"type(chunk): {type(chunk)}, chunk.content: {chunk.content}")
+
+    async def achat(self, user_input: str):
+        async for event in self.graph.astream(
+                    {"messages": [{"role": "user", "content": user_input}]},
+                    version="v2",
+                    config={"configurable": {"thread_id": "demo-thread"}},
+                    stream_mode="updates",
+                ):
+                print(event)
+                # print(event["name"], event["event"])
+                # print(event["data"])
+                # print("--------------------------------")
+                pass
+  
+
+
 async def main():
     app = await ScenarioOneApp.create()
     app.graph.get_graph().draw_png("graph.png")
     init_message = "检测到草坪高度大于7cm，请检查草坪是否需要修剪"
-    count = 0
+    count =1
     while True:
         if count == 0:
             user_input = init_message
@@ -239,9 +260,12 @@ async def main():
         if user_input == "exit":
             break
         res = ""
-        async for chunk in app.achat(user_input):
-            res += chunk
-        print("AI--->: ", res)
+        await app.achat(user_input)
+        # async for chunk in app.achat(user_input):
+           
+        #     res += chunk
+        # print("AI--->: ", res)
 
 if __name__ == "__main__":
     asyncio.run(main())
+
