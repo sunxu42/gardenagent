@@ -14,5 +14,14 @@ cd gardenAgent/brain_langchain
 python scenario_one.py 
 ```
 
+6. 启动webscoket 服务端
+```
+python server.py
+```
 
+7. 启动web聊天demo
+
+```
+streamlit run webapp.py
+```
  

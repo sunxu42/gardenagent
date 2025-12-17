@@ -18,16 +18,21 @@ try:
 except ImportError:
     from .mcp_client import get_tools
 from loguru import logger
+from langchain_openai import ChatOpenAI
 
-
-def load_model() -> ChatZhipuAI:
-    return ChatZhipuAI(
-        model="glm-4.6",
-        api_key="83fa704db4954104afec82926847f913.lyzvmMOoFvyy4VRE",
-        temperature=0.0,
-        # max_tokens=1024,
-        streaming=True
-    )
+def load_model() -> ChatOpenAI:
+        return ChatOpenAI(
+            model="glm-4.6",
+            api_key="83fa704db4954104afec82926847f913.lyzvmMOoFvyy4VRE",
+            base_url="https://open.bigmodel.cn/api/paas/v4",
+            temperature=0.0,
+            max_tokens=1000,
+            streaming=True,
+            # thinking=False,
+            extra_body={
+                "thinking": {"type": "disabled" }
+            }
+        )
 
 class GraphState(TypedDict):
     system_prompt: str = """你的私密身份是菲亚兰德公司开发的庭院机器人。你的公开身份是用户的庭院管家，名字叫小菲。
