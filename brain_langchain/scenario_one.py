@@ -55,10 +55,7 @@ SYSTEM_PROMPT = """
 class GraphState(TypedDict):
     system_prompt: str 
     messages: Annotated[list, add_messages]  
-    height_cm: Optional[float] = None
-    humidity: Optional[float] = None
-    watering_record: Optional[list] = None
-    knowledge_base: Optional[list] = None
+    llm_call_count: int
 
 
 class ScenarioOneApp:
@@ -67,6 +64,7 @@ class ScenarioOneApp:
         self.tool_manager = ToolManager()
         self.llm = load_model()
         self.graph = None
+        
 
     
     @classmethod
@@ -143,32 +141,32 @@ class ScenarioOneApp:
 
 
     async def llm_call(self, state: GraphState) -> dict:
+        print(type(state), state.keys(), id(state))
+        state["llm_call_count"] += 1
         chat_model = self.llm.bind_tools(self.tool_manager.tools)
         messages = state.get("messages", [])
-        # logger.debug(f"llm_call messages: {convert_to_openai_messages(messages)}")
-        # logger.debug(f"--------------------------------")
         if not messages or messages[0].type != "system":
             system_message = SystemMessage(content=SYSTEM_PROMPT)
             messages = [system_message] + messages
+        logger.debug(f"------------第{state['llm_call_count']}次LLM调用------------")
         stream = chat_model.astream(messages) 
         chunks = AIMessageChunk(content="")
         async for chunk in stream:   
             chunks += chunk
             yield {"messages": chunk}
-        yield {"messages": chunks}  # chunks 是 AIMessageChunk 自动转换为 AIMessage
+        yield {"messages": chunks, "llm_call_count": state["llm_call_count"]}  # chunks 是 AIMessageChunk 自动转换为 AIMessage
  
     def should_continue(self, state: GraphState) -> Literal["tools", END]:
         messages = state.get('messages', [])
-        print('--------------------------------')
-        # for message in messages:
-        #     print('--->: ',message.type,type(message).__name__, message)
-        # print('--------------------------------')
         if not messages:
             return END
             
         last_message = messages[-1]
         # 如果大模型通知调用工具的时候，我们可以路由到对应的工具节点
         if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
+
+            tool_call_str = '\n'.join([f"{tool_call}" for tool_call in last_message.tool_calls])
+            logger.debug(f"\n{tool_call_str}")
             return "tools"
         # 否则，停止执行（回复用户）
         return END
@@ -177,7 +175,7 @@ class ScenarioOneApp:
         st = time.time()
         count = -1
         async for chunk, meta in self.graph.astream(
-            {"messages": [HumanMessage(content=user_input)]},
+            {"messages": [HumanMessage(content=user_input)], "llm_call_count": 0},
             config={"configurable": {"thread_id": "demo-thread"}}, stream_mode="messages",
         ):
 
@@ -195,21 +193,7 @@ class ScenarioOneApp:
                         print(f'first chunk time: {et - st}, chunk: {chunk.content}')
                 if chunk.content:
                     yield chunk.content
-            else:
-                logger.debug(f"type(chunk): {type(chunk)}, chunk.content: {chunk.content}")
 
-    # async def achat(self, user_input: str):
-    #     async for event in self.graph.astream(
-    #                 {"messages": [{"role": "user", "content": user_input}]},
-    #                 version="v2",
-    #                 config={"configurable": {"thread_id": "demo-thread"}},
-    #                 stream_mode="updates",
-    #             ):
-    #             print(event)
-    #             # print(event["name"], event["event"])
-    #             # print(event["data"])
-    #             # print("--------------------------------")
-    #             pass
   
 
 
