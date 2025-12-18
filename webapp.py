@@ -88,28 +88,16 @@ async def stream_chat(message: str, on_update, on_first_token=None) -> str:
     return full_text if full_text else "[未收到服务端文本响应]"
 
 
-def main() -> None:
+async def main() -> None:
     st.set_page_config(page_title="GardenAgent Chat", page_icon="💬", layout="centered")
 
     st.title("GardenAgent Chat")
     st.caption("使用 Streamlit + WebSocket 的简单聊天页面")
 
     # 初始化全局事件循环和长连接（只在首次加载时创建）
-    if "ws_loop" not in st.session_state:
-        loop = asyncio.new_event_loop()
-        st.session_state.ws_loop = loop
-        st.session_state.ws_conn = None
-    loop = st.session_state.ws_loop
+    if "ws_conn" not in st.session_state:
+        st.session_state.ws_conn = await get_or_create_ws()
 
-    # 在页面加载阶段主动建立连接（幂等：已有连接则复用）
-    async def _init_ws():
-        await get_or_create_ws()
-
-    try:
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(_init_ws())
-    except Exception as e:
-        st.error(f"初始化 WebSocket 连接失败: {e}")
 
     # 初始化会话状态
     if "messages" not in st.session_state:
@@ -153,12 +141,12 @@ def main() -> None:
                 )
 
             # 所有 WebSocket 收发都复用同一个事件循环和长连接
-            response_text = loop.run_until_complete(runner())
+            response_text = await runner()
 
         # 把助手最终回复加入会话状态
         st.session_state.messages.append({"role": "assistant", "content": response_text})
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
 

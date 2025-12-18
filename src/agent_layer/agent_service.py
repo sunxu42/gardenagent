@@ -8,7 +8,7 @@ from src.log import setup_logger
 from src.agent_layer.agents.agent_factory import AgentFactory
 import uuid
 
-# TODO 兼容只支持最终文本的agent
+
 class AgentService:
     def __init__(self, agent_config: Optional[Dict[str, Any]] = None):
         self.is_running = False
@@ -36,7 +36,7 @@ class AgentService:
     async def stop(self):
         self.is_running = False
         # 关闭agent的线程池
-        self.agent.shutdown()
+        # await self.agent.shutdown()
         logger.info("Agent 服务已停止")
 
 
