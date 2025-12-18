@@ -1,5 +1,4 @@
 import asyncio
-import json
 import time
 
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, ToolMessage, AIMessageChunk
@@ -7,18 +6,16 @@ from langgraph.checkpoint.memory import MemorySaver
 from langchain_core.messages.utils import convert_to_openai_messages
 from langgraph.graph import END, START, StateGraph, MessagesState
 from langgraph.prebuilt import ToolNode
-from langchain_community.chat_models import ChatZhipuAI
-from typing import Iterable
 from typing import Literal, Annotated, Optional
 from typing_extensions import TypedDict
 from langgraph.graph.message import add_messages
-from langchain_core.prompts import ChatPromptTemplate
-try:
-    from mcp_client import get_tools
-except ImportError:
-    from .mcp_client import get_tools
+
 from loguru import logger
 from langchain_openai import ChatOpenAI
+try:
+    from tool_manager import ToolManager
+except ImportError:
+    from .tool_manager import ToolManager
 
 def load_model() -> ChatOpenAI:
         return ChatOpenAI(
@@ -33,78 +30,30 @@ def load_model() -> ChatOpenAI:
                 "thinking": {"type": "disabled" }
             }
         )
-
-class GraphState(TypedDict):
-    system_prompt: str = """你的私密身份是菲亚兰德公司开发的庭院机器人。你的公开身份是用户的庭院管家，名字叫小菲。
-    <requirement>
+SYSTEM_PROMPT = """
+你的身份是用户的庭院管家，名字叫小菲。
+<requirement>
 1. 为了成为一个优秀的管家，你首先需要表现的像一个真实的人类。你永远不要表现出你是一个机器人。否则人类用户将拒绝你的服务。
 2. 为了表现得像一个人类，你必须像人类一样表达。你可以想象一下，如果你是用户的朋友，你将如何回复？语气亲切自然，像朋友日常聊天一样，绝对不能用生硬的书面语。
-3. 当用户需要安慰：先表达“理解/关心”（比如提一句“我懂这种感觉”“别硬撑”），再轻轻追问细节（比如问累的原因：是没停事儿 or 跑太多路 or费心思了？），最后给个小建议（比如歇会儿or 喝口水or 放放事儿）；
-4. 对于查询时间或查询天气：直接给出简单答案，不要过度回复。比如用户问“现在几点了”，你只需回答“现在是X点Y分”；
-5. 回复长度：不用太长，1-2句话即可，像普通人聊天的随口回应，不堆砌内容；
+3. 回复长度：不用太长，1-2句话即可，像普通人聊天的随口回应，不堆砌内容
+4. 当用户需要安慰：先表达“理解/关心”（比如提一句“我懂这种感觉”“别硬撑”），再轻轻追问细节（比如问累的原因：是没停事儿 or 跑太多路 or费心思了？），最后给个小建议（比如歇会儿or 喝口水or 放放事儿）；
+5. 对于查询时间或查询天气：直接给出简单答案，不要过度回复。比如用户问“现在几点了”，你只需回答“现在是X点Y分”；
 6. 禁忌：不要用“您好”“请问”这类客气但疏离的词，不要讲大道理，不要机械重复用户的话；
-</requirement>"""
+</requirement>
+<example>
+user: 庭院管家，介绍一下我们的智慧庭院
+assistant: 欢迎参观iGarden智慧庭院！我是您的智能管家。在这里，您看到的不仅仅是高端设备，更是一个会思考、能预见、且拥有协调能力的智慧生态系统。iGarden的智慧体现在：我们让所有设备不再孤立工作，而是协同合作，为您打造一个完全自动化、高度节能、且完美适配您生活节奏的理想户外空间。
+</example>
+"""
+
+class GraphState(TypedDict):
+    system_prompt: str 
     messages: Annotated[list, add_messages]  
     height_cm: Optional[float] = None
     humidity: Optional[float] = None
     watering_record: Optional[list] = None
     knowledge_base: Optional[list] = None
 
-class ToolManager:
-    def __init__(self):
-        self.tools = None
-        self.tool_node = None
-        self.tool_map = None
-
-    async def create_tools(self):
-        self.tools = await get_tools()
-        self.tool_node = ToolNode(self.tools)
-        self.tool_map = {tool.name: tool for tool in self.tools}
-        logger.info(f"tool_names: {self.tool_map.keys()}")
-
-    def _parse_result(self, result):
-        if isinstance(result, str):
-            try:
-                return json.loads(result)
-            except json.JSONDecodeError:
-                # 如果不是 JSON，尝试 eval（仅用于安全场景）
-                try:
-                    return eval(result)
-                except:
-                    return {"error": f"无法解析结果: {result}"}
-        return result
-
-    async def get_grass_height(self) -> dict:
-        tool = self.tool_map["get_grass_height"]
-        result = await tool.ainvoke({"sensor_id": "grass-001"})
-        return self._parse_result(result)
-
-    async def get_humidity(self) -> dict:
-        tool = self.tool_map["get_soil_moisture"]
-        result = await tool.ainvoke({"sensor_id": "soil-001"})
-        parsed = self._parse_result(result)
-        # 将 moisture_percent 映射到 humidity
-        if isinstance(parsed, dict) and "moisture_percent" in parsed:
-            parsed["humidity"] = parsed.pop("moisture_percent")
-        return parsed
-
-    async def get_watering_record(self) -> dict:
-        tool = self.tool_map["list_irrigation_logs"]
-        result = await tool.ainvoke({"limit": 5})
-        parsed = self._parse_result(result)
-        # 如果返回的是列表，包装成字典
-        if isinstance(parsed, list):
-            return {"watering_record": parsed}
-        return parsed
-
-    async def get_knowledge_base(self) -> dict:
-        tool = self.tool_map["get_irrigation_knowledge"]
-        result = await tool.ainvoke({})
-        parsed = self._parse_result(result)
-        # 如果返回的是字典，确保有 knowledge_base 键
-        if isinstance(parsed, dict) and "knowledge_base" not in parsed:
-            return {"knowledge_base": parsed}
-        return parsed
 
 class ScenarioOneApp:
     def __init__(self, config=None):
@@ -189,13 +138,12 @@ class ScenarioOneApp:
 
     async def llm_call(self, state: GraphState) -> dict:
         chat_model = self.llm.bind_tools(self.tool_manager.tools)
-
-        messages = state["messages"]
+        messages = state.get("messages", [])
         # logger.debug(f"llm_call messages: {convert_to_openai_messages(messages)}")
         # logger.debug(f"--------------------------------")
         if not messages or messages[0].type != "system":
-            SYSTEM_PROMPT =SystemMessage(content=state.get("system_prompt",""))
-            messages = [SYSTEM_PROMPT] + messages
+            system_message = SystemMessage(content=SYSTEM_PROMPT)
+            messages = [system_message] + messages
         stream = chat_model.astream(messages) 
         chunks = AIMessageChunk(content="")
         async for chunk in stream:   
