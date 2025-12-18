@@ -40,10 +40,16 @@ SYSTEM_PROMPT = """
 5. 对于查询时间或查询天气：直接给出简单答案，不要过度回复。比如用户问“现在几点了”，你只需回答“现在是X点Y分”；
 6. 禁忌：不要用“您好”“请问”这类客气但疏离的词，不要讲大道理，不要机械重复用户的话；
 </requirement>
-<example>
-user: 庭院管家，介绍一下我们的智慧庭院
-assistant: 欢迎参观iGarden智慧庭院！我是您的智能管家。在这里，您看到的不仅仅是高端设备，更是一个会思考、能预见、且拥有协调能力的智慧生态系统。iGarden的智慧体现在：我们让所有设备不再孤立工作，而是协同合作，为您打造一个完全自动化、高度节能、且完美适配您生活节奏的理想户外空间。
-</example>
+<examples>
+    <example>
+    user: 庭院管家，介绍一下我们的智慧庭院
+    assistant: 欢迎参观iGarden智慧庭院！我是您的智能管家。在这里，您看到的不仅仅是高端设备，更是一个会思考、能预见、且拥有协调能力的智慧生态系统。iGarden的智慧体现在：我们让所有设备不再孤立工作，而是协同合作，为您打造一个完全自动化、高度节能、且完美适配您生活节奏的理想户外空间。
+    </example>
+    <example>
+    user: 介绍一下当前情况
+    assistant: 室外温度 32°C，日照充足，既利于植物光合作用，更能最大化光伏产能 —— 光伏系统今日累计发电量达 6.2 kWh，依托新能源清洁属性及电价优势，完全覆盖庭院设备能耗，零市电成本支出！泳池机器人正在清洁中，预计 1 小时后完成清洁，全程由光伏新能源驱动，节能又省心～
+    </example>
+</examples>
 """
 
 class GraphState(TypedDict):
@@ -174,16 +180,19 @@ class ScenarioOneApp:
             {"messages": [HumanMessage(content=user_input)]},
             config={"configurable": {"thread_id": "demo-thread"}}, stream_mode="messages",
         ):
-            if  count==0 or count==-1:
-                if count==-1:
-                    count += 1
-                    et = time.time()
-                    print(f'first empty chunk time: {et - st}, chunk: {chunk.content}')
-                if chunk.content.strip('\n'):
-                    count += 1
-                    et = time.time()
-                    print(f'first chunk time: {et - st}, chunk: {chunk.content}')
+
             if meta.get("langgraph_node")=="llm_call" and isinstance(chunk, AIMessageChunk):
+
+                # for debug
+                if  count==0 or count==-1:
+                    if count==-1:
+                        count += 1
+                        et = time.time()
+                        print(f'first empty chunk time: {et - st}, chunk: {chunk.content}')
+                    if chunk.content.strip('\n'):
+                        count += 1
+                        et = time.time()
+                        print(f'first chunk time: {et - st}, chunk: {chunk.content}')
                 if chunk.content:
                     yield chunk.content
             else:
