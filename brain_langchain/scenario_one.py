@@ -166,21 +166,24 @@ class ScenarioOneApp:
         if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
 
             tool_call_str = '\n'.join([f"{tool_call}" for tool_call in last_message.tool_calls])
-            logger.debug(f"\n{tool_call_str}")
+            logger.debug(f"工具调用\n{tool_call_str}")
             return "tools"
         # 否则，停止执行（回复用户）
         return END
 
-    async def achat(self, user_input: str):
+    async def achat(self, user_input: str) -> str:
         st = time.time()
         count = -1
+        tool_call = []
         async for chunk, meta in self.graph.astream(
             {"messages": [HumanMessage(content=user_input)], "llm_call_count": 0},
             config={"configurable": {"thread_id": "demo-thread"}}, stream_mode="messages",
         ):
 
             if meta.get("langgraph_node")=="llm_call" and isinstance(chunk, AIMessageChunk):
-
+                if tool_call:
+                    logger.debug("工具调用结果：\n"+"\n".join(tool_call))
+                    tool_call = []
                 # for debug
                 if  count==0 or count==-1:
                     if count==-1:
@@ -193,6 +196,9 @@ class ScenarioOneApp:
                         print(f'first chunk time: {et - st}, chunk: {chunk.content}')
                 if chunk.content:
                     yield chunk.content
+            elif meta.get("langgraph_node")=="tools":
+                # print(f"{chunk}")
+                tool_call.append(f"{chunk.name}, {chunk.content}")
 
   
 
