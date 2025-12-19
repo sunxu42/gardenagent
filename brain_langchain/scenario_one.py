@@ -133,9 +133,7 @@ class ScenarioOneApp:
         if self.pool_overview_count == 1:
             return state
         self.pool_overview_count += 1
-        tool_call = {'name': 'mock_pool_robot_status', 'args': {}, 'id': generate_tool_call_id(), 'type': 'tool_call'},
-        tool = self.tool_manager.tool_map[tool_call["name"]]
-        result = await tool.ainvoke(tool_call["args"])
+
         # user_input = state.get("messages", [])[-1].content
         # last_id = state["messages"][-1].id
         # tool_calls = [
@@ -282,43 +280,43 @@ class ScenarioOneApp:
                 # print(f"{chunk}")
                 tool_call.append(f"{chunk.name}, {chunk.content}")
 
-    async def achat(self, user_input: str):
-        st = time.time()
-        count = -1
-        tool_call = []
-        state = {
-            "messages": [HumanMessage(content=user_input)], 
-            "llm_call_count": 0,
-            "system_prompt": SYSTEM_PROMPT
-            }
-        async for info in self.graph.astream(state, config={"configurable": {"thread_id": "demo-thread"}}, 
-        stream_mode=["updates","messages"],
-        ):
-            if info[0] == "updates":
-                print(f"updates: {info[1]}")
-            elif info[0] == "messages":
-                messages = info[1]
-                chunk = messages[0]
-                meta = messages[1]
-                if meta.get("langgraph_node")=="llm_call" and isinstance(chunk, AIMessageChunk):
-                    if tool_call:
-                        logger.debug("工具调用结果：\n"+"\n".join(tool_call))
-                        tool_call = []
-                    # for debug
-                    if  count==0 or count==-1:
-                        if count==-1:
-                            count += 1
-                            et = time.time()
-                            print(f'first empty chunk time: {et - st}, chunk: {chunk.content}')
-                        if chunk.content.strip('\n'):
-                            count += 1
-                            et = time.time()
-                            print(f'first chunk time: {et - st}, chunk: {chunk.content}')
-                    if chunk.content:
-                        yield chunk.content
-                elif meta.get("langgraph_node")=="tools":
-                    # print(f"{chunk}")
-                    tool_call.append(f"{chunk.name}, {chunk.content}")
+    # async def achat(self, user_input: str):
+    #     st = time.time()
+    #     count = -1
+    #     tool_call = []
+    #     state = {
+    #         "messages": [HumanMessage(content=user_input)], 
+    #         "llm_call_count": 0,
+    #         "system_prompt": SYSTEM_PROMPT
+    #         }
+    #     async for info in self.graph.astream(state, config={"configurable": {"thread_id": "demo-thread"}}, 
+    #     stream_mode=["updates","messages"],
+    #     ):
+    #         if info[0] == "updates":
+    #             print(f"updates: {info[1]}")
+    #         elif info[0] == "messages":
+    #             messages = info[1]
+    #             chunk = messages[0]
+    #             meta = messages[1]
+    #             if meta.get("langgraph_node")=="llm_call" and isinstance(chunk, AIMessageChunk):
+    #                 if tool_call:
+    #                     logger.debug("工具调用结果：\n"+"\n".join(tool_call))
+    #                     tool_call = []
+    #                 # for debug
+    #                 if  count==0 or count==-1:
+    #                     if count==-1:
+    #                         count += 1
+    #                         et = time.time()
+    #                         print(f'first empty chunk time: {et - st}, chunk: {chunk.content}')
+    #                     if chunk.content.strip('\n'):
+    #                         count += 1
+    #                         et = time.time()
+    #                         print(f'first chunk time: {et - st}, chunk: {chunk.content}')
+    #                 if chunk.content:
+    #                     yield chunk.content
+    #             elif meta.get("langgraph_node")=="tools":
+    #                 # print(f"{chunk}")
+    #                 tool_call.append(f"{chunk.name}, {chunk.content}")
                                 
     
        
