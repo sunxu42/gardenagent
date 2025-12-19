@@ -1,7 +1,8 @@
 import asyncio
 import time
-
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, ToolMessage, AIMessageChunk
+import re
+from unittest import result
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, ToolMessage, AIMessageChunk, RemoveMessage
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_core.messages.utils import convert_to_openai_messages
 from langgraph.graph import END, START, StateGraph, MessagesState
@@ -16,6 +17,10 @@ try:
     from tool_manager import ToolManager
 except ImportError:
     from .tool_manager import ToolManager
+try:    
+    from utils import generate_tool_call_id
+except ImportError:
+    from .utils import generate_tool_call_id
 
 def load_model() -> ChatOpenAI:
         return ChatOpenAI(
@@ -58,12 +63,21 @@ class GraphState(TypedDict):
     llm_call_count: int
 
 
+
+
+def grass_overview(state: GraphState) -> str:
+    return state
+
+
+
+
 class ScenarioOneApp:
     def __init__(self, config=None):
         self.config = config
         self.tool_manager = ToolManager()
         self.llm = load_model()
         self.graph = None
+        self.pool_overview_count = 0
         
 
     
@@ -81,79 +95,147 @@ class ScenarioOneApp:
         tool_node = ToolNode(self.tools)
 
         workflow = StateGraph(GraphState)
+        workflow.set_conditional_entry_point(
+            self.entry_route,
+            {
+                "pool_overview": "pool_overview",
+                "grass_overview": "grass_overview",
+                "llm_call": "llm_call",
+            }
+        )   
+        workflow.add_node("pool_overview", self.pool_overview)
+        workflow.add_node("grass_overview", grass_overview)
         workflow.add_node("llm_call",  self.llm_call)
         workflow.add_node("tools", tool_node)
 
-        workflow.add_edge(START, "llm_call")
+        workflow.add_edge("pool_overview", "llm_call")
+        workflow.add_edge("grass_overview", "llm_call")
+        # workflow.add_edge(START, "llm_call")
         workflow.add_conditional_edges("llm_call", self.should_continue, {"tools": "tools", END: END})
         workflow.add_edge("tools", "llm_call")
         return workflow.compile(checkpointer=MemorySaver())
+    async def entry_route(self, state: GraphState) -> str:
+        messages = state.get("messages", [])
+        last_message = messages[-1]
 
-
-    async def listen_grass_height(self, state: GraphState) -> dict:
-        result = await self.tool_manager.get_grass_height()
-        if isinstance(result, dict) and "height_cm" in result:
-            state["height_cm"] = result["height_cm"]
+        if re.search(r'泳池|水池|游泳', last_message.content):
+            logger.debug("------------路由到泳池概览------------")
+            return "pool_overview"
+        elif re.search(r'草坪|花园|草地|割草|修剪', last_message.content):
+            logger.debug("------------路由到草坪概览------------")
+            self.pool_overview_count == 0
+            return "grass_overview"
         else:
-            print(f"警告: 无法从结果中提取 height_cm，结果类型: {type(result)}, 内容: {result}")
-            state["height_cm"] = None
-        return state
+            logger.debug("------------路由到LLM调用------------")
+        return "llm_call"
+    
+    async def pool_overview(self, state: GraphState) -> str:
+        if self.pool_overview_count == 1:
+            return state
+        self.pool_overview_count += 1
+        tool_call = {'name': 'mock_pool_robot_status', 'args': {}, 'id': generate_tool_call_id(), 'type': 'tool_call'},
+        tool = self.tool_manager.tool_map[tool_call["name"]]
+        result = await tool.ainvoke(tool_call["args"])
+        # user_input = state.get("messages", [])[-1].content
+        # last_id = state["messages"][-1].id
+        # tool_calls = [
+        #     {'name': 'mock_pool_robot_status', 'args': {}, 'id': generate_tool_call_id(), 'type': 'tool_call'},
+        #     {'name': 'mock_weather_forecast', 'args': {}, 'id': generate_tool_call_id(), 'type': 'tool_call'},
+        #     {'name': 'mock_swimming_preference', 'args': {}, 'id': generate_tool_call_id(), 'type': 'tool_call'}
+        # ]
+        # tool_messages=[]
+        # for tool_call in tool_calls:
+        #     tool = self.tool_manager.tool_map[tool_call["name"]]
+        #     result = await tool.ainvoke(tool_call["args"])
+        #     tool_messages.append(ToolMessage(content=result, tool_call_id=tool_call["id"]))
+        system_prompt = f"""
+        假如你是泳池管家，请根据以下规则管理泳池：
+
+        1. 在做出任何决定前，需优先检查当前天气、泳池状态（包括清洁程度、水温、水质）和主人的游泳偏好。
+        2. 如果检测到泳池水质不佳，务必首先安排清洁机器人对泳池进行彻底清洁。
+        3. 若水温低于主人的偏好温度，可以考虑启动热泵进行加热; 若水温高于主人的偏好温度，可以考虑启动水泵进行降温。
+        4. 如果泳池已经干净并且水温适宜，可根据主人的偏好提前开启冲浪器等辅助设备。
+        5. 不建议在恶劣天气（如下雨、强风）时建议主人游泳，应主动提示并建议等待天气改善。
+        6. 每一步操作和建议都需基于综合设备状态与主人的实际需求。
+        7. 计划安排结束后，简洁的告诉用户你已经安排好了，并简洁的告诉用户你安排的计划。
+
+        请根据上述规则为我安排最佳的泳池使用状态并说明理由。
+        </equipments>
+        泳池相关设备：水泵，热泵，泳池清洁机器人，冲浪器。
+        </equipments>
+       
+
+        """
+
+        return {"system_prompt": system_prompt }
+    # async def listen_grass_height(self, state: GraphState) -> dict:
+    #     result = await self.tool_manager.get_grass_height()
+    #     if isinstance(result, dict) and "height_cm" in result:
+    #         state["height_cm"] = result["height_cm"]
+    #     else:
+    #         print(f"警告: 无法从结果中提取 height_cm，结果类型: {type(result)}, 内容: {result}")
+    #         state["height_cm"] = None
+    #     return state
 
 
-    def route(self, state: GraphState) -> str:
-        height = state.get("height_cm")
-        if height is not None and height >= 7:
-            return "get_humidity"
-        else:
-            return "END"
+    # def route(self, state: GraphState) -> str:
+    #     height = state.get("height_cm")
+    #     if height is not None and height >= 7:
+    #         return "get_humidity"
+    #     else:
+    #         return "END"
 
 
-    async def get_humidity(self, state: GraphState) -> dict:
-        result = await self.tool_manager.get_humidity()
-        if isinstance(result, dict) and "humidity" in result:
-            state["humidity"] = result["humidity"]
-        else:
-            print(f"警告: 无法从结果中提取 humidity，结果类型: {type(result)}, 内容: {result}")
-            state["humidity"] = None
-        return state
+    # async def get_humidity(self, state: GraphState) -> dict:
+    #     result = await self.tool_manager.get_humidity()
+    #     if isinstance(result, dict) and "humidity" in result:
+    #         state["humidity"] = result["humidity"]
+    #     else:
+    #         print(f"警告: 无法从结果中提取 humidity，结果类型: {type(result)}, 内容: {result}")
+    #         state["humidity"] = None
+    #     return state
 
-    async def get_watering_record(self, state: GraphState) -> dict:
-        result = await self.tool_manager.get_watering_record()
-        if isinstance(result, dict) and "watering_record" in result:
-            state["watering_record"] = result["watering_record"]
-        elif isinstance(result, list):
-            state["watering_record"] = result
-        else:
-            print(f"警告: 无法从结果中提取 watering_record，结果类型: {type(result)}, 内容: {result}")
-            state["watering_record"] = None
-        return state
+    # async def get_watering_record(self, state: GraphState) -> dict:
+    #     result = await self.tool_manager.get_watering_record()
+    #     if isinstance(result, dict) and "watering_record" in result:
+    #         state["watering_record"] = result["watering_record"]
+    #     elif isinstance(result, list):
+    #         state["watering_record"] = result
+    #     else:
+    #         print(f"警告: 无法从结果中提取 watering_record，结果类型: {type(result)}, 内容: {result}")
+    #         state["watering_record"] = None
+    #     return state
 
-    async def get_knowledge_base(self, state: GraphState) -> dict:
-        result = await self.tool_manager.get_knowledge_base()
-        if isinstance(result, dict) and "knowledge_base" in result:
-            state["knowledge_base"] = result["knowledge_base"]
-        elif isinstance(result, dict):
-            state["knowledge_base"] = result
-        else:
-            print(f"警告: 无法从结果中提取 knowledge_base，结果类型: {type(result)}, 内容: {result}")
-            state["knowledge_base"] = None
-        return state
+    # async def get_knowledge_base(self, state: GraphState) -> dict:
+    #     result = await self.tool_manager.get_knowledge_base()
+    #     if isinstance(result, dict) and "knowledge_base" in result:
+    #         state["knowledge_base"] = result["knowledge_base"]
+    #     elif isinstance(result, dict):
+    #         state["knowledge_base"] = result
+    #     else:
+    #         print(f"警告: 无法从结果中提取 knowledge_base，结果类型: {type(result)}, 内容: {result}")
+    #         state["knowledge_base"] = None
+    #     return state
 
 
     async def llm_call(self, state: GraphState) -> dict:
-        print(type(state), state.keys(), id(state))
         state["llm_call_count"] += 1
+        logger.debug(f"------------第{state['llm_call_count']}次LLM调用------------")
+        
         chat_model = self.llm.bind_tools(self.tool_manager.tools)
         messages = state.get("messages", [])
+
         if not messages or messages[0].type != "system":
-            system_message = SystemMessage(content=SYSTEM_PROMPT)
+            system_message = SystemMessage(content=state.get("system_prompt", SYSTEM_PROMPT))
             messages = [system_message] + messages
-        logger.debug(f"------------第{state['llm_call_count']}次LLM调用------------")
+        # for message in messages:
+        #     print(convert_to_openai_messages(message))
         stream = chat_model.astream(messages) 
         chunks = AIMessageChunk(content="")
         async for chunk in stream:   
             chunks += chunk
             yield {"messages": chunk}
+        logger.debug(f"------------第{state['llm_call_count']}次LLM调用结果------------\n{chunks}")
         yield {"messages": chunks, "llm_call_count": state["llm_call_count"]}  # chunks 是 AIMessageChunk 自动转换为 AIMessage
  
     def should_continue(self, state: GraphState) -> Literal["tools", END]:
@@ -164,22 +246,22 @@ class ScenarioOneApp:
         last_message = messages[-1]
         # 如果大模型通知调用工具的时候，我们可以路由到对应的工具节点
         if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
-
             tool_call_str = '\n'.join([f"{tool_call}" for tool_call in last_message.tool_calls])
-            logger.debug(f"工具调用\n{tool_call_str}")
+            logger.debug(f"工具调用：\n{tool_call_str}")
             return "tools"
         # 否则，停止执行（回复用户）
         return END
 
-    async def achat(self, user_input: str) -> str:
+    async def achat(self, user_input: str):
         st = time.time()
         count = -1
         tool_call = []
-        async for chunk, meta in self.graph.astream(
-            {"messages": [HumanMessage(content=user_input)], "llm_call_count": 0},
-            config={"configurable": {"thread_id": "demo-thread"}}, stream_mode="messages",
-        ):
-
+        state = {
+            "messages": [HumanMessage(content=user_input)], 
+            "llm_call_count": 0,
+            "system_prompt": SYSTEM_PROMPT
+            }
+        async for chunk, meta in self.graph.astream(state, config={"configurable": {"thread_id": "demo-thread"}}, stream_mode="messages"):
             if meta.get("langgraph_node")=="llm_call" and isinstance(chunk, AIMessageChunk):
                 if tool_call:
                     logger.debug("工具调用结果：\n"+"\n".join(tool_call))
@@ -200,7 +282,46 @@ class ScenarioOneApp:
                 # print(f"{chunk}")
                 tool_call.append(f"{chunk.name}, {chunk.content}")
 
-  
+    async def achat(self, user_input: str):
+        st = time.time()
+        count = -1
+        tool_call = []
+        state = {
+            "messages": [HumanMessage(content=user_input)], 
+            "llm_call_count": 0,
+            "system_prompt": SYSTEM_PROMPT
+            }
+        async for info in self.graph.astream(state, config={"configurable": {"thread_id": "demo-thread"}}, 
+        stream_mode=["updates","messages"],
+        ):
+            if info[0] == "updates":
+                print(f"updates: {info[1]}")
+            elif info[0] == "messages":
+                messages = info[1]
+                chunk = messages[0]
+                meta = messages[1]
+                if meta.get("langgraph_node")=="llm_call" and isinstance(chunk, AIMessageChunk):
+                    if tool_call:
+                        logger.debug("工具调用结果：\n"+"\n".join(tool_call))
+                        tool_call = []
+                    # for debug
+                    if  count==0 or count==-1:
+                        if count==-1:
+                            count += 1
+                            et = time.time()
+                            print(f'first empty chunk time: {et - st}, chunk: {chunk.content}')
+                        if chunk.content.strip('\n'):
+                            count += 1
+                            et = time.time()
+                            print(f'first chunk time: {et - st}, chunk: {chunk.content}')
+                    if chunk.content:
+                        yield chunk.content
+                elif meta.get("langgraph_node")=="tools":
+                    # print(f"{chunk}")
+                    tool_call.append(f"{chunk.name}, {chunk.content}")
+                                
+    
+       
 
 
 async def main():
@@ -217,7 +338,7 @@ async def main():
         if user_input == "exit":
             break
         res = ""
-
+        # await app.achat(user_input)
         async for chunk in app.achat(user_input):
            
             res += chunk
