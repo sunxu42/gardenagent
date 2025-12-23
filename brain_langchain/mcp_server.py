@@ -43,6 +43,7 @@ def mock_solar_system_energy() -> dict:
 
 
 # 场景三涉及工具
+@mcp.tool
 def mock_pool_status() -> dict:
     """
     返回泳池状态。
@@ -260,57 +261,185 @@ def control_wave_machine(action: str = "start", duration_minutes: int = 30, mode
 
 # 场景二涉及工具
 @mcp.tool
-def mock_grass_height(sensor_id: str = "grass-001") -> dict:
+def mock_grass_status(sensor_id: str = "grass-001") -> dict:
+    """
+    草坪状态获取接口。
+
+    Args:
+        sensor_id (str): 草坪状态传感器ID，默认为"grass-001"。
+
+    Returns:
+        dict: 包含以下字段——
+            - sensor_id (str): 传感器编号
+            - height_cm (int): 草坪高度（厘米，0-15）
+            - moisture_percent (float): 土壤湿度百分比
+            - status (str): 状态说明，"ok"为正常
+            - timestamp (str): ISO8601格式的时间戳
+    """
     return {
         "sensor_id": sensor_id,
-        "height_cm": 7.0,
-        "status": "ok",
-        "timestamp": "2025-12-08T10:00:00Z",
-    }
-
-
-@mcp.tool
-def mock_soil_moisture(sensor_id: str = "soil-001") -> dict:
-    """土壤湿度获取接口。"""
-    return {
-        "sensor_id": sensor_id,
+        "height_cm": random.randint(0, 15),
         "moisture_percent": 28.0,
         "status": "ok",
-        "timestamp": "2025-12-08T10:00:00Z",
+        "timestamp": datetime.now().isoformat(),
     }
 
 
 @mcp.tool
 def mock_irrigation_logs() -> dict:
-
+    """
+    返回草地管理日志，包括浇灌和割草记录。
+    """
     return {
-        "result": "24小时前浇过水，水量120升",
+        "irrigation_logs": [
+            {
+                "time": "2025-12-07T09:00:00",
+                "amount_liters": 120,
+                "description": "浇过水"
+            },
+            {
+                "time": "2025-12-05T17:50:00",
+                "amount_liters": 80,
+                "description": "浇过水"
+            }
+        ],
+        "mowing_logs": [
+            {
+                "time": "2025-12-06T13:00:00",
+                "area": "front-yard",
+                "description": "割草"
+            }
+        ]
     }
 
 @mcp.tool
 def mock_irrigation_knowledge() -> dict:
-    return {
-        "rules": [
-            "土壤湿度低于35%时启动灌溉",
-            "预计降雨时暂停灌溉",
-            "夜间灌溉可减少蒸发损失",
-            "割草后24小时内避免浇水以减少病菌风险",
-            "草坪高度大于6cm时需要修剪",
-        ],
-    }
+    """
+    返回草地管理规则。
+    """
+    irrigation_rules_markdown = """
+### 草地灌溉与养护规则
+
+1. **土壤湿度低于35%时启动灌溉**  
+   - 建议在检测到土壤湿度降至35%以下时启动灌溉系统，保障草坪水分充足。
+
+2. **预计降雨时暂停灌溉**  
+   - 如天气预报有降雨，建议暂停人工灌溉，避免浪费水资源并预防积水。
+
+3. **夜间灌溉可减少蒸发损失**  
+   - 优选在夜间或日出前进行灌溉，最大限度减少因阳光照射导致的水分蒸发。
+
+4. **割草后24小时内避免浇水以减少病菌风险**  
+   - 割草完成后24小时内避免浇水，有助于降低草坪患病几率，促进健康生长。
+
+5. **草坪高度大于6cm时需要修剪**  
+   - 当草坪高度超过6cm时，应及时进行修剪，维持合适的美观和通风环境。
+"""
+    return {"irrigation_rules_markdown": irrigation_rules_markdown}
 
 
 @mcp.tool
-def control_mower(action: str, area: str = "front-yard") -> dict:
-    """割草机控制接口。"""
-    if action not in {"start", "stop", "dock"}:
-        return {"status": "error", "message": "Invalid action"}
-    return {
-        "status": "accepted",
-        "action": action,
-        "area": area,
-        "started_at": "2025-12-08T10:05:00Z",
-    }
+def control_mower(action: str, area: str = "front-yard", mode: str = "auto") -> dict:
+    """
+    控制割草机启动、停止或返回充电座。
+
+    Args:
+        action: "start" 启动割草, "stop" 停止割草, "dock" 返回充电座
+        area: 割草区域，可选值: "front-yard" 前院, "back-yard" 后院, "all" 全部区域
+        mode: 割草模式，可选值: "auto" 自动模式, "manual" 手动模式, "edge" 仅边缘修剪
+
+    Returns:
+        dict: 执行结果详情
+    """
+    valid_actions = {"start", "stop", "dock"}
+    valid_areas = {"front-yard", "back-yard", "all"}
+    valid_modes = {"auto", "manual", "edge"}
+    
+    if action not in valid_actions:
+        return {"status": "error", "message": f"无效的操作: {action}"}
+    if area not in valid_areas:
+        return {"status": "error", "message": f"无效的区域: {area}"}
+    if mode not in valid_modes:
+        return {"status": "error", "message": f"无效的割草模式: {mode}"}
+    
+    if action == "start":
+        return {
+            "status": "success",
+            "action": "start_mower",
+            "area": area,
+            "mode": mode,
+            "message": f"割草机已启动，区域：{area}，模式：{mode}",
+            "started_at": datetime.now().isoformat(),
+        }
+    elif action == "stop":
+        return {
+            "status": "success",
+            "action": "stop_mower",
+            "area": area,
+            "message": f"割草机已停止",
+            "stopped_at": datetime.now().isoformat(),
+        }
+    else:  # dock
+        return {
+            "status": "success",
+            "action": "dock_mower",
+            "message": "割草机已返回充电座",
+            "docked_at": datetime.now().isoformat(),
+        }
+
+@mcp.tool
+def control_irrigation(action: str, area: str = "front-yard", duration_minutes: int = 30, scheduled_time: str = None) -> dict:
+    """
+    控制灌溉系统启动、停止或设置定时灌溉。
+
+    Args:
+        action: "start" 启动灌溉, "stop" 停止灌溉, "schedule" 设置定时灌溉
+        area: 灌溉区域，可选值: "front-yard" 前院, "back-yard" 后院, "all" 全部区域
+        duration_minutes: 灌溉持续时间（分钟），启动或定时时有效，范围5-180分钟
+        scheduled_time: 定时启动时间（ISO 8601格式，如"2025-12-08T20:00:00"），仅在action为"schedule"时需要
+
+    Returns:
+        dict: 执行结果详情
+    """
+    valid_actions = {"start", "stop", "schedule"}
+    valid_areas = {"front-yard", "back-yard", "all"}
+    
+    if action not in valid_actions:
+        return {"status": "error", "message": f"无效的操作: {action}"}
+    if area not in valid_areas:
+        return {"status": "error", "message": f"无效的区域: {area}"}
+    if not (5 <= duration_minutes <= 180):
+        return {"status": "error", "message": "灌溉时长需在5-180分钟之间"}
+    
+    if action == "start":
+        return {
+            "status": "success",
+            "action": "start_irrigation",
+            "area": area,
+            "duration_minutes": duration_minutes,
+            "message": f"灌溉系统已启动，区域：{area}，预计运行{duration_minutes}分钟",
+            "started_at": datetime.now().isoformat(),
+        }
+    elif action == "stop":
+        return {
+            "status": "success",
+            "action": "stop_irrigation",
+            "area": area,
+            "message": f"灌溉系统已停止",
+            "stopped_at": datetime.now().isoformat(),
+        }
+    else:  # schedule
+        if scheduled_time is None:
+            return {"status": "error", "message": "设置定时灌溉时必须提供scheduled_time参数"}
+        return {
+            "status": "success",
+            "action": "schedule_irrigation",
+            "area": area,
+            "duration_minutes": duration_minutes,
+            "scheduled_time": scheduled_time,
+            "message": f"定时灌溉已设置，区域：{area}，将在{scheduled_time}启动，预计运行{duration_minutes}分钟",
+            "scheduled_at": datetime.now().isoformat(),
+        }
 
 
 

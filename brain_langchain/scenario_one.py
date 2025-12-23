@@ -65,12 +65,6 @@ class GraphState(TypedDict):
 
 
 
-def grass_overview(state: GraphState) -> str:
-    return state
-
-
-
-
 class ScenarioOneApp:
     def __init__(self, config=None):
         self.config = config
@@ -78,7 +72,7 @@ class ScenarioOneApp:
         self.llm = load_model()
         self.graph = None
         self.pool_overview_count = 0
-        
+        self.grass_overview_count = 0
 
     
     @classmethod
@@ -104,7 +98,7 @@ class ScenarioOneApp:
             }
         )   
         workflow.add_node("pool_overview", self.pool_overview)
-        workflow.add_node("grass_overview", grass_overview)
+        workflow.add_node("grass_overview", self.grass_overview)
         workflow.add_node("llm_call",  self.llm_call)
         workflow.add_node("tools", tool_node)
 
@@ -114,6 +108,8 @@ class ScenarioOneApp:
         workflow.add_conditional_edges("llm_call", self.should_continue, {"tools": "tools", END: END})
         workflow.add_edge("tools", "llm_call")
         return workflow.compile(checkpointer=MemorySaver())
+
+
     async def entry_route(self, state: GraphState) -> str:
         messages = state.get("messages", [])
         last_message = messages[-1]
@@ -123,7 +119,7 @@ class ScenarioOneApp:
             return "pool_overview"
         elif re.search(r'草坪|花园|草地|割草|修剪', last_message.content):
             logger.debug("------------路由到草坪概览------------")
-            self.pool_overview_count == 0
+            self.grass_overview_count == 0
             return "grass_overview"
         else:
             logger.debug("------------路由到LLM调用------------")
@@ -164,63 +160,48 @@ class ScenarioOneApp:
        
 
         """
+        # ai_message =  AIMessage(
+        #                     content="\n作为您的泳池管家，我需要先检查当前状况来为您安排最佳的游泳环境。让我先查看天气、泳池状态和您的游泳偏好。\n",  # 可选的额外文本内容
+        #                     tool_calls=[
+        #                         {
+        #                             "name": "mock_weather_forecast",      # 工具名称
+        #                             "args": {},  # 工具参数
+        #                             "id": generate_tool_call_id(),        # 唯一工具调用ID
+        #                             "type": "tool"              # 类型标识
+        #                         }
+        #                     ]
+        #                 )
+        tool_names = ["mock_weather_forecast", "mock_pool_status", "mock_swimming_preference","control_heat_pump", "control_water_pump", "control_cleaning_robot", "control_wave_machine"]  
+        tools = [tool  for tool in self.tool_manager.tools if tool.name in tool_names]
 
-        return {"system_prompt": system_prompt }
-    # async def listen_grass_height(self, state: GraphState) -> dict:
-    #     result = await self.tool_manager.get_grass_height()
-    #     if isinstance(result, dict) and "height_cm" in result:
-    #         state["height_cm"] = result["height_cm"]
-    #     else:
-    #         print(f"警告: 无法从结果中提取 height_cm，结果类型: {type(result)}, 内容: {result}")
-    #         state["height_cm"] = None
-    #     return state
+        return {"system_prompt": system_prompt, "tools": tools }
 
+    async def grass_overview(self, state: GraphState) -> str:
+        system_prompt = f"""
+        假如你是草坪管家，请根据以下规则管理草坪：
 
-    # def route(self, state: GraphState) -> str:
-    #     height = state.get("height_cm")
-    #     if height is not None and height >= 7:
-    #         return "get_humidity"
-    #     else:
-    #         return "END"
+        1. 在做出任何决定前，需优先检查当前天气、草坪状态（包括草高、土壤湿度、灌溉记录）和主人的草坪偏好。
+        2. 如果检测到草坪草高过高，务必首先启动割草机对草坪进行修剪。
+        3. 若土壤湿度低于主人的偏好湿度，可以考虑启动灌溉系统进行灌溉; 若土壤湿度高于主人的偏好湿度，可以考虑启动排水系统进行排水。
+        4. 如果草坪已经修剪并且土壤湿度适宜，可根据主人的偏好提前开启冲浪器等辅助设备。
+        5. 不建议在恶劣天气（如下雨、强风）时建议主人修剪草坪，应主动提示并建议等待天气改善。
+        6. 每一步操作和建议都需基于综合设备状态与主人的实际需求。
+        7. 计划安排结束后，简洁的告诉用户你已经安排好了，并简洁的告诉用户你安排的计划。
 
-
-    # async def get_humidity(self, state: GraphState) -> dict:
-    #     result = await self.tool_manager.get_humidity()
-    #     if isinstance(result, dict) and "humidity" in result:
-    #         state["humidity"] = result["humidity"]
-    #     else:
-    #         print(f"警告: 无法从结果中提取 humidity，结果类型: {type(result)}, 内容: {result}")
-    #         state["humidity"] = None
-    #     return state
-
-    # async def get_watering_record(self, state: GraphState) -> dict:
-    #     result = await self.tool_manager.get_watering_record()
-    #     if isinstance(result, dict) and "watering_record" in result:
-    #         state["watering_record"] = result["watering_record"]
-    #     elif isinstance(result, list):
-    #         state["watering_record"] = result
-    #     else:
-    #         print(f"警告: 无法从结果中提取 watering_record，结果类型: {type(result)}, 内容: {result}")
-    #         state["watering_record"] = None
-    #     return state
-
-    # async def get_knowledge_base(self, state: GraphState) -> dict:
-    #     result = await self.tool_manager.get_knowledge_base()
-    #     if isinstance(result, dict) and "knowledge_base" in result:
-    #         state["knowledge_base"] = result["knowledge_base"]
-    #     elif isinstance(result, dict):
-    #         state["knowledge_base"] = result
-    #     else:
-    #         print(f"警告: 无法从结果中提取 knowledge_base，结果类型: {type(result)}, 内容: {result}")
-    #         state["knowledge_base"] = None
-    #     return state
-
+        请根据上述规则为我安排最佳的草坪使用状态并说明理由。
+        </equipments>
+        草坪相关设备：割草机，灌溉系统，排水系统，冲浪器。
+        </equipments>
+        """
+        tool_names = ["mock_grass_height", "mock_soil_moisture", "mock_irrigation_logs", "mock_irrigation_knowledge", "control_mower"]  
+        tools = [tool  for tool in self.tool_manager.tools if tool.name in tool_names]
+        return {"system_prompt": system_prompt, "tools": tools }
 
     async def llm_call(self, state: GraphState) -> dict:
         state["llm_call_count"] += 1
         logger.debug(f"------------第{state['llm_call_count']}次LLM调用------------")
         
-        chat_model = self.llm.bind_tools(self.tool_manager.tools)
+        chat_model = self.llm.bind_tools(state.get("tools", self.tool_manager.tools))
         messages = state.get("messages", [])
 
         if not messages or messages[0].type != "system":
