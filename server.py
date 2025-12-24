@@ -5,7 +5,7 @@ from src.log import setup_logger
 
 from loguru import logger
 from src.config import WebSocketConfig
-setup_logger(log_level='DEBUG',disable_modules=['src.agent_layer',"fairland_brain"])
+setup_logger(log_level='DEBUG',disable_modules=['src.agent_layer',])
 
 
 
@@ -27,25 +27,25 @@ class Server:
         # 注册消息处理回调
         self.transport.register_message_handler(self._on_message)
         
+        # 启动 HandlerManager
+        await self.handler_manager.start()
+        
         # 启动传输层
         await self.transport.start()
     
     async def stop(self):
-        # 清理所有 Handler
-        await self.handler_manager.cleanup_all()
+        # 停止 HandlerManager
+        await self.handler_manager.stop()
         # 停止传输层
         await self.transport.stop()
     
-    async def _on_client_connect(self, client_id: str):
-        """客户端连接时的回调"""
-        await self.handler_manager.create_handler(client_id)
+    async def _on_client_connect(self, client_id: str, is_reconnect: bool):
+        await self.handler_manager.create_or_reuse_handler(client_id, is_reconnect)
     
     async def _on_client_disconnect(self, client_id: str):
-        """客户端断开时的回调"""
         await self.handler_manager.remove_handler(client_id)
     
     async def _on_message(self, client_id: str, message):
-        """消息处理回调"""
         await self.handler_manager.handle_message(client_id, message)
 
 

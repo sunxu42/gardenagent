@@ -19,7 +19,12 @@ async def get_or_create_ws():
     # 某些实现返回的连接对象没有 closed 属性，这里用 getattr 做兼容
     is_closed = getattr(ws, "closed", True) if ws is not None else True
     if ws is None or is_closed:
-        ws = await websockets.connect(get_ws_url())
+        ws = await websockets.connect(
+            get_ws_url(),
+            additional_headers={
+                "client-id": "test_client_id"
+            }
+        )
         st.session_state.ws_conn = ws
     return ws
 

@@ -1,32 +1,101 @@
-from typing import Dict
+import asyncio
+from typing import Dict, Optional, Any
 from loguru import logger
 from src.transport_layer.base import TransportBase
-# from src.handler_layer.handler import Handler
-from src.handler_layer.text_in_text_out_handler import Handler # 只支持文本输入的handler
 from src.handler_layer.handler_factory import load_class
+
 
 class HandlerManager:
     
-    def __init__(self, transport: TransportBase, handler_type: str):
+    def __init__(self, transport: TransportBase, handler_type: str, reconnect_timeout: int = 300):
         self.transport = transport
-        self.handlers = {}  # client_id -> Handler
+        # 映射：client_id -> Handler
+        self.handlers: Dict[str, Any] = {}
         self.handler_type = handler_type
-    
-    async def create_handler(self, client_id: str):
-        if client_id in self.handlers:
-            logger.warning(f"客户端 {client_id} 的 Handler 已存在")
-            return
-        logger.debug(f"正在创建 {self.handler_type} Handler")
-        handler_class = load_class(self.handler_type)
-        handler = handler_class(self.transport, client_id)
-        self.handlers[client_id] = handler
+        self.reconnect_timeout = reconnect_timeout  # 重连超时时间（秒）
         
-        # 启动服务
-        await handler.setup_services()
+        # 启动清理任务
+        self._cleanup_task = None
+    
+    async def start(self):
+        self._cleanup_task = asyncio.create_task(self._cleanup_disconnected_handlers())
+    
+    async def stop(self):
+        if self._cleanup_task:
+            self._cleanup_task.cancel()
+            try:
+                await self._cleanup_task
+            except asyncio.CancelledError:
+                pass
+        await self.cleanup_all()
+    
+    async def _cleanup_disconnected_handlers(self):
+        while True:
+            try:
+                await asyncio.sleep(60)  # 每分钟检查一次
+                current_time = asyncio.get_event_loop().time()
+                
+                disconnected_handlers = []
+                for client_id, handler in self.handlers.items():
+                    # 检查 Handler 是否已断开且超过超时时间
+                    if hasattr(handler, '_disconnected_at'):
+                        if handler._disconnected_at and (current_time - handler._disconnected_at) > self.reconnect_timeout:
+                            disconnected_handlers.append(client_id)
+                
+                for client_id in disconnected_handlers:
+                    logger.info(f"清理超时未重连的 Handler: client_id={client_id}")
+                    await self._remove_handler_internal(client_id)
+                    
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"清理断开连接 Handler 时出错: {e}")
+    
+    async def create_or_reuse_handler(self, client_id: str, is_reconnect: bool):
+        if is_reconnect and client_id in self.handlers:
+            # 复用现有 Handler
+            handler = self.handlers[client_id]
+            logger.info(f"复用 Handler: client_id={client_id}")
+            
+            # 重新绑定连接（Handler 需要实现这个方法）
+            if hasattr(handler, 'rebind_connection'):
+                await handler.rebind_connection()
+            
+            # 清除断开标记
+            if hasattr(handler, '_disconnected_at'):
+                handler._disconnected_at = None
+        else:
+            # 创建新 Handler
+            if client_id in self.handlers:
+                logger.warning(f"客户端 {client_id} 的 Handler 已存在但未标记为重连，先清理")
+                await self._remove_handler_internal(client_id)
+            
+            logger.debug(f"正在创建 {self.handler_type} Handler: client_id={client_id}")
+            handler_class = load_class(self.handler_type)
+            handler = handler_class(self.transport, client_id)
+            self.handlers[client_id] = handler
+            
+            # 启动服务
+            await handler.setup_services()
     
     async def remove_handler(self, client_id: str):
-        if client_id not in self.handlers:
+        """
+        标记 Handler 为断开状态（不立即删除，等待重连）
+        
+        Args:
+            client_id: 客户端 ID
+        """
+        if client_id in self.handlers:
+            handler = self.handlers[client_id]
+            # 标记为断开，但不删除
+            handler._disconnected_at = asyncio.get_event_loop().time()
+            logger.info(f"Handler 已断开，等待重连: client_id={client_id}, timeout={self.reconnect_timeout}s")
+        else:
             logger.warning(f"客户端 {client_id} 的 Handler 不存在")
+    
+    async def _remove_handler_internal(self, client_id: str):
+        """内部方法：真正删除 Handler"""
+        if client_id not in self.handlers:
             return
         
         logger.info(f"清理客户端 {client_id} 的 Handler")
@@ -48,4 +117,4 @@ class HandlerManager:
     async def cleanup_all(self):
         logger.info("清理所有 Handler")
         for client_id in list(self.handlers.keys()):
-            await self.remove_handler(client_id)
+            await self._remove_handler_internal(client_id)

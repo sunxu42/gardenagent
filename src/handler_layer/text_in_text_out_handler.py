@@ -6,7 +6,7 @@ import asyncio
 import json
 import time
 import uuid
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from loguru import logger
 
 from src.utils.shared_state import SharedState
@@ -24,6 +24,9 @@ class Handler:
         self.agent_process_task = None  # AgentService处理循环任务
         self.first_token = False
         self.text_buffer = []
+        
+        # 断开时间戳（用于超时清理）
+        self._disconnected_at: Optional[float] = None
     
     async def setup_services(self):
         from src.agent_layer.agent_service import AgentService
@@ -48,6 +51,24 @@ class Handler:
         SharedState.remove(f"client_status:{self.client_id}")
         
         logger.info(f"客户端 {self.client_id} 的服务实例已清理")
+    
+    async def rebind_connection(self):
+        logger.info(f"Handler 重新绑定连接: client_id={self.client_id}")
+        
+        # 重置状态
+        self.text_buffer = []
+        self.first_token = False
+        
+        # 可选：发送重连通知到客户端
+        try:
+            reconnect_msg = {
+                "type": "reconnected",
+                "client_id": self.client_id,
+                "session_id": self.session_id
+            }
+            await self.transport.send_to_client(self.client_id, json.dumps(reconnect_msg))
+        except Exception as e:
+            logger.warning(f"发送重连通知失败: {e}")
     
     async def on_message(self, client_id: str, message: Any):
         if client_id != self.client_id:

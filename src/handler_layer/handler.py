@@ -16,7 +16,7 @@ import asyncio
 import json
 import time
 import uuid
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from loguru import logger
 
 from src.config import WebSocketConfig, AudioConfig, TTSConfig
@@ -68,6 +68,9 @@ class Handler:
             "text_response_latency": 0.0, # 文本响应时延，从用户语音停止到系统回复第一个文本
             "audio_response_latency": 0.0, # 音频响应时延，从用户语音停止到系统回复第一个音频包
         }
+        
+        # 断开时间戳（用于超时清理）
+        self._disconnected_at: Optional[float] = None
     
     async def setup_services(self):
         from src.audio_layer.audio_service import AudioService
@@ -118,6 +121,29 @@ class Handler:
         SharedState.remove(f"client_status:{self.client_id}")
         
         logger.info(f"客户端 {self.client_id} 的服务实例已清理")
+    
+    async def rebind_connection(self):
+        logger.info(f"Handler 重新绑定连接: client_id={self.client_id}")
+        
+        # 如果正在处理中，可能需要清理一些状态
+        if self.client_is_speaking:
+            logger.warning(f"重连时检测到正在播放，停止播放")
+            await self.handle_interrupt()
+        
+        # 重置流控状态
+        self.flow_control["start_time"] = time.perf_counter()
+        self.flow_control["packet_count"] = 0
+        
+        # 可选：发送重连通知到客户端
+        try:
+            reconnect_msg = {
+                "type": "reconnected",
+                "client_id": self.client_id,
+                "session_id": self.session_id
+            }
+            await self.transport.send_to_client(self.client_id, json.dumps(reconnect_msg))
+        except Exception as e:
+            logger.warning(f"发送重连通知失败: {e}")
     
     async def on_message(self, client_id: str, message: Any):
         if client_id != self.client_id:
