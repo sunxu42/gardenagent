@@ -36,7 +36,7 @@ def load_model() -> ChatOpenAI:
             }
         )
 SYSTEM_PROMPT = """
-你的身份是用户的庭院管家，名字叫小菲。
+你的身份是用户的管家，名字叫小菲。
 <requirement>
 1. 为了成为一个优秀的管家，你首先需要表现的像一个真实的人类。你永远不要表现出你是一个机器人。否则人类用户将拒绝你的服务。
 2. 为了表现得像一个人类，你必须像人类一样表达。你可以想象一下，如果你是用户的朋友，你将如何回复？语气亲切自然，像朋友日常聊天一样，绝对不能用生硬的书面语。
@@ -71,8 +71,8 @@ class ScenarioOneApp:
         self.tool_manager = ToolManager()
         self.llm = load_model()
         self.graph = None
-        self.pool_overview_count = 0
-        self.grass_overview_count = 0
+        self.pool_prepare_count = 0
+        self.grass_prepare_count = 0
 
     
     @classmethod
@@ -92,18 +92,21 @@ class ScenarioOneApp:
         workflow.set_conditional_entry_point(
             self.entry_route,
             {
-                "pool_overview": "pool_overview",
-                "grass_overview": "grass_overview",
+                "pool_prepare": "pool_prepare",
+                "grass_prepare": "grass_prepare",
+                "irrigation_prepare": "irrigation_prepare",
                 "llm_call": "llm_call",
             }
         )   
-        workflow.add_node("pool_overview", self.pool_overview)
-        workflow.add_node("grass_overview", self.grass_overview)
+        workflow.add_node("pool_prepare", self.pool_prepare)
+        workflow.add_node("grass_prepare", self.grass_prepare)
+        workflow.add_node("irrigation_prepare", self.irrigation_prepare)
         workflow.add_node("llm_call",  self.llm_call)
         workflow.add_node("tools", tool_node)
 
-        workflow.add_edge("pool_overview", "llm_call")
-        workflow.add_edge("grass_overview", "llm_call")
+        workflow.add_edge("pool_prepare", "llm_call")
+        workflow.add_edge("grass_prepare", "llm_call")
+        workflow.add_edge("irrigation_prepare", "llm_call")
         # workflow.add_edge(START, "llm_call")
         workflow.add_conditional_edges("llm_call", self.should_continue, {"tools": "tools", END: END})
         workflow.add_edge("tools", "llm_call")
@@ -116,19 +119,35 @@ class ScenarioOneApp:
 
         if re.search(r'泳池|水池|游泳', last_message.content):
             logger.debug("------------路由到泳池概览------------")
-            return "pool_overview"
+            return "pool_prepare"
         elif re.search(r'草坪|花园|草地|割草|修剪', last_message.content):
             logger.debug("------------路由到草坪概览------------")
-            self.grass_overview_count == 0
-            return "grass_overview"
+            self.grass_prepare_count == 0
+            return "grass_prepare"
+        elif re.search(r'灌溉|浇水|灌溉系统|浇水系统', last_message.content):
+            logger.debug("------------路由到灌溉准备------------")
+            return "irrigation_prepare"
         else:
             logger.debug("------------路由到LLM调用------------")
         return "llm_call"
     
-    async def pool_overview(self, state: GraphState) -> str:
-        if self.pool_overview_count == 1:
+    async def irrigation_prepare(self, state: GraphState) -> str:
+
+        system_prompt = f"""
+        假如你是灌溉管家，请根据以下规则管理灌溉：
+        1. 在做出任何决定前，需优先检查当前天气、土壤湿度、 割草机运行状态、灌溉系统运行状态。
+        2. 如果检测到土壤湿度太高，则告诉用户土壤湿度太高，不能进行灌溉。
+        3. 如果检测到割草机正在运行，则告诉用户割草机正在运行，不能进行灌溉。
+        4. 如果检测到灌溉系统正在运行，则告诉用户灌溉系统正在运行，不能进行灌溉。
+        5. 如果检测到天气预报有降雨，则告诉用户天气预报有降雨，不能进行灌溉。
+        5. 每一步操作和建议都需基于综合设备状态与主人的实际需求。
+        6. 计划安排结束后，简洁的告诉用户你已经安排好了，并简洁的告诉用户你安排的计划。
+        """
+        return {"system_prompt": system_prompt}
+    async def pool_prepare(self, state: GraphState) -> str:
+        if self.pool_prepare_count == 1:
             return state
-        self.pool_overview_count += 1
+        self.pool_prepare_count += 1
 
         # user_input = state.get("messages", [])[-1].content
         # last_id = state["messages"][-1].id
@@ -176,7 +195,7 @@ class ScenarioOneApp:
 
         return {"system_prompt": system_prompt, "tools": tools }
 
-    async def grass_overview(self, state: GraphState) -> str:
+    async def grass_prepare(self, state: GraphState) -> str:
         system_prompt = f"""
         假如你是草坪管家，请根据以下规则管理草坪：
 
@@ -187,6 +206,8 @@ class ScenarioOneApp:
         5. 不建议在恶劣天气（如下雨、强风）时建议主人修剪草坪，应主动提示并建议等待天气改善。
         6. 每一步操作和建议都需基于综合设备状态与主人的实际需求。
         7. 计划安排结束后，简洁的告诉用户你已经安排好了，并简洁的告诉用户你安排的计划。
+        8. 草高小于7cm时，不需要修剪。
+        9. 土壤湿度太大时不能割草。
 
         请根据上述规则为我安排最佳的草坪使用状态并说明理由。
         </equipments>
@@ -207,15 +228,17 @@ class ScenarioOneApp:
         if not messages or messages[0].type != "system":
             system_message = SystemMessage(content=state.get("system_prompt", SYSTEM_PROMPT))
             messages = [system_message] + messages
-        # for message in messages:
-        #     print(convert_to_openai_messages(message))
-        stream = chat_model.astream(messages) 
-        chunks = AIMessageChunk(content="")
-        async for chunk in stream:   
-            chunks += chunk
-            yield {"messages": chunk}
-        logger.debug(f"------------第{state['llm_call_count']}次LLM调用结果------------\n{chunks}")
-        yield {"messages": chunks, "llm_call_count": state["llm_call_count"]}  # chunks 是 AIMessageChunk 自动转换为 AIMessage
+        for message in messages:
+            print(convert_to_openai_messages(message))
+        # stream = chat_model.astream(messages) 
+        # chunks = AIMessageChunk(content="")
+        # async for chunk in stream:   
+        #     chunks += chunk
+        #     yield {"messages": chunk}
+        # logger.debug(f"------------第{state['llm_call_count']}次LLM调用结果------------\n{chunks}")
+        # yield {"messages": chunks, "llm_call_count": state["llm_call_count"]}  # chunks 是 AIMessageChunk 自动转换为 AIMessage
+        response = await chat_model.ainvoke(messages)
+        return {"messages": response}
  
     def should_continue(self, state: GraphState) -> Literal["tools", END]:
         messages = state.get('messages', [])
@@ -274,7 +297,15 @@ class ScenarioOneApp:
     #     stream_mode=["updates","messages"],
     #     ):
     #         if info[0] == "updates":
+    #             # update_content = info[1]
+    #             # if update_content.get("llm_call"):
+    #             #     yield {"updates": "正在访问llm模型..."}
+    #             # elif update_content.get("tools"):
+    #             #     tool_name = update_content.get("tools")[0].get("name")
+    #             #     # print(f"tool_name: {tool_name}")
+    #             #     yield {"updates": f"正在访问工具：{tool_name}..."}
     #             print(f"updates: {info[1]}")
+                
     #         elif info[0] == "messages":
     #             messages = info[1]
     #             chunk = messages[0]
@@ -298,11 +329,40 @@ class ScenarioOneApp:
     #             elif meta.get("langgraph_node")=="tools":
     #                 # print(f"{chunk}")
     #                 tool_call.append(f"{chunk.name}, {chunk.content}")
-                                
+                            
     
        
 
+    async def achat(self, user_input: str):
+        state = {
+            "messages": [HumanMessage(content=user_input)], 
+            "llm_call_count": 0,
+            "system_prompt": SYSTEM_PROMPT
+            }
+        st = time.time()
+        count = 0
+        async for event in self.graph.astream_events(state, version="v2",config={"configurable": {"thread_id": "demo-thread"}}):
+            
+            
+            tags = event.get("tags", [])
+            event_name = event.get("name", "")
+            event_event = event.get("event", "")
+            data = event.get("data", {})
+            # print(f"event_name: {event_name}, event_event: {event_event}, tags: {tags}")
+            if event_name == "ChatOpenAI" and event_event == "on_chat_model_stream":
+                content = data['chunk'].content         
+                if count == 0 and content.strip('\n'):
+                    et = time.time()
+                    print(f"first token time: {round(et - st, 3)}s, content: {content}")
+                    count += 1
+                yield {"content": content}
+            elif event_event == "on_tool_start":
+                yield {"updates": f"正在访问工具 {event_name}"}
 
+            elif event_name == "ChatOpenUAI" and event_event == "on_chat_model_start":
+                yield {"updates": "正在访问llm模型..."}
+            elif event_name == "ChatOpenUAI" and event_event == "on_chat_model_end":
+                yield {"updates": "结束访问llm模型..."}
 async def main():
     app = await ScenarioOneApp.create()
     app.graph.get_graph().draw_png("graph.png")
@@ -319,8 +379,8 @@ async def main():
         res = ""
         # await app.achat(user_input)
         async for chunk in app.achat(user_input):
-           
-            res += chunk
+           content = chunk.get("content", "")
+           res += content
         print("AI--->: ", res)
 
 if __name__ == "__main__":

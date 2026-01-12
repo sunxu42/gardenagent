@@ -1,24 +1,16 @@
+
 from fastmcp import FastMCP
 from datetime import datetime
 import random
-"""
-1. 获取天气信息（气温，日照，风速等）【已完成】
-2. 获取光伏系统累计发电量
-3. 获取泳池机器人状态
-4. 获取草高
-5. 获取割草记录
-6. 启动割草机（启动成功后，返回割草机模式）
-7. 启动灌溉系统（支持定时）
-8. 获取水池温度，水质
-9. 获取用户偏好
-10. 启动冲浪器接口（支持定时）
-"""
+from garden_system.garden_system import garden_system, MowerEvent, IrrigationEvent, WaveMachineEvent, CleaningRobotEvent, HeatPumpEvent, WaterPumpEvent
 
 mcp = FastMCP("My MCP Server")
 
+
+
 # 场景一涉及工具
 @mcp.tool
-def mock_weather_forecast() -> dict:
+def get_weather_forecast() -> dict:
     return {
         "date": "2025-12-08",
         "current_temperature": 30,
@@ -34,17 +26,15 @@ def mock_weather_forecast() -> dict:
     }
 
 @mcp.tool
-def mock_solar_system_energy() -> dict:
+def get_solar_system_energy() -> dict:
     return {
         "today_energy_generated_kwh": 4.4,
         "status": "ok",
         "timestamp": datetime.now().isoformat(), 
     }
 
-
-# 场景三涉及工具
 @mcp.tool
-def mock_pool_status() -> dict:
+def get_pool_status() -> dict:
     """
     返回泳池状态。
 
@@ -68,7 +58,70 @@ def mock_pool_status() -> dict:
         "timestamp": datetime.now().isoformat(), 
     }
 @mcp.tool
-def mock_swimming_preference() -> dict:
+def get_grass_status(sensor_id: str = "grass-001") -> dict:
+    """
+    草坪状态获取接口。
+
+    Args:
+        sensor_id (str): 草坪状态传感器ID，默认为"grass-001"。
+
+    Returns:
+        dict: 包含以下字段——
+            - sensor_id (str): 传感器编号
+            - height_cm (int): 草坪高度（厘米，0-15）
+            - moisture_percent (float): 土壤湿度百分比
+            - status (str): 状态说明，"ok"为正常
+            - timestamp (str): ISO8601格式的时间戳
+    """
+    return {
+        "sensor_id": sensor_id,
+        "height_cm": 10, #random.randint(0, 15),
+        "moisture_percent": 28.0,
+        "status": "ok",
+        "timestamp": datetime.now().isoformat(),
+    }
+
+# 设备日志和管理规则
+
+@mcp.tool
+def get_running_events() -> dict:
+    """
+    返回正在运行的设备事件。
+    """
+    return {
+        "running_events": garden_system.get_active_events(),
+    }
+
+@mcp.tool
+def get_irrigation_logs() -> dict:
+    """
+    返回草地管理日志，包括浇灌和割草记录。
+    """
+    return {
+        "irrigation_logs": [
+            {
+                "time": "2025-12-07T09:00:00",
+                "amount_liters": 120,
+                "description": "浇过水"
+            },
+            {
+                "time": "2025-12-05T17:50:00",
+                "amount_liters": 80,
+                "description": "浇过水"
+            }
+        ],
+        "mowing_logs": [
+            {
+                "time": "2025-12-06T13:00:00",
+                "area": "front-yard",
+                "description": "割草"
+            }
+        ]
+    }
+
+
+@mcp.tool
+def get_swimming_preference() -> dict:
 
 
     swimming_preference_markdown = """
@@ -81,6 +134,32 @@ def mock_swimming_preference() -> dict:
         "swimming_preference_markdown": swimming_preference_markdown,
     }
 
+@mcp.tool
+def get_irrigation_knowledge() -> dict:
+    """
+    返回草地管理规则。
+    """
+    irrigation_rules_markdown = """
+    ### 草地灌溉与养护规则
+
+    1. **土壤湿度低于35%时启动灌溉**  
+    - 建议在检测到土壤湿度降至35%以下时启动灌溉系统，保障草坪水分充足。
+
+    2. **预计降雨时暂停灌溉**  
+    - 如天气预报有降雨，建议暂停人工灌溉，避免浪费水资源并预防积水。
+
+    3. **夜间灌溉可减少蒸发损失**  
+    - 优选在夜间或日出前进行灌溉，最大限度减少因阳光照射导致的水分蒸发。
+
+    4. **割草后24小时内避免浇水以减少病菌风险**  
+    - 割草完成后24小时内避免浇水，有助于降低草坪患病几率，促进健康生长。
+
+    5. **草坪高度大于6cm时需要修剪**  
+    - 当草坪高度超过6cm时，应及时进行修剪，维持合适的美观和通风环境。
+    """
+    return {"irrigation_rules_markdown": irrigation_rules_markdown}
+
+# 设备控制
 
 
 @mcp.tool
@@ -99,6 +178,11 @@ def control_heat_pump(action: str = "start", target_temperature_celsius: float =
     if action not in valid_actions:
         return {"status": "error", "message": f"无效的操作: {action}"}
     if action == "start":
+        heat_pump_event = HeatPumpEvent(event_data={
+            "target_temperature_celsius": target_temperature_celsius,
+            "action": "start_heat_pump"
+        })
+        garden_system.add_event(heat_pump_event.name, heat_pump_event.event_data)
         return {
             "status": "success",
             "action": "start_heat_pump",
@@ -107,6 +191,7 @@ def control_heat_pump(action: str = "start", target_temperature_celsius: float =
             "timestamp": "2025-12-08T10:00:00Z",
         }
     else:  # pause
+        garden_system.remove_event(HeatPumpEvent().name)
         return {
             "status": "success",
             "action": "pause_heat_pump",
@@ -132,6 +217,12 @@ def control_water_pump(action: str = "start", target_temperature_celsius: float 
         return {"status": "error", "message": f"无效的操作: {action}"}
     
     if action == "start":
+        water_pump_event = WaterPumpEvent(event_data={
+            "target_temperature_celsius": target_temperature_celsius,
+            "flow_rate_l_min": flow_rate_l_min,
+            "action": "start_water_pump"
+        })
+        garden_system.add_event(water_pump_event.name, water_pump_event.event_data)
         msg = "水泵已启动"
         if target_temperature_celsius is not None:
             msg += f"，目标温度：{target_temperature_celsius}°C"
@@ -146,6 +237,7 @@ def control_water_pump(action: str = "start", target_temperature_celsius: float 
             "timestamp": "2025-12-08T10:00:00Z",
         }
     elif action == "pause":
+        garden_system.remove_event(WaterPumpEvent().name)
         return {
             "status": "success",
             "action": "pause_water_pump",
@@ -190,6 +282,12 @@ def control_cleaning_robot(action: str = "start", mode: str = "deep", duration_m
         return {"status": "error", "message": "清洁时长需在10-180分钟之间"}
 
     if action == "start":
+        cleaning_robot_event = CleaningRobotEvent(event_data={
+            "mode": mode,
+            "duration_minutes": duration_minutes,
+            "action": "start_cleaning_robot"
+        })
+        garden_system.add_event(cleaning_robot_event.name, cleaning_robot_event.event_data)
         return {
             "status": "success",
             "action": "start_cleaning_robot",
@@ -199,6 +297,7 @@ def control_cleaning_robot(action: str = "start", mode: str = "deep", duration_m
             "timestamp": "2025-12-08T10:00:00Z",
         }
     elif action == "pause":
+        garden_system.remove_event(CleaningRobotEvent().name)
         return {
             "status": "success",
             "action": "pause_cleaning_robot",
@@ -206,6 +305,7 @@ def control_cleaning_robot(action: str = "start", mode: str = "deep", duration_m
             "timestamp": "2025-12-08T10:00:00Z",
         }
     else:  # dock
+        garden_system.remove_event(CleaningRobotEvent().name)
         return {
             "status": "success",
             "action": "dock_cleaning_robot",
@@ -235,6 +335,12 @@ def control_wave_machine(action: str = "start", duration_minutes: int = 30, mode
     if action == "start":
         if not (5 <= duration_minutes <= 90):
             return {"status": "error", "message": "冲浪时长需在5-90分钟之间"}
+        wave_machine_event = WaveMachineEvent(event_data={
+            "duration_minutes": duration_minutes,
+            "mode": mode,
+            "action": "start_wave_machine"
+        })
+        garden_system.add_event(wave_machine_event.name, wave_machine_event.event_data)
         return {
             "status": "success",
             "action": "start_wave_machine",
@@ -244,6 +350,7 @@ def control_wave_machine(action: str = "start", duration_minutes: int = 30, mode
             "timestamp": "2025-12-08T10:00:00Z",
         }
     elif action == "pause":
+        garden_system.remove_event(WaveMachineEvent().name)
         return {
             "status": "success",
             "action": "pause_wave_machine",
@@ -251,92 +358,13 @@ def control_wave_machine(action: str = "start", duration_minutes: int = 30, mode
             "timestamp": "2025-12-08T10:00:00Z",
         }
     else:  # stop
+        garden_system.remove_event(WaveMachineEvent().name)
         return {
             "status": "success",
             "action": "stop_wave_machine",
             "message": "冲浪器已停止。",
             "timestamp": "2025-12-08T10:00:00Z",
         }
-
-
-# 场景二涉及工具
-@mcp.tool
-def mock_grass_status(sensor_id: str = "grass-001") -> dict:
-    """
-    草坪状态获取接口。
-
-    Args:
-        sensor_id (str): 草坪状态传感器ID，默认为"grass-001"。
-
-    Returns:
-        dict: 包含以下字段——
-            - sensor_id (str): 传感器编号
-            - height_cm (int): 草坪高度（厘米，0-15）
-            - moisture_percent (float): 土壤湿度百分比
-            - status (str): 状态说明，"ok"为正常
-            - timestamp (str): ISO8601格式的时间戳
-    """
-    return {
-        "sensor_id": sensor_id,
-        "height_cm": random.randint(0, 15),
-        "moisture_percent": 28.0,
-        "status": "ok",
-        "timestamp": datetime.now().isoformat(),
-    }
-
-
-@mcp.tool
-def mock_irrigation_logs() -> dict:
-    """
-    返回草地管理日志，包括浇灌和割草记录。
-    """
-    return {
-        "irrigation_logs": [
-            {
-                "time": "2025-12-07T09:00:00",
-                "amount_liters": 120,
-                "description": "浇过水"
-            },
-            {
-                "time": "2025-12-05T17:50:00",
-                "amount_liters": 80,
-                "description": "浇过水"
-            }
-        ],
-        "mowing_logs": [
-            {
-                "time": "2025-12-06T13:00:00",
-                "area": "front-yard",
-                "description": "割草"
-            }
-        ]
-    }
-
-@mcp.tool
-def mock_irrigation_knowledge() -> dict:
-    """
-    返回草地管理规则。
-    """
-    irrigation_rules_markdown = """
-### 草地灌溉与养护规则
-
-1. **土壤湿度低于35%时启动灌溉**  
-   - 建议在检测到土壤湿度降至35%以下时启动灌溉系统，保障草坪水分充足。
-
-2. **预计降雨时暂停灌溉**  
-   - 如天气预报有降雨，建议暂停人工灌溉，避免浪费水资源并预防积水。
-
-3. **夜间灌溉可减少蒸发损失**  
-   - 优选在夜间或日出前进行灌溉，最大限度减少因阳光照射导致的水分蒸发。
-
-4. **割草后24小时内避免浇水以减少病菌风险**  
-   - 割草完成后24小时内避免浇水，有助于降低草坪患病几率，促进健康生长。
-
-5. **草坪高度大于6cm时需要修剪**  
-   - 当草坪高度超过6cm时，应及时进行修剪，维持合适的美观和通风环境。
-"""
-    return {"irrigation_rules_markdown": irrigation_rules_markdown}
-
 
 @mcp.tool
 def control_mower(action: str, area: str = "front-yard", mode: str = "auto") -> dict:
@@ -363,6 +391,12 @@ def control_mower(action: str, area: str = "front-yard", mode: str = "auto") -> 
         return {"status": "error", "message": f"无效的割草模式: {mode}"}
     
     if action == "start":
+        mower_event = MowerEvent(event_data={
+            "area": area,
+            "mode": mode,
+            "action": "start_mower"
+        })
+        garden_system.add_event(mower_event.name, mower_event.event_data)
         return {
             "status": "success",
             "action": "start_mower",
@@ -372,6 +406,7 @@ def control_mower(action: str, area: str = "front-yard", mode: str = "auto") -> 
             "started_at": datetime.now().isoformat(),
         }
     elif action == "stop":
+        garden_system.remove_event(MowerEvent().name)
         return {
             "status": "success",
             "action": "stop_mower",
@@ -380,6 +415,7 @@ def control_mower(action: str, area: str = "front-yard", mode: str = "auto") -> 
             "stopped_at": datetime.now().isoformat(),
         }
     else:  # dock
+        garden_system.remove_event(MowerEvent().name)
         return {
             "status": "success",
             "action": "dock_mower",
@@ -412,6 +448,12 @@ def control_irrigation(action: str, area: str = "front-yard", duration_minutes: 
         return {"status": "error", "message": "灌溉时长需在5-180分钟之间"}
     
     if action == "start":
+        irrigation_event = IrrigationEvent(event_data={
+            "area": area,
+            "duration_minutes": duration_minutes,
+            "action": "start_irrigation"
+        })
+        garden_system.add_event(irrigation_event.name, irrigation_event.event_data)
         return {
             "status": "success",
             "action": "start_irrigation",
@@ -421,6 +463,7 @@ def control_irrigation(action: str, area: str = "front-yard", duration_minutes: 
             "started_at": datetime.now().isoformat(),
         }
     elif action == "stop":
+        garden_system.remove_event(IrrigationEvent().name)
         return {
             "status": "success",
             "action": "stop_irrigation",
