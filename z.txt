@@ -1,0 +1,81 @@
+import torch
+import torch.nn as nn
+
+
+class GQA(nn.Module):
+    def __init__(self, num_heads, num_kv_heads, d_model):
+        super(GQA, self).__init__()
+        self.num_heads = num_heads
+        self.num_kv_heads = num_kv_heads
+        self.d_model = d_model
+
+        assert d_model%num_heads==0
+        assert num_heads%num_kv_heads==0
+
+        self.d_k = d_model//num_heads
+        self.repeats = num_heads//num_kv_heads
+
+        self.wq = nn.Linear(d_model, d_model)
+        self.wk = nn.Linear(d_model, self.num_kv_heads*self.d_k)
+        self.wv = nn.Linear(d_model, self.num_kv_heads*self.d_k)
+        self.wo = nn.Linear(d_model, d_model)
+    
+    def forward(self, x, mask=None):
+        batch_size = x.size(0)
+        seq_len = x.size(1)
+
+        q = self.wq(x).view(batch_size, -1, self.num_heads, self.d_k).transpose(1,2)
+        k = self.wk(x).view(batch_size, -1, self.num_kv_heads, self.d_k).transpose(1,2)
+        v = self.wv(x).view(batch_size, -1, self.num_kv_heads, self.d_k).transpose(1,2)
+
+        k = k.repeat_interleave(self.repeats, 1)
+        v = v.repeat_interleave(self.repeats, 1)
+
+        scores = torch.matmul(q, k.transpose(2,3))/torch.sqrt(torch.tensor(self.d_k, dtype=q.dtype, device=q.device))
+        if mask is not None:
+            scores = scores.masked_fill(mask==0, -1e-9)
+        
+        attn_weight = nn.functional.softmax(scores, dim=-1)
+
+        attn = torch.matmul(attn_weight, v).transpose(1,2).view(batch_size, seq_len, self.d_model)
+
+        out = self.wo(attn)
+
+        return out
+
+
+class ROPE(nn.Module):
+    def __init__(self, d_model, num_heads, base=10000):
+        super(ROPE, self).__init__()
+        self.d_k = d_model//num_heads
+        
+        inv_freq = 1.0/ (base**(torch.arange(0, self.d_k, 2).float()/self.d_k))
+
+        self.register_buffer('inv_freq', inv_freq)
+
+    def forward(self, position_ids):
+        # position_ids [batch_size, seq_len]
+        # cos, sin [batch_size, seq_len, head_dim]
+    
+        freqs = torch.einsum("bi,j->bij", position_ids.float(), self.inv_freq)
+        emb = torch.cat([freqs, freqs], dim-1)
+
+        cos, sin = emb.cos(), emb.sin()
+        return cos, sin
+
+def rotate_half(x):
+    # x [batch_size, num_heads, seq_len, head_dim]
+    d = x.size(-1)
+    x0 = x[..., :d//2]
+    x1 = x[..., d//2:]
+
+    return torch.cat((-x1, x0), dim=-1)
+
+def apply_rope_emb(q,k,cos, sin):
+    # cos, sin [batch_size, seq_len, head_dim]
+    # q,k [batch_size, num_heads, seq_len, head_dim]
+
+    cos, sin = cos.unsqueeze(1), sin.unsqueeze(1)
+    q_emb = q * cos + rotate_half(q) * sin
+    k_emb = k * cos + rotate_half(k) * sin
+    return q_emb, k_emb

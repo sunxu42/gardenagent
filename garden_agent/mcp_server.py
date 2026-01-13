@@ -93,32 +93,13 @@ def get_running_events() -> dict:
     }
 
 @mcp.tool
-def get_irrigation_logs() -> dict:
+def get_event_log() -> dict:
     """
-    返回草地管理日志，包括浇灌和割草记录。
+    返回庭院事件日志。
     """
     return {
-        "irrigation_logs": [
-            {
-                "time": "2025-12-07T09:00:00",
-                "amount_liters": 120,
-                "description": "浇过水"
-            },
-            {
-                "time": "2025-12-05T17:50:00",
-                "amount_liters": 80,
-                "description": "浇过水"
-            }
-        ],
-        "mowing_logs": [
-            {
-                "time": "2025-12-06T13:00:00",
-                "area": "front-yard",
-                "description": "割草"
-            }
-        ]
+        "event_log": garden_system.get_event_log(),
     }
-
 
 @mcp.tool
 def get_swimming_preference() -> dict:
@@ -134,33 +115,9 @@ def get_swimming_preference() -> dict:
         "swimming_preference_markdown": swimming_preference_markdown,
     }
 
-@mcp.tool
-def get_irrigation_knowledge() -> dict:
-    """
-    返回草地管理规则。
-    """
-    irrigation_rules_markdown = """
-    ### 草地灌溉与养护规则
-
-    1. **土壤湿度低于35%时启动灌溉**  
-    - 建议在检测到土壤湿度降至35%以下时启动灌溉系统，保障草坪水分充足。
-
-    2. **预计降雨时暂停灌溉**  
-    - 如天气预报有降雨，建议暂停人工灌溉，避免浪费水资源并预防积水。
-
-    3. **夜间灌溉可减少蒸发损失**  
-    - 优选在夜间或日出前进行灌溉，最大限度减少因阳光照射导致的水分蒸发。
-
-    4. **割草后24小时内避免浇水以减少病菌风险**  
-    - 割草完成后24小时内避免浇水，有助于降低草坪患病几率，促进健康生长。
-
-    5. **草坪高度大于6cm时需要修剪**  
-    - 当草坪高度超过6cm时，应及时进行修剪，维持合适的美观和通风环境。
-    """
-    return {"irrigation_rules_markdown": irrigation_rules_markdown}
+ 
 
 # 设备控制
-
 
 @mcp.tool
 def control_heat_pump(action: str = "start", target_temperature_celsius: float = 28.0) -> dict:

@@ -42,6 +42,7 @@ class WaterPumpEvent:
 class GardenSystem:
     def __init__(self):
         self.active_events = []
+        self.event_log = [] # 事件日志
 
     def add_event(self, event_name: str, event_data: dict):
         # 添加事件到活动事件列表
@@ -52,17 +53,26 @@ class GardenSystem:
             "event_timestamp": datetime.now(),
         })
         logger.info(f"添加事件: {event_name}")
+
+    def add_event_log(self, event_name: str, event_data: dict):
+        self.event_log.append({
+            "event_name": event_name,
+            "event_data": event_data,
+            "event_timestamp": datetime.now(),
+        })
     def remove_expired_event(self):
         # 如果超过10分钟，则删除事件
         if len(self.active_events) > 0:
             for event in self.active_events:
                 if event["event_timestamp"] < datetime.now() - timedelta(minutes=10):
                     self.active_events.remove(event)
+                    self.add_event_log(event["event_name"], event["event_data"])
     
     def remove_event(self, event_name: str):
         for event in self.active_events:
             if event["event_name"] == event_name:
                 self.active_events.remove(event)
+                self.add_event_log(event["event_name"], event["event_data"])
                 break
 
     def get_active_events(self) -> list:
@@ -76,6 +86,8 @@ class GardenSystem:
             for event in self.active_events
         ]
     
+    def get_event_log(self) -> list:
+        return self.event_log
 
 
 

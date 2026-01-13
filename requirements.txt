@@ -13,3 +13,14 @@ pydub>=0.25.1
 pyaudio==0.2.11
 streamlit==1.51.0
 chainlit>=1.0.0
+
+openai>=1.0.0
+loguru>=0.7.0
+fastmcp
+langgraph==1.0.4
+langchain
+langchain-core
+langchain-community
+langchain-mcp-adapters
+langchain-openai
+pyyaml>=6.0

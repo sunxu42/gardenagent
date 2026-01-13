@@ -5,7 +5,7 @@ import importlib
 
 agent_to_class = {
     "robot": "src.agent_layer.agents.robot_agent.RobotAgent",
-    "garden_robot": "brain_langchain.scenario_one.ScenarioOneApp",
+    "garden_robot": "garden_agent.scenario_one.ScenarioOneApp",
 }
 def load_class(class_type):
     module_path, class_name = class_type.rsplit(".", 1)

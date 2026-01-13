@@ -26,6 +26,6 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 packages = { find = { where = ["."], include = [
-    "brain_langchain*",
+    "garden_agent*",
     "src*"
 ] } }

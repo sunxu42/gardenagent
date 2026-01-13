@@ -127,7 +127,13 @@ class WebSocketManager:
             raise
     
     async def receive_stream(self):
-        """接收流式响应（异步生成器）"""
+        """接收流式响应（异步生成器）
+        
+        Yields:
+            dict: 包含 "type" 和 "data" 的字典
+                - type: "content" 表示内容更新, "update" 表示中间状态更新
+                - data: 实际的数据内容
+        """
         # 不在这里检查连接，因为 send_message 已经确保连接了
         # 如果连接真的断开，会在 recv() 时抛出异常
         logger.debug(f"开始接收流式响应: client_id={self.client_id}, _connected={self._connected}")
@@ -155,20 +161,29 @@ class WebSocketManager:
                 except json.JSONDecodeError:
                     continue
                 
-                # 只处理 text_response 类型的消息
-                if obj.get("type") != "text_response":
-                    continue
-                
+                msg_type = obj.get("type")
                 piece = obj.get("text", "")
                 
-                # 跳过特殊标记和空内容
-                if not piece or piece == "SENTENCE_START":
+                # 处理中间状态更新
+                if msg_type == "updates":
+                    if piece:
+                        yield {"type": "update", "data": piece}
                     continue
                 
-                if piece == "SENTENCE_END":
-                    break
+                # 处理文本响应
+                if msg_type == "text_response":
+                    # 跳过特殊标记和空内容
+                    if not piece or piece == "SENTENCE_START":
+                        continue
+                    
+                    if piece == "SENTENCE_END":
+                        break
+                    
+                    yield {"type": "content", "data": piece}
+                    continue
                 
-                yield piece
+                # 忽略其他类型的消息
+                logger.debug(f"忽略未知类型的消息: {msg_type}")
                 
             except websockets.exceptions.ConnectionClosed:
                 logger.warning("WebSocket 连接已关闭")
@@ -242,6 +257,7 @@ async def on_message(message: cl.Message):
     start_time = time.time()
     first_token_received = False
     full_response = ""
+    status_msg = None  # 用于显示中间状态的消息
     
     try:
         # 确保连接正常（send_message 内部会处理重连）
@@ -249,19 +265,79 @@ async def on_message(message: cl.Message):
         await ws_manager.send_message(payload)
         
         # 接收并流式显示响应
-        async for piece in ws_manager.receive_stream():
-            if piece:
-                full_response += piece
-                
-                # 更新消息内容
-                response_msg.content = full_response
-                await response_msg.update()
-                
-                # 记录首次令牌时间
-                if not first_token_received:
-                    elapsed = time.time() - start_time
-                    logger.info(f"首次令牌延迟: {elapsed:.2f} 秒")
-                    first_token_received = True
+        async for item in ws_manager.receive_stream():
+            item_type = item.get("type")
+            item_data = item.get("data", "")
+            
+            if item_type == "content":
+                # 处理内容更新
+                if item_data:
+                    # 如果存在状态消息，立即完全移除它（包括图标）
+                    # if status_msg:
+                    #     try:
+                    #         # 先尝试删除消息（如果支持）
+                    #         if hasattr(status_msg, 'remove'):
+                    #             await status_msg.remove()
+                    #         else:
+                    #             # 如果不支持 remove，则清空内容并隐藏
+                    #             status_msg.content = ""
+                    #             await status_msg.update()
+                    #     except Exception as e:
+                    #         logger.debug(f"移除状态消息时出错: {e}")
+                    #         # 即使出错也继续，确保状态消息被标记为已处理
+                    #     finally:
+                    #         status_msg = None
+                    
+                    full_response += item_data
+                    
+                    # 更新消息内容
+                    response_msg.content = full_response
+                    await response_msg.update()
+                    
+                    # 记录首次令牌时间
+                    if not first_token_received:
+                        elapsed = time.time() - start_time
+                        logger.info(f"首次令牌延迟: {elapsed:.2f} 秒")
+                        first_token_received = True
+            
+            elif item_type == "update":
+                # 处理中间状态更新
+                if item_data:
+                    # 如果已有状态消息，更新它；否则创建新的
+                    if status_msg:
+                        try:
+                            status_msg.content = f"🔄 {item_data}"
+                            await status_msg.update()
+                        except Exception as e:
+                            logger.debug(f"更新状态消息失败: {e}")
+                            status_msg = None
+                    
+                    if not status_msg:
+                        # 创建新消息来展示中间状态
+                        try:
+                            status_msg = cl.Message(
+                                content=f"🔄 {item_data}",
+                                author="System"
+                            )
+                            await status_msg.send()
+                        except Exception as e:
+                            logger.error(f"创建状态消息失败: {e}")
+                            status_msg = None
+        
+        # 完全移除最后的状态消息（如果有）
+        if status_msg:
+            try:
+                # 先尝试删除消息（如果支持）
+                if hasattr(status_msg, 'remove'):
+                    await status_msg.remove()
+                else:
+                    # 如果不支持 remove，则清空内容并隐藏
+                    status_msg.content = ""
+                    await status_msg.update()
+            except Exception as e:
+                logger.debug(f"移除状态消息时出错: {e}")
+            finally:
+                status_msg = None
         
         # 如果没有任何响应，显示错误信息
         if not full_response:
@@ -276,11 +352,39 @@ async def on_message(message: cl.Message):
         logger.error(error_msg)
         response_msg.content = error_msg
         await response_msg.update()
+        # 确保完全移除状态消息
+        if status_msg:
+            try:
+                # 先尝试删除消息（如果支持）
+                if hasattr(status_msg, 'remove'):
+                    await status_msg.remove()
+                else:
+                    # 如果不支持 remove，则清空内容并隐藏
+                    status_msg.content = ""
+                    await status_msg.update()
+            except Exception as e:
+                logger.debug(f"移除状态消息时出错: {e}")
+            finally:
+                status_msg = None
     except Exception as e:
         error_msg = f"❌ 处理消息时出错: {str(e)}"
         logger.error(error_msg)
         response_msg.content = error_msg
         await response_msg.update()
+        # 确保完全移除状态消息
+        if status_msg:
+            try:
+                # 先尝试删除消息（如果支持）
+                if hasattr(status_msg, 'remove'):
+                    await status_msg.remove()
+                else:
+                    # 如果不支持 remove，则清空内容并隐藏
+                    status_msg.content = ""
+                    await status_msg.update()
+            except Exception as e:
+                logger.debug(f"移除状态消息时出错: {e}")
+            finally:
+                status_msg = None
 
 
 @cl.on_stop

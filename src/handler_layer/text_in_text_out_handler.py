@@ -151,14 +151,22 @@ class Handler:
     
 
     async def agent_result_handler(self, result: Dict[str, Any]):
- 
-            if not result:
-                return
-            text = result.get('text', '')
-
-            await self.send_text_to_client(result.get('text', ''))
+        if not result:
+            return
+        
+        text = result.get('text', '')
+        msg_type = result.get('msg_type', 'content')  # 获取消息类型
+        
+        # 根据消息类型发送到客户端
+        if msg_type == "updates":
+            # 发送中间状态更新
+            await self.send_update_to_client(text)
+        else:
+            # 发送内容响应
+            await self.send_text_to_client(text)
             
-            if text=="SENTENCE_START":
+            # 处理文本缓冲（仅对 content 类型）
+            if text == "SENTENCE_START":
                 self.text_buffer = []
             if text and text not in ["SENTENCE_START", "SENTENCE_END"]:
                 self.text_buffer.append(text)
@@ -167,15 +175,28 @@ class Handler:
                 logger.info(f"文本响应: {response_text}")          
 
     async def send_text_to_client(self, text: str):
+        """发送文本内容响应到客户端"""
         try:
             response = {
                 "type": "text_response",
                 "text": text,
                 "timestamp": time.time()
             }
-            await self.transport.send_to_client(self.client_id, json.dumps(response))
+            await self.transport.send_to_client(self.client_id, json.dumps(response, ensure_ascii=False))
         except Exception as e:
             logger.error(f"发送文本响应到客户端失败: {e}")
+    
+    async def send_update_to_client(self, update_text: str):
+        """发送中间状态更新到客户端"""
+        try:
+            response = {
+                "type": "updates",
+                "text": update_text,
+                "timestamp": time.time()
+            }
+            await self.transport.send_to_client(self.client_id, json.dumps(response, ensure_ascii=False))
+        except Exception as e:
+            logger.error(f"发送状态更新到客户端失败: {e}")
     
     async def check_interrupt(self, text: str) -> bool:
         """检测是否需要打断
