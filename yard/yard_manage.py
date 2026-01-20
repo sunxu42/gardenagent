@@ -8,6 +8,7 @@ from langchain_mcp_adapters.client import MultiServerMCPClient
 from deepagents import create_deep_agent
 from deepagents.backends import FilesystemBackend
 from langgraph.checkpoint.memory import MemorySaver
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage, AIMessageChunk
 
 GLM_API_KEY = os.getenv('GLM_OPENAI_API_KEY')
 GLM_BASE_URL = os.getenv('GLM_OPENAI_BASE_URL')
@@ -16,7 +17,6 @@ SKILLS_DIR = os.getenv('SKILLS_DIR', './skills')
 WORK_DIR = os.getenv('WORK_DIR', './workspace')
 SUBAGENTS_YAML = os.getenv('SUBAGENTS_YAML', './subagents.yaml')
 
-print(GLM_API_KEY, GLM_BASE_URL, MCP_SERVER_URL, SKILLS_DIR, WORK_DIR, SUBAGENTS_YAML)
 def create_glm_model():
 
     model = ChatOpenAI(
@@ -93,12 +93,20 @@ class YardManager:
             config={"configurable": {"thread_id": thread_id}},
             stream_mode="messages",
         ):
-                print(chunk)
+            # if isinstance(chunk, AIMessageChunk):
+            #     yield chunk.content
+
+            with open("yard_manage.txt", "a") as f:
+                f.write(str(chunk))
+                f.write("\n")
+     
+            
+           
 
 
 if __name__ == "__main__":
     async def main():
         yard_manager = await YardManager.create()
-        await yard_manager.achat("Hello, how are you?")
+        await yard_manager.achat("查一下草的高度")
 
     asyncio.run(main())
