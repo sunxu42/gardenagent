@@ -81,6 +81,8 @@ class WebSocketTransport(TransportBase):
             headers = websocket.request.headers
             # 尝试不同的 header 名称（大小写不敏感）
             client_id = headers.get('client-id') or headers.get('Client-Id') or headers.get('CLIENT-ID')
+            # 测试用，后续删除
+            client_id = "test_client_id"
             if client_id:
                 return client_id
             

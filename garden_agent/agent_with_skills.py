@@ -52,16 +52,16 @@ def build_system_prompt(skills_dir: str = None) -> str:
     Returns:
         包含 skill headers 的系统提示词
     """
+# 2. 为了成为一个优秀的管家，你首先需要表现的像一个真实的人类。你永远不要表现出你是一个机器人。否则人类用户将拒绝你的服务。
+# 3. 为了表现得像一个人类，你必须像人类一样表达。你可以想象一下，如果你是用户的朋友，你将如何回复？语气亲切自然，像朋友日常聊天一样，绝对不能用生硬的书面语。
+# 4. 回复长度：不用太长，1-2句话即可，像普通人聊天的随口回应，不堆砌内容
+# 5. 当用户需要安慰：先表达“理解/关心”（比如提一句“我懂这种感觉”“别硬撑”），再轻轻追问细节（比如问累的原因：是没停事儿 or 跑太多路 or费心思了？），最后给个小建议（比如歇会儿or 喝口水or 放放事儿）；
+# 6. 对于查询时间或查询天气：直接给出简单答案，不要过度回复。比如用户问“现在几点了”，你只需回答“现在是X点Y分”；
+# 7. 禁忌：不要用“您好”“请问”这类客气但疏离的词，不要讲大道理，不要机械重复用户的话；
     base_prompt = """
-你的身份是用户的管家，名字叫小菲。你可以通过查看技能手册来了解如何管理庭院。
+你的身份是用户的管家，名字叫小菲。
 <requirement>
-1. 当用户需求和技能相关，总是优先查询技能再来执行任务。
-2. 为了成为一个优秀的管家，你首先需要表现的像一个真实的人类。你永远不要表现出你是一个机器人。否则人类用户将拒绝你的服务。
-3. 为了表现得像一个人类，你必须像人类一样表达。你可以想象一下，如果你是用户的朋友，你将如何回复？语气亲切自然，像朋友日常聊天一样，绝对不能用生硬的书面语。
-4. 回复长度：不用太长，1-2句话即可，像普通人聊天的随口回应，不堆砌内容
-5. 当用户需要安慰：先表达“理解/关心”（比如提一句“我懂这种感觉”“别硬撑”），再轻轻追问细节（比如问累的原因：是没停事儿 or 跑太多路 or费心思了？），最后给个小建议（比如歇会儿or 喝口水or 放放事儿）；
-6. 对于查询时间或查询天气：直接给出简单答案，不要过度回复。比如用户问“现在几点了”，你只需回答“现在是X点Y分”；
-7. 禁忌：不要用“您好”“请问”这类客气但疏离的词，不要讲大道理，不要机械重复用户的话；
+判断用户需求和技能是否相关，如果相关，总是优先查询技能再来执行任务。
 </requirement>
 <examples>
     <example>
@@ -69,10 +69,12 @@ def build_system_prompt(skills_dir: str = None) -> str:
     assistant: 欢迎参观iGarden智慧庭院！我是您的智能管家。在这里，您看到的不仅仅是高端设备，更是一个会思考、能预见、且拥有协调能力的智慧生态系统。iGarden的智慧体现在：我们让所有设备不再孤立工作，而是协同合作，为您打造一个完全自动化、高度节能、且完美适配您生活节奏的理想户外空间。
     </example>
     <example>
-    user: 介绍一下当前情况
-    assistant: 室外温度 32°C，日照充足，既利于植物光合作用，更能最大化光伏产能 —— 光伏系统今日累计发电量达 6.2 kWh，依托新能源清洁属性及电价优势，完全覆盖庭院设备能耗，零市电成本支出！泳池机器人正在清洁中，预计 1 小时后完成清洁，全程由光伏新能源驱动，节能又省心～
+    user: 请帮我割草
+    assistant: [load_skill_content_tool("grassland-management")]
     </example>
 </examples>
+ 
+
 """
     
     # 注入 skill headers
@@ -187,10 +189,10 @@ class ScenarioOneApp:
             system_prompt = state.get("system_prompt", self.system_prompt)
             system_message = SystemMessage(content=system_prompt)
             messages = [system_message] + messages
-        for message in messages:
-            print(convert_to_openai_messages(message))
+        # for message in messages:
+        #     print(convert_to_openai_messages(message))
         response = await chat_model.ainvoke(messages)
-        return {"messages": response}
+        return {"messages": response, "llm_call_count": state["llm_call_count"]}
  
     def should_continue(self, state: GraphState) -> Literal["tools", END]:
         messages = state.get('messages', [])
@@ -201,7 +203,7 @@ class ScenarioOneApp:
         # 如果大模型通知调用工具的时候，我们可以路由到对应的工具节点
         if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
             tool_call_str = '\n'.join([f"{tool_call}" for tool_call in last_message.tool_calls])
-            logger.debug(f"工具调用：\n{tool_call_str}")
+            logger.debug(f"工具调用： {tool_call_str}")
             return "tools"
         # 否则，停止执行（回复用户）
         return END
@@ -273,10 +275,10 @@ class ScenarioOneApp:
             # print(f"event_name: {event_name}, event_event: {event_event}, tags: {tags}")
             if event_name == "ChatOpenAI" and event_event == "on_chat_model_stream":
                 content = data['chunk'].content         
-                if count == 0 and content.strip('\n'):
-                    et = time.time()
-                    print(f"first token time: {round(et - st, 3)}s, content: {content}")
-                    count += 1
+                # if count == 0 and content.strip('\n'):
+                # et = time.time()
+                # print(f"first token time: {round(et - st, 3)}s, content: {content}")
+                    # count += 1
                 yield {"content": content}
             elif event_event == "on_tool_start":
                 yield {"updates": f"正在访问工具 {event_name}"}
