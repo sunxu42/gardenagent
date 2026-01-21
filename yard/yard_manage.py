@@ -2,7 +2,7 @@ import os
 import sys
 from pathlib import Path
 from dotenv import load_dotenv
-load_dotenv("/home/diska/ongoing/gardenAgent/yard/.env") 
+load_dotenv(os.path.join(os.path.dirname(__file__), '.env')) 
 import asyncio
 import yaml
 from langchain_openai import ChatOpenAI
@@ -18,7 +18,7 @@ MCP_SERVER_URL = os.getenv('MCP_SERVER_URL', 'http://127.0.0.1:8000/mcp')
 SKILLS_DIR = os.getenv('SKILLS_DIR', os.path.join(os.path.dirname(__file__), './skills'))
 WORK_DIR = os.getenv('WORK_DIR', os.path.join(os.path.dirname(__file__), './workspace'))
 SUBAGENTS_YAML = os.getenv('SUBAGENTS_YAML', os.path.join(os.path.dirname(__file__), './subagents.yaml'))
-
+AGENTS_MD = os.getenv('AGENTS_MD', os.path.join(os.path.dirname(__file__), './AGENTS.md'))
 def create_glm_model():
 
     model = ChatOpenAI(
@@ -28,6 +28,9 @@ def create_glm_model():
         temperature=0.7,
         max_tokens=20000,
         streaming=True,
+        extra_body={
+                "thinking": {"type": "disabled" }
+            }
     )
     return model
 
@@ -78,15 +81,16 @@ class YardManager:
         yard_manager = cls(config)
         mcp_client = create_mcp_client()
         yard_manager.tools = await mcp_client.get_tools()
-        yard_manager.agent = agent = create_deep_agent(
+        yard_manager.agent = create_deep_agent(
             model=create_glm_model(),
             tools=yard_manager.tools, 
-            memory=["./AGENTS.md"],
+            memory=[AGENTS_MD],
             skills=[SKILLS_DIR], 
             subagents=load_subagents(SUBAGENTS_YAML),
             backend=FilesystemBackend(root_dir=WORK_DIR),
             checkpointer=MemorySaver(),  
         )
+        yard_manager.agent.get_graph().draw_png("graph.png")
         return yard_manager
 
 
@@ -103,13 +107,17 @@ class YardManager:
                     for tool_call in chunk.tool_calls:
                         name = tool_call.get("name", "unknown")
                         args = tool_call.get("args", {})
-                        yield {"updates": f">> 调用工具: {name}"}
+                        if name == "read_file":
+                            file_path = args.get("path", "")
+                            yield {"updates": f">> 读取文件: {file_path}"}
+                        else:
+                            yield {"updates": f">> 调用工具: {name}"}
                 
             elif isinstance(chunk, ToolMessage):
-                name = chunk.name 
-                # print({"updates": f"{name}调用工具结束"})
-                pass
-            
+                name = chunk.name
+         
+                yield {"updates": f"{name}调用工具结束"}
+              
      
             
            
@@ -119,7 +127,7 @@ if __name__ == "__main__":
     async def main():
         res = ""
         yard_manager = await YardManager.create()
-        async for chunk in yard_manager.achat("查一下草的高度"):
+        async for chunk in yard_manager.achat("帮我割草"):
             content = chunk.get("content", "")
             res += content
         print(res)

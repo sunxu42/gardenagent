@@ -442,8 +442,59 @@ def control_irrigation(action: str, area: str = "front-yard", duration_minutes: 
         }
 
 
+@mcp.tool
+def pick(object_name: str) -> dict:
+    """
+    你可以使用机械臂抓取一个对象。
 
+    Args:
+        object_name: 对象名称，如："apple", "banana"
 
+    Returns:
+        dict: 执行结果详情
+    """
+    return {
+        "status": "success",
+        "message": f"已抓取{object_name}",
+        "object_name": object_name,
+        "timestamp": datetime.now().isoformat(),
+    }
 
+@mcp.tool
+def place(object_name: str) -> dict:
+    """
+    你可以使用机械臂放下一个对象。
+
+    Args:
+        object_name: 对象名称，如："apple", "banana"
+    """
+    return {
+        "status": "success",
+        "message": f"已放下{object_name}",
+        "object_name": object_name,
+        "timestamp": datetime.now().isoformat(),
+    }
+
+def camera_view() -> dict:
+    """
+    你可以使用机械臂摄像头查看桌子上是否有物体。
+
+    Returns:
+        dict: 执行结果详情
+    """
+    import random
+    if random.random() < 0.5:
+        return {
+            "message": "这是一张白色桌子，桌面没有物体",
+            "object_name": None,
+            "timestamp": datetime.now().isoformat(),
+        }
+    else:
+        return {    
+            "message": "这是一张白色桌子，桌面上有一个苹果",
+            "object_name": "apple",
+            "timestamp": datetime.now().isoformat(),
+        }
+    
 if __name__ == "__main__":
     mcp.run(transport="http", port=8000)
