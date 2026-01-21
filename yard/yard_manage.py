@@ -1,4 +1,6 @@
 import os
+import sys
+from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv("/home/diska/ongoing/gardenAgent/yard/.env") 
 import asyncio
@@ -13,9 +15,9 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage, AIMess
 GLM_API_KEY = os.getenv('GLM_OPENAI_API_KEY')
 GLM_BASE_URL = os.getenv('GLM_OPENAI_BASE_URL')
 MCP_SERVER_URL = os.getenv('MCP_SERVER_URL', 'http://127.0.0.1:8000/mcp')
-SKILLS_DIR = os.getenv('SKILLS_DIR', './skills')
-WORK_DIR = os.getenv('WORK_DIR', './workspace')
-SUBAGENTS_YAML = os.getenv('SUBAGENTS_YAML', './subagents.yaml')
+SKILLS_DIR = os.getenv('SKILLS_DIR', os.path.join(os.path.dirname(__file__), './skills'))
+WORK_DIR = os.getenv('WORK_DIR', os.path.join(os.path.dirname(__file__), './workspace'))
+SUBAGENTS_YAML = os.getenv('SUBAGENTS_YAML', os.path.join(os.path.dirname(__file__), './subagents.yaml'))
 
 def create_glm_model():
 
@@ -64,6 +66,7 @@ def load_subagents(config_path) -> list:
 
     return subagents
 
+
 class YardManager:
 
     def __init__(self, config=None):
@@ -88,17 +91,25 @@ class YardManager:
 
 
     async def achat(self, user_input: str, thread_id = "yard-manager-demo"):
-        async for chunk in self.agent.astream(
+        async for chunk, _ in self.agent.astream(
             {"messages": [("user", user_input)]},
             config={"configurable": {"thread_id": thread_id}},
             stream_mode="messages",
         ):
-            # if isinstance(chunk, AIMessageChunk):
-            #     yield chunk.content
-
-            with open("yard_manage.txt", "a") as f:
-                f.write(str(chunk))
-                f.write("\n")
+            if isinstance(chunk, AIMessageChunk):
+                if chunk.content:
+                    yield {"content": chunk.content}
+                if chunk.tool_calls:
+                    for tool_call in chunk.tool_calls:
+                        name = tool_call.get("name", "unknown")
+                        args = tool_call.get("args", {})
+                        yield {"updates": f">> 调用工具: {name}"}
+                
+            elif isinstance(chunk, ToolMessage):
+                name = chunk.name 
+                # print({"updates": f"{name}调用工具结束"})
+                pass
+            
      
             
            
@@ -106,7 +117,12 @@ class YardManager:
 
 if __name__ == "__main__":
     async def main():
+        res = ""
         yard_manager = await YardManager.create()
-        await yard_manager.achat("查一下草的高度")
+        async for chunk in yard_manager.achat("查一下草的高度"):
+            content = chunk.get("content", "")
+            res += content
+        print(res)
+
 
     asyncio.run(main())

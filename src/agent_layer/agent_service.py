@@ -24,7 +24,7 @@ class AgentService:
     async def start(self):
         try:
             agent_config = {
-                "agent_type": "garden_robot",
+                "agent_type": "yard_manager",
             }   
             self.agent = await AgentFactory.async_create_app(agent_config)
             self.is_running = True
