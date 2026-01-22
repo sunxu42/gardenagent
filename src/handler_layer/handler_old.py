@@ -150,27 +150,27 @@ class Handler:
             return  # 忽略其他客户端的消息
         
         if isinstance(message, bytes):
+            # 二进制消息：音频数据
             await self.handle_client_audio_data(message)
         elif isinstance(message, str):
-            await self.handle_json_message(message)
+            # 文本消息：JSON 协议消息
+            await self.handle_text_message(message)
         else:
             logger.warning(f"收到未知类型的消息: {type(message)}")
     
-    async def handle_json_message(self, message: str):
+    async def handle_text_message(self, message: str):
         try:
             data = json.loads(message)
-            # {"role": "user", "content": [{"type": "text", "text": "你好"}]}
-            # {"role": "user", "content": [{"type": "audio", "audio": "base64"}]}
-            # {"role": "user", "content": [{"type": "image", "image": "base64"}]}
-            # {"role": "user", "content": [{"type": "file", "file": "base64"}]}
-  
-            role = data.get('role', '')
-
-            if role == 'hello':
+            message_type = data.get('type', '')
+            
+            if message_type == 'hello':
                 await self.handle_hello(data)
-            elif role == 'user':
-                await self.handle_user_message(data)
-
+            elif message_type == 'timestamp':
+                await self.handle_timestamp()
+            elif message_type == 'listen':
+                await self.handle_listen(data)
+            else:
+                logger.warning(f"未知消息类型: {message_type}, 消息: {message}")
         except json.JSONDecodeError as e:
             logger.error(f"解析 JSON 消息失败: {e}, 消息: {message}")
         except Exception as e:
@@ -194,25 +194,22 @@ class Handler:
         
         await self.transport.send_to_client(self.client_id, json.dumps(response))
         logger.info(f"发送 hello 响应到客户端")
-    
-    async def handle_timestamp(self):
-        self.timing_stats["user_voice_stop_time"] = time.time()
 
-    async def handle_user_message(self, data: Dict[str, Any]):
-
-        text = ""
-        content_list = data.get('content', [])
-        for content in content_list:
-            if content.get('type', '') == 'text':
-                text += content.get('text', '')
-
-        result = {
+    async def handle_listen(self, data: Dict[str, Any]):
+        mode = data.get('mode', '')
+        state = data.get('state', '')
+        text = data.get('text', '')
+        if mode == 'manual' and state == 'detect':
+            result = {
                 'text': text,
                 'is_final': True,
                 'timestamp': time.time(),
+                'source': 'asr'
             }
-        await self.asr_result_handler(result)
+            await self.asr_result_handler(result)
 
+    async def handle_timestamp(self):
+        self.timing_stats["user_voice_stop_time"] = time.time()
 
     async def handle_client_audio_data(self, audio_data: bytes):
         # logger.debug(f"收到客户端 {len(audio_data)} 的音频数据")
@@ -283,51 +280,44 @@ class Handler:
         try:
             if not result:
                 return
-  
-            msg_type = result.get('msg_type', '')
-            if msg_type == "SENTENCE_START":
+            
+            text = result.get('text', '')
+            if text == "SENTENCE_START":
                 self.first_token = True
                 self.first_audio_chunk = True
                 self.text_buffer = []
-                text = "SENTENCE_START"
-                await self.send_json_to_client({"role": "assistant", "content": "SENTENCE_START"})
-            elif msg_type == "SENTENCE_END":
+
+            if self.first_token and text != "SENTENCE_START":
+                self.timing_stats["agent_first_token_time"] = time.time()
+                self.timing_stats["text_response_latency"] = self.timing_stats["agent_first_token_time"] - self.timing_stats["user_voice_stop_time"]
+                self.first_token = False
+                logger.info(f"文本响应时延: {self.timing_stats['text_response_latency']}")
+            
+            self.text_buffer.append(text)
+            if text == "SENTENCE_END":
                 response = " ".join(self.text_buffer[1:-1])
                 logger.info(f"文本响应: {response}")
-                text = "SENTENCE_END"
-                await self.send_json_to_client({"role": "assistant", "content": "SENTENCE_END"})
-            elif msg_type == "response":
-                response = result.get('response', '')
-                if self.first_token:
-                    self.timing_stats["agent_first_token_time"] = time.time()
-                    self.timing_stats["text_response_latency"] = self.timing_stats["agent_first_token_time"] - self.timing_stats["user_voice_stop_time"]
-                    self.first_token = False
-                    logger.info(f"文本响应时延: {self.timing_stats['text_response_latency']}")
-                
-                await self.send_json_to_client(response)
-                
-                text = response.get('content', '')
-                self.text_buffer.append(text)
 
+
+            if not text:
+                return
+            
+            # 可选：发送 Agent 结果到客户端（用于显示回复文本）
+            # 如果需要，可以在这里发送 WebSocket 消息给客户端
+            
+            # 将 Agent 结果发送到 TTS 服务队列
             if self.tts_service and self.tts_service.queue:
-                
                 message = {
                     'text': text,
                     'timestamp': result.get('timestamp', time.time()),
                     'source': 'agent'
                 }
-    
                 await self.tts_service.queue.put(message)
                 # logger.debug(f"Agent 结果已发送到 TTS 队列: {text}")
             
         except Exception as e:
             logger.error(f"处理 Agent 结果失败: {e}")
 
-    async def send_json_to_client(self, data: Dict[str, Any]):
-        if not isinstance(data, dict):
-            raise ValueError("data 必须是字典类型")
-        await self.transport.send_to_client(self.client_id, json.dumps(data))
-    
     async def tts_result_handler(self, result: Dict[str, Any]):
         """TTS 结果回调处理
         1. 将 TTS 音频数据转发到客户端

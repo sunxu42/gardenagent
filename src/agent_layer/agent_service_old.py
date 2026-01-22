@@ -94,27 +94,52 @@ class AgentService:
         first_content = True
         async for response in self.agent.achat(text):
             if response:
-                
-                if "content" in response:
-                    if first_content:
-                        await self.publish_response({"msg_type": "SENTENCE_START"})
-                        first_content = False
-                    response = {"role": "assistant", "content": response.get("content", "")}
-                elif "updates" in response:
-                    response = {"role": "updates", "updates": response.get("updates", "")}
-
-
-                await self.publish_response({"msg_type": "response", "response": response})
-
-
-
-        await self.publish_response({"msg_type": "SENTENCE_END"})
+                # 处理字典类型的响应（包含 updates 或 content）
+                if isinstance(response, dict):
+                    if "updates" in response:
+                        # 发送中间状态更新
+                        await self.publish_response(
+                            response["updates"], 
+                            index=count, 
+                            msg_type="updates"
+                        )
+                    elif "content" in response:
+                        # 发送内容更新
+                        if first_content:
+                            await self.publish_response("SENTENCE_START", index=-1)
+                            first_content = False
+                        await self.publish_response(
+                            response["content"], 
+                            index=count, 
+                            msg_type="content"
+                        )
+                        count += 1
+                else:
+                    # 兼容旧的字符串类型响应
+                    if count == 0:
+                        await self.publish_response("SENTENCE_START", index=-1)
+                    await self.publish_response(response, index=count, msg_type="content")
+                    count += 1
+        await self.publish_response("SENTENCE_END", index=-1)
         await self.end_session()
 
     
-    async def publish_response(self, message: Dict[str, Any]):
-
-
+    async def publish_response(self, response: str, index: int=-1, msg_type: str="content"):
+        """
+        发布响应消息
+        
+        Args:
+            response: 响应内容
+            index: 响应索引
+            msg_type: 消息类型，可选值: "content"（内容）, "updates"（中间状态更新）
+        """
+        message = {
+            'text': response,
+            'timestamp': time.time(),
+            'index': index,
+            'source': 'agent',
+            'msg_type': msg_type  # 添加消息类型标识
+        }
         await self.result_callback(message)
 
 

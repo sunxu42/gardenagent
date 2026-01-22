@@ -32,6 +32,9 @@ latex = false
 # Autoscroll new user messages at the top of the window
 user_message_autoscroll = true
 
+# Autoscroll new assistant messages
+assistant_message_autoscroll = true
+
 # Automatically tag threads with the current chat profile (if a chat profile is used)
 auto_tag_thread = true
 
@@ -154,4 +157,4 @@ default_avatar_file_url = ""
 #     target = "_blank" (default)  # Optional: "_self", "_parent", "_top".
 
 [meta]
-generated_by = "2.9.3"
+generated_by = "2.9.4"

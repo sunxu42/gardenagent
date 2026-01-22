@@ -161,29 +161,30 @@ class WebSocketManager:
                 except json.JSONDecodeError:
                     continue
                 
-                msg_type = obj.get("type")
-                piece = obj.get("text", "")
+                msg_role = obj.get("role", "")
                 
-                # 处理中间状态更新
-                if msg_type == "updates":
-                    if piece:
-                        yield {"type": "update", "data": piece}
+                # 处理中间状态更新（格式: {"role": "updates", "updates": "..."}）
+                if msg_role == "updates":
+                    update_text = obj.get("updates", "")
+                    if update_text:
+                        yield {"type": "update", "data": update_text}
                     continue
                 
-                # 处理文本响应
-                if msg_type == "text_response":
+                # 处理文本响应（格式: {"role": "assistant", "content": "..."}）
+                if msg_role == "assistant":
+                    content = obj.get("content", "")
                     # 跳过特殊标记和空内容
-                    if not piece or piece == "SENTENCE_START":
+                    if not content or content == "SENTENCE_START":
                         continue
                     
-                    if piece == "SENTENCE_END":
+                    if content == "SENTENCE_END":
                         break
                     
-                    yield {"type": "content", "data": piece}
+                    yield {"type": "content", "data": content}
                     continue
                 
                 # 忽略其他类型的消息
-                logger.debug(f"忽略未知类型的消息: {msg_type}")
+                logger.debug(f"忽略未知类型的消息: {msg_role}")
                 
             except websockets.exceptions.ConnectionClosed:
                 logger.warning("WebSocket 连接已关闭")
@@ -240,11 +241,16 @@ async def on_message(message: cl.Message):
     
     user_input = message.content
     
-    # 构建发送给后端的消息格式
+    # 构建发送给后端的消息格式，对齐 handler.py 的格式
+    # 格式: {"role": "user", "content": [{"type": "text", "text": "..."}]}
     query_message = {
-        "type": "llm",
         "role": "user",
-        "content": user_input
+        "content": [
+            {
+                "type": "text",
+                "text": user_input
+            }
+        ]
     }
     
     payload = json.dumps(query_message, ensure_ascii=False)

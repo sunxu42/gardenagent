@@ -5,7 +5,7 @@ from src.log import setup_logger
 
 from loguru import logger
 from src.config import WebSocketConfig
-setup_logger(log_level='DEBUG',disable_modules=['src.agent_layer',])
+setup_logger(log_level='DEBUG',disable_modules=[])
 
 
 

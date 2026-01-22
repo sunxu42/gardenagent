@@ -22,7 +22,7 @@ AGENTS_MD = os.getenv('AGENTS_MD', os.path.join(os.path.dirname(__file__), './AG
 def create_glm_model():
 
     model = ChatOpenAI(
-        model="glm-4.7",  
+        model="glm-4.5",  
         api_key=GLM_API_KEY,
         base_url=GLM_BASE_URL,
         temperature=0.7,
