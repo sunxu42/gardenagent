@@ -1,18 +1,4 @@
-pyzmq==25.1.2
-numpy==1.24.3
-asyncio-mqtt==0.16.1
-python-dotenv==1.0.0
-loguru==0.7.2
-redis==5.0.1
-opuslib_next==1.1.2
-websockets==15.0.1
-lmdb==1.7.5
-# 语音
-librosa==0.10.1
-pydub>=0.25.1
-pyaudio==0.2.11
-
-openai>=1.0.0
+opuslib_next
 loguru>=0.7.0
 fastmcp
 langgraph==1.0.4
@@ -21,4 +7,4 @@ langchain-core
 langchain-community
 langchain-mcp-adapters
 langchain-openai
-pyyaml>=6.0
+deepagents

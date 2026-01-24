@@ -21,7 +21,6 @@ from loguru import logger
 
 from src.config import WebSocketConfig, AudioConfig, TTSConfig
 from src.utils.opus_encoder_utils import OpusCodecUtils
-from src.utils.shared_state import SharedState
 from src.transport_layer.base import TransportBase
 
 
@@ -117,8 +116,7 @@ class Handler:
         if self.tts_service:
             await self.tts_service.stop()
         
-        # 清理SharedState
-        SharedState.remove(f"client_status:{self.client_id}")
+
         
         logger.info(f"客户端 {self.client_id} 的服务实例已清理")
     

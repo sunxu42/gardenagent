@@ -9,7 +9,6 @@ import uuid
 from typing import Dict, Any, Optional
 from loguru import logger
 
-from src.utils.shared_state import SharedState
 from src.transport_layer.base import TransportBase
 
 
@@ -48,7 +47,6 @@ class Handler:
         if self.agent_service:
             await self.agent_service.stop()
         
-        SharedState.remove(f"client_status:{self.client_id}")
         
         logger.info(f"客户端 {self.client_id} 的服务实例已清理")
     

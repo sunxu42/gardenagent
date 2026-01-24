@@ -5,19 +5,6 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "pyzmq==25.1.2",
-    "numpy==1.24.3",
-    "asyncio-mqtt==0.16.1",
-    "python-dotenv==1.0.0",
-    "loguru==0.7.2",
-    "websockets==15.0.1",
-    "librosa==0.10.1",
-    "redis==5.0.1",
-    "pydub>=0.25.1",
-    "lmdb==1.7.5",
-    "opuslib_next==1.1.2",
-    "pyaudio==0.2.11",
-    "streamlit==1.51.0",
 ]
 
 [build-system]
@@ -26,6 +13,5 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 packages = { find = { where = ["."], include = [
-    "garden_agent*",
     "src*"
 ] } }

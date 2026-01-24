@@ -7,7 +7,6 @@ import websockets
 from typing import Dict, Any, Optional, Callable
 from loguru import logger
 from .base import BaseASR
-from src.utils.shared_state import SharedState
 
 logger.disable(__name__)
 
