@@ -14,10 +14,10 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage, AIMess
 
 GLM_API_KEY = os.getenv('GLM_OPENAI_API_KEY')
 GLM_BASE_URL = os.getenv('GLM_OPENAI_BASE_URL')
-MCP_SERVER_URL = os.getenv('MCP_SERVER_URL', 'http://127.0.0.1:8000/mcp')
 SKILLS_DIR = os.getenv('SKILLS_DIR', os.path.join(os.path.dirname(__file__), './skills'))
 WORK_DIR = os.getenv('WORK_DIR', os.path.join(os.path.dirname(__file__), './workspace'))
 SUBAGENTS_YAML = os.getenv('SUBAGENTS_YAML', os.path.join(os.path.dirname(__file__), './subagents.yaml'))
+MCP_SERVERS_YAML = os.getenv('MCP_SERVERS_YAML', os.path.join(os.path.dirname(__file__), './mcp_servers.yaml'))
 AGENTS_MD = os.getenv('AGENTS_MD', os.path.join(os.path.dirname(__file__), './AGENTS.md'))
 def create_glm_model():
 
@@ -34,15 +34,17 @@ def create_glm_model():
     )
     return model
 
+def load_mcp_servers(config_path) -> dict:
+    """Load MCP server configurations from YAML file."""
+    with open(config_path) as f:
+        config = yaml.safe_load(f)
+        print(config)
+    return config
+
 def create_mcp_client():
-    mcp_client = MultiServerMCPClient(
-            {
-                "weather": {
-                    "url": MCP_SERVER_URL,
-                    "transport": "http",
-                }
-            }
-        )
+    """Create MCP client from YAML configuration."""
+    mcp_config = load_mcp_servers(MCP_SERVERS_YAML)
+    mcp_client = MultiServerMCPClient(mcp_config)
     return mcp_client
 
 def load_subagents(config_path) -> list:
