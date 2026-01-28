@@ -5,10 +5,13 @@
 #   - url: The MCP server endpoint URL
 #   - transport: The transport type (e.g., "http", "stdio", "sse")
 
-weather:
-  url: http://127.0.0.1:8000/mcp
-  transport: http
+# garden:
+#   url: http://127.0.0.1:8000/mcp
+#   transport: http
 
+embenchench:
+  url: http://127.0.0.1:8001/mcp
+  transport: http
 # Example: Add more MCP servers below
 # database:
 #   url: http://127.0.0.1:8001/mcp
