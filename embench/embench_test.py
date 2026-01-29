@@ -1,3 +1,6 @@
+import os
+import sys
+sys.path.append("/home/diska/ongoing/gardenAgent/")
 import asyncio
 from embench import EmbenchClient
 from yard.yard_manage import YardManager
@@ -11,11 +14,16 @@ async def main():
 
     while True:
         instruction = client.instruction()["instruction"]
+        if instruction == "TaskCompleted":
+            break
         print(instruction)
         res = ""
         async for chunk in yard_manager.achat(instruction):
-            content = chunk.get("content", "")
-            res += content
+            if "content" in chunk:
+                content = chunk.get("content", "")
+                res += content
+            elif "updates" in chunk:
+               print(chunk)
         print(res)
         break
 

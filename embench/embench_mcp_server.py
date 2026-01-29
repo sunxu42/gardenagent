@@ -1,7 +1,9 @@
-import requests
+
 from typing import Any, Dict, Optional
 from fastmcp import FastMCP
-from embench import EmbenchClient
+from embench_http import EmbenchClient
+import uvicorn
+
 mcp = FastMCP("Embench MCP Server")
 
 client = EmbenchClient()
@@ -23,7 +25,7 @@ def navigate(destination: str):
     - 在执行任务前切换视角/位置
     
     Args:
-        destination: 目标位置名称。Must be one of: left drawer, middle drawer, right drawer, bottom drawer, fridge, chair, black table, brown table, TV stand, sink, right counter, left counter, sofa
+        destination: 目标位置名称。Must be one of: ['left drawer', 'middle drawer', 'right drawer', 'bottom drawer', 'fridge', 'chair', 'black table', 'brown table', 'TV stand', 'sink', 'right counter', 'left counter', 'sofa', 'fridge', 'left drawer', 'right drawer']
     
     Returns:
         dict: 导航执行结果
@@ -110,4 +112,6 @@ def get_observation():
 
 
 if __name__ == "__main__":
-    mcp.run(transport="http", port=8001)
+    # 使用 uvicorn 手动启动 HTTP 服务，并将日志级别设置为 WARNING，避免打印 INFO 日志
+    http_app = mcp.http_app()
+    uvicorn.run(http_app, host="127.0.0.1", port=8001, log_level="warning")

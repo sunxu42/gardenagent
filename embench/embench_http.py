@@ -1,7 +1,8 @@
 import requests
-from typing import Any, Dict, Optional
-from fastmcp import FastMCP
-
+from typing import Any, Dict
+import base64
+import os
+from zhipuai import ZhipuAI
 
 class EmbenchClient:
 
@@ -59,7 +60,9 @@ class EmbenchClient:
         }
         response = requests.post(url, json=payload, timeout=self.timeout)
         response.raise_for_status()
-        return response.json()
+        result = response.json()    
+        print(tool_name, tool_args, result)
+        return result
     
     def observation(
         self,
@@ -68,12 +71,43 @@ class EmbenchClient:
         response = requests.get(url, timeout=self.timeout)
         response.raise_for_status()
         image_base64 = response.json().get("image_base64")
+        image_path = response.json().get("image_path")
+        # print(image_path)
+        # save image to file
+        # 自动创建目录路径（如果目录部分存在）
+        dir_path = os.path.dirname(image_path)
+        if dir_path:
+            os.makedirs(dir_path, exist_ok=True)
+        with open(image_path, "wb") as f:
+            f.write(base64.b64decode(image_base64))
 
         final_image = f"data:image/png;base64,{image_base64}"
-        return final_image
+        description = describe_image(final_image)
+        print(image_path)
+        return description
 
+client = ZhipuAI(api_key="83fa704db4954104afec82926847f913.lyzvmMOoFvyy4VRE")  # 请填写您自己的 API Key
+def describe_image(image_base64: str) -> str:
 
-
+    response = client.chat.completions.create(
+        model="glm-4.6v",
+        messages=[ 
+            {"role": "user", "content": [
+            {
+                "type": "image_url",
+                "image_url": {
+                "url": image_base64
+                },
+            },
+            {"type": "text","text": "你是机器人的眼睛，这是机械臂的观测图片，请描述图片中有什么物体，空间位置，以便机器人做出决策"},
+            ]}
+        ],
+        thinking={
+            "type": "disabled",
+        },
+        temperature=0.0
+        )
+    return response.choices[0].message.content
 
 
 # Example usage
@@ -95,6 +129,7 @@ if __name__ == "__main__":
         {"target": "ball"}
     )
     print("Tool result:", tool_result)
+
     
     # Send an observation
     obs_result = client.observation()
@@ -106,7 +141,7 @@ if __name__ == "__main__":
     # print("Tools:", tools)
 
 
-# from zhipuai import ZhipuAI
+
 
 # client = ZhipuAI(api_key="83fa704db4954104afec82926847f913.lyzvmMOoFvyy4VRE")  # 请填写您自己的 API Key
 
@@ -120,7 +155,7 @@ if __name__ == "__main__":
 #           "url": obs_result
 #         },
 #       },
-#       {"type": "text","text": "图片中有什么"},
+#       {"type": "text","text": "你是机器人的眼睛，这是机械臂的观测图片，请描述图片中有什么物体，空间位置，以便机器人做出决策"},
 #     ]}
 #   ],
 #   thinking={
@@ -129,5 +164,5 @@ if __name__ == "__main__":
 #   temperature=0.0
 # )
 
-# # 获取完整回复
+# 获取完整回复
 # print(response.choices[0].message)
