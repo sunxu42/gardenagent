@@ -94,7 +94,6 @@ class YardManager:
             backend=FilesystemBackend(root_dir=WORK_DIR),
             checkpointer=MemorySaver(),  
         )
-        yard_manager.agent.get_graph().draw_png("graph.png")
         return yard_manager
 
 

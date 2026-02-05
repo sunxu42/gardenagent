@@ -10,7 +10,7 @@ from .base import BaseTTS
 class HuoshanTTS(BaseTTS):
     # 固定配置参数
     AUTHORIZATION = "Bearer"
-    SPEAKER = "zh_female_wanwanxiaohe_moon_bigtts"
+    SPEAKER = "zh_female_qingxinnvsheng_mars_bigtts"
     SPEECH_RATE = 0
     LOUDNESS_RATE = 0
     PITCH = 0

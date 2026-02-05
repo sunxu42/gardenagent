@@ -13,3 +13,4 @@ audio_output/
 tts_outputs/
 .DS_Store
 *.lmdb
+uv.lock
