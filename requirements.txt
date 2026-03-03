@@ -8,3 +8,4 @@ langchain-community
 langchain-mcp-adapters
 langchain-openai
 deepagents
+mem0ai

@@ -14,7 +14,8 @@ dependencies = [
     "opuslib_next",
     "numpy",
     "langchain_openai",
-    "langchain-mcp-adapters"
+    "langchain-mcp-adapters",
+    "mem0ai",
 ]
 
 [build-system]

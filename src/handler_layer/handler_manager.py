@@ -71,8 +71,7 @@ class HandlerManager:
                 await self._remove_handler_internal(client_id)
             
             logger.debug(f"正在创建 {self.handler_type} Handler: client_id={client_id}")
-            handler_class = load_class(self.handler_type)
-            handler = handler_class(self.transport, client_id)
+            handler = load_class(self.handler_type, self.transport, client_id)
             self.handlers[client_id] = handler
             
             # 启动服务

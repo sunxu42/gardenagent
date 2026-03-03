@@ -36,18 +36,21 @@ def create_glm_model():
     )
     return model
 
-def load_mcp_servers(config_path) -> dict:
-    """Load MCP server configurations from YAML file."""
-    with open(config_path) as f:
-        config = yaml.safe_load(f)
-        print(config)
-    return config
 
-def create_mcp_client():
-    """Create MCP client from YAML configuration."""
-    mcp_config = load_mcp_servers(MCP_SERVERS_YAML)
-    mcp_client = MultiServerMCPClient(mcp_config)
-    return mcp_client
+
+async def load_mcp_tools():
+    with open(MCP_SERVERS_YAML) as f:
+        config = yaml.safe_load(f)
+    mcp_client = MultiServerMCPClient(config)
+    all_tools = []
+    for name in mcp_client.connections.keys():
+        try:
+            tools = await mcp_client.get_tools(server_name=name)
+        except Exception as e:
+            print(f"[warn] MCP server '{name}' is unavailable and will be skipped")
+            continue
+        all_tools.extend(tools)
+    return all_tools
 
 def load_subagents(config_path) -> list:
     with open(config_path) as f:
@@ -83,8 +86,8 @@ class YardManager:
     @classmethod
     async def create(cls, config=None):
         yard_manager = cls(config)
-        mcp_client = create_mcp_client()
-        yard_manager.tools = await mcp_client.get_tools()
+        
+        yard_manager.tools = await load_mcp_tools()
         yard_manager.agent = create_deep_agent(
             model=create_glm_model(),
             tools=yard_manager.tools, 

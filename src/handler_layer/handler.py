@@ -26,7 +26,7 @@ from src.transport_layer.base import TransportBase
 
 class Handler:
     
-    def __init__(self, transport: TransportBase, client_id: str):
+    def __init__(self, config, transport: TransportBase, client_id: str):
         self.transport = transport
         self.client_id = client_id  # 当前客户端ID
         
@@ -70,28 +70,35 @@ class Handler:
         
         # 断开时间戳（用于超时清理）
         self._disconnected_at: Optional[float] = None
+        # 输入/输出模态配置
+        self.input_modality = config.input_modality
+        self.output_modality = config.output_modality
+        self.enable_audio_input = "audio" in self.input_modality
+        self.enable_audio_output = "audio" in self.output_modality
     
     async def setup_services(self):
         from src.audio_layer.audio_service import AudioService
         from src.agent_layer.agent_service import AgentService
         from src.tts_layer.tts_service import TTSService
         
-        # 创建 AudioService
-        audio_config = AudioConfig()
-        self.audio_service = AudioService(audio_config)
-        await self.audio_service.start()
-        self.audio_service.set_result_callback(self.asr_result_handler)
+        # 创建 AudioService（仅在启用语音输入时）
+        if self.enable_audio_input:
+            audio_config = AudioConfig()
+            self.audio_service = AudioService(audio_config)
+            await self.audio_service.start()
+            self.audio_service.set_result_callback(self.asr_result_handler)
         
         # 创建 AgentService
         self.agent_service = AgentService()
         await self.agent_service.start()
         self.agent_service.set_result_callback(self.agent_result_handler)
         
-        # 创建 TTSService
-        tts_config = TTSConfig()
-        self.tts_service = TTSService(tts_config)
-        await self.tts_service.start()
-        self.tts_service.set_result_callback(self.tts_result_handler)
+        # 创建 TTSService（仅在启用语音输出时）
+        if self.enable_audio_output:
+            tts_config = TTSConfig()
+            self.tts_service = TTSService(tts_config)
+            await self.tts_service.start()
+            self.tts_service.set_result_callback(self.tts_result_handler)
         
         # 启动 AgentService 的处理循环
         self.agent_process_task = asyncio.create_task(self.agent_service.process())
@@ -213,6 +220,10 @@ class Handler:
 
 
     async def handle_client_audio_data(self, audio_data: bytes):
+        # 如果未启用语音输入，直接丢弃音频数据
+        if not self.enable_audio_input:
+            logger.debug("当前配置未启用语音输入，忽略收到的音频数据")
+            return
         # logger.debug(f"收到客户端 {len(audio_data)} 的音频数据")
         if not audio_data:
             return
@@ -307,7 +318,8 @@ class Handler:
                 text = response.get('content', '')
                 self.text_buffer.append(text)
 
-            if self.tts_service and self.tts_service.queue:
+            # 将 Agent 结果发送到 TTS 服务队列（仅在启用语音输出时）
+            if self.enable_audio_output and self.tts_service and self.tts_service.queue:
                 
                 message = {
                     'text': text,

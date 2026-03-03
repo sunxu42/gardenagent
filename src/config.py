@@ -1,6 +1,7 @@
 
 import os
 from dotenv import load_dotenv
+from pydantic import BaseModel
 
 # 加载环境变量（从项目根目录的 .env 文件）
 load_dotenv()
@@ -127,3 +128,18 @@ class AudioConfig:
 
     def get(self, key: str, default: str = ''):
         return getattr(self, key, default)
+
+
+class HandlerConfig(BaseModel):
+    input_modality: list[str] = ["text", "audio"] # 至少["text"]
+    output_modality: list[str] = ["text", "audio"] # 至少["text"]
+
+
+def load_config():
+    # 从环境变量中加载配置并融合
+    config = HandlerConfig()
+    if os.getenv('INPUT_MODALITY'):
+        config.input_modality = os.getenv('INPUT_MODALITY').split(',')
+    if os.getenv('OUTPUT_MODALITY'):
+        config.output_modality = os.getenv('OUTPUT_MODALITY').split(',')
+    return config
