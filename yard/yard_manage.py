@@ -11,6 +11,7 @@ from deepagents import create_deep_agent
 from deepagents.backends import FilesystemBackend
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage, AIMessageChunk
+from yard.mem0_middleware import Mem0Middleware
 
 GLM_API_KEY = os.getenv('GLM_OPENAI_API_KEY')
 GLM_BASE_URL = os.getenv('GLM_OPENAI_BASE_URL')
@@ -19,7 +20,7 @@ WORK_DIR = os.getenv('WORK_DIR', os.path.join(os.path.dirname(__file__), './work
 SUBAGENTS_YAML = os.getenv('SUBAGENTS_YAML', os.path.join(os.path.dirname(__file__), './subagents.yaml'))
 MCP_SERVERS_YAML = os.getenv('MCP_SERVERS_YAML', os.path.join(os.path.dirname(__file__), './mcp_servers.yaml'))
 AGENTS_MD = os.getenv('AGENTS_MD', os.path.join(os.path.dirname(__file__), './AGENTS.md'))
-
+MEM0_API_KEY = os.getenv('MEM0_API_KEY')
 
 def create_glm_model():
 
@@ -91,11 +92,12 @@ class YardManager:
         yard_manager.agent = create_deep_agent(
             model=create_glm_model(),
             tools=yard_manager.tools, 
-            memory=[AGENTS_MD],
+            # memory=[AGENTS_MD],
             skills=[SKILLS_DIR], 
-            subagents=load_subagents(SUBAGENTS_YAML),
+            # subagents=load_subagents(SUBAGENTS_YAML),
             backend=FilesystemBackend(root_dir=WORK_DIR),
             checkpointer=MemorySaver(),  
+            middleware=[Mem0Middleware(api_key=MEM0_API_KEY)],
         )
         return yard_manager
 
