@@ -130,14 +130,15 @@ class AudioConfig:
         return getattr(self, key, default)
 
 
-class HandlerConfig(BaseModel):
+# 逐步将配置迁移到UnifiedConfig中, 统一并简化配置管理,
+class UnifiedConfig(BaseModel):
     input_modality: list[str] = ["text", "audio"] # 至少["text"]
     output_modality: list[str] = ["text", "audio"] # 至少["text"]
 
 
 def load_config():
     # 从环境变量中加载配置并融合
-    config = HandlerConfig()
+    config = UnifiedConfig()
     if os.getenv('INPUT_MODALITY'):
         config.input_modality = os.getenv('INPUT_MODALITY').split(',')
     if os.getenv('OUTPUT_MODALITY'):
