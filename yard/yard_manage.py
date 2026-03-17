@@ -1,33 +1,24 @@
-import os
-import sys
-from pathlib import Path
-from dotenv import load_dotenv
-load_dotenv(os.path.join(os.path.dirname(__file__), '.env')) 
 import asyncio
 import yaml
+
 from langchain_openai import ChatOpenAI
 from langchain_mcp_adapters.client import MultiServerMCPClient
-from deepagents import create_deep_agent
 from deepagents.backends import FilesystemBackend
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage, AIMessageChunk
+
 from yard.mem0_middleware import Mem0Middleware
+from yard.graph import create_deep_agent
+from yard.configs.config import load_config
 
-GLM_API_KEY = os.getenv('GLM_OPENAI_API_KEY')
-GLM_BASE_URL = os.getenv('GLM_OPENAI_BASE_URL')
-SKILLS_DIR = os.getenv('SKILLS_DIR', os.path.join(os.path.dirname(__file__), './skills'))
-WORK_DIR = os.getenv('WORK_DIR', os.path.join(os.path.dirname(__file__), './workspace'))
-SUBAGENTS_YAML = os.getenv('SUBAGENTS_YAML', os.path.join(os.path.dirname(__file__), './subagents.yaml'))
-MCP_SERVERS_YAML = os.getenv('MCP_SERVERS_YAML', os.path.join(os.path.dirname(__file__), './mcp_servers.yaml'))
-AGENTS_MD = os.getenv('AGENTS_MD', os.path.join(os.path.dirname(__file__), './AGENTS.md'))
-MEM0_API_KEY = os.getenv('MEM0_API_KEY')
 
-def create_glm_model():
+
+def create_glm_model(config):
 
     model = ChatOpenAI(
-        model="glm-4.5",  
-        api_key=GLM_API_KEY,
-        base_url=GLM_BASE_URL,
+        model=config.llm_model_name,  
+        api_key=config.llm_api_key,
+        base_url=config.llm_base_url,
         temperature=0.7,
         max_tokens=20000,
         streaming=True,
@@ -39,10 +30,10 @@ def create_glm_model():
 
 
 
-async def load_mcp_tools():
-    with open(MCP_SERVERS_YAML) as f:
-        config = yaml.safe_load(f)
-    mcp_client = MultiServerMCPClient(config)
+async def load_mcp_tools(config):
+    with open(config.mcp_servers_yaml) as f:
+        mcp_servers_config = yaml.safe_load(f)
+    mcp_client = MultiServerMCPClient(mcp_servers_config)
     all_tools = []
     for name in mcp_client.connections.keys():
         try:
@@ -81,23 +72,29 @@ def load_subagents(config_path) -> list:
 class YardManager:
 
     def __init__(self, config=None):
-        self.config = config
-        pass
-    
+        print(config)
+        self.config = self._merge_config(config)
+
+    def _merge_config(self, config):
+        base_config = load_config()
+        if config:
+            # 将传入的 dict 配置合并到基础配置对象上（只覆盖已存在字段）
+            base_config.add_config(config)
+        return base_config
+
     @classmethod
     async def create(cls, config=None):
         yard_manager = cls(config)
-        
-        yard_manager.tools = await load_mcp_tools()
+        yard_manager.tools = await load_mcp_tools(yard_manager.config)
         yard_manager.agent = create_deep_agent(
-            model=create_glm_model(),
-            tools=yard_manager.tools, 
-            # memory=[AGENTS_MD],
-            skills=[SKILLS_DIR], 
-            # subagents=load_subagents(SUBAGENTS_YAML),
-            backend=FilesystemBackend(root_dir=WORK_DIR),
+            model=create_glm_model(yard_manager.config),
+            tools=yard_manager.tools,
+            # memory=[yard_manager.config.agents_md],
+            skills=[yard_manager.config.skills_dir],
+            # subagents=load_subagents(yard_manager.config.subagents_yaml),
+            backend=FilesystemBackend(root_dir=yard_manager.config.workspace_dir),
             checkpointer=MemorySaver(),  
-            middleware=[Mem0Middleware(api_key=MEM0_API_KEY)],
+            middleware=[Mem0Middleware(api_key=yard_manager.config.mem0_api_key)],
         )
         return yard_manager
 
@@ -135,6 +132,9 @@ if __name__ == "__main__":
     async def main():
         res = ""
         yard_manager = await YardManager.create()
+        # print graph
+        # graph = yard_manager.agent.get_graph(xray=True)
+        # graph.draw_mermaid_png(output_file="yard_manager.png")
         async for chunk in yard_manager.achat("帮我割草"):
             content = chunk.get("content", "")
             res += content
