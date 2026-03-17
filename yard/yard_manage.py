@@ -89,10 +89,13 @@ class YardManager:
         yard_manager.agent = create_deep_agent(
             model=create_glm_model(yard_manager.config),
             tools=yard_manager.tools,
-            # memory=[yard_manager.config.agents_md],
+            memory=[yard_manager.config.agents_md],
             skills=[yard_manager.config.skills_dir],
             # subagents=load_subagents(yard_manager.config.subagents_yaml),
-            backend=FilesystemBackend(root_dir=yard_manager.config.workspace_dir),
+            backend=FilesystemBackend(
+                root_dir=yard_manager.config.workspace_dir, 
+                virtual_mode=True
+                ),
             checkpointer=MemorySaver(),  
             middleware=[Mem0Middleware(api_key=yard_manager.config.mem0_api_key)],
         )

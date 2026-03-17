@@ -5,20 +5,17 @@ from typing import Optional
 from dotenv import load_dotenv
 from pydantic import BaseModel
 
-
-BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / ".env")
-
+load_dotenv(os.path.join(os.getcwd(), ".env"))
 
 class Config(BaseModel):
-    skills_dir: str = "yard/skills"
+    skills_dir: str = "skills"
     workspace_dir: str = "yard/workspace"
 
     subagents_yaml: str = "yard/configs/subagents.yaml"
     mcp_servers_yaml: str = "yard/configs/mcp_servers.yaml"
-    agents_md: str = "yard/internal/AGENTS.md"
-    goal_md: str = "yard/internal/GOAL.md"
-    user_md: str = "yard/internal/USER.md"
+    agents_md: str = "AGENTS.md"
+    goal_md: str = "GOAL.md"
+    user_md: str = "USER.md"
 
     mem0_api_key: Optional[str] = None
 

@@ -64,7 +64,6 @@ class Mem0Middleware(AgentMiddleware[Mem0State, Any]):
             return None
 
         results = self.client.search(last_user_msg, filters={"user_id": user_id})
-        print("results", results)
         return Mem0StateUpdate(mem0_memories=results)
 
     async def abefore_agent(self, state: Mem0State, runtime) -> Mem0StateUpdate | None:
