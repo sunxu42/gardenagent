@@ -10,8 +10,7 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage, AIMess
 from yard.mem0_middleware import Mem0Middleware
 from yard.graph import create_deep_agent
 from yard.configs.config import load_config
-
-
+from yard.context_middleware import ContextMiddleware
 
 def create_glm_model(config):
 
@@ -89,15 +88,15 @@ class YardManager:
         yard_manager.agent = create_deep_agent(
             model=create_glm_model(yard_manager.config),
             tools=yard_manager.tools,
-            memory=[yard_manager.config.agents_md],
-            skills=[yard_manager.config.skills_dir],
+            # memory=[yard_manager.config.agents_md],
+            # skills=[yard_manager.config.skills_dir],
             # subagents=load_subagents(yard_manager.config.subagents_yaml),
             backend=FilesystemBackend(
                 root_dir=yard_manager.config.workspace_dir, 
                 virtual_mode=True
                 ),
             checkpointer=MemorySaver(),  
-            middleware=[Mem0Middleware(api_key=yard_manager.config.mem0_api_key)],
+            middleware=[ContextMiddleware()],
         )
         return yard_manager
 
