@@ -11,6 +11,7 @@ from yard.mem0_middleware import Mem0Middleware
 from yard.graph import create_deep_agent
 from yard.configs.config import load_config
 from yard.context_middleware import ContextMiddleware
+from yard.init_workspace import init_workspace
 
 def create_glm_model(config):
 
@@ -71,7 +72,7 @@ def load_subagents(config_path) -> list:
 class YardManager:
 
     def __init__(self, config=None):
-        print(config)
+
         self.config = self._merge_config(config)
 
     def _merge_config(self, config):
@@ -84,19 +85,21 @@ class YardManager:
     @classmethod
     async def create(cls, config=None):
         yard_manager = cls(config)
+        workspace_dir = init_workspace(yard_manager.config.workspace_dir)
         yard_manager.tools = await load_mcp_tools(yard_manager.config)
+        backend = FilesystemBackend(
+            root_dir=yard_manager.config.workspace_dir, 
+            virtual_mode=True
+            )
         yard_manager.agent = create_deep_agent(
             model=create_glm_model(yard_manager.config),
             tools=yard_manager.tools,
             # memory=[yard_manager.config.agents_md],
-            # skills=[yard_manager.config.skills_dir],
+            skills=[yard_manager.config.skills_dir],
             # subagents=load_subagents(yard_manager.config.subagents_yaml),
-            backend=FilesystemBackend(
-                root_dir=yard_manager.config.workspace_dir, 
-                virtual_mode=True
-                ),
+            backend=backend,
             checkpointer=MemorySaver(),  
-            middleware=[ContextMiddleware()],
+            middleware=[ContextMiddleware(backend=backend, source_path=yard_manager.config.workspace_dir)],
         )
         return yard_manager
 

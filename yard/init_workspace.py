@@ -3,13 +3,15 @@ import os
 import shutil
 
 
-def init_workspace():
-    workspace_dir = "yard/workspace"
+def init_workspace(workspace_dir):
     if not os.path.exists(workspace_dir):
         os.makedirs(workspace_dir)
 
-    # copy file from reference folder to workspace folder
-    for file in os.listdir("yard/reference"):
-        if file.endswith(".md"):
-            shutil.copy(os.path.join("yard/reference", file), os.path.join(workspace_dir, file))
+        # copy file from reference folder to workspace folder
+        for file in os.listdir("yard/reference"):
+            if file.endswith(".md"):
+                shutil.copy(os.path.join("yard/reference", file), os.path.join(workspace_dir, file))
+        
+        # copy skill folder
+        shutil.copytree("yard/reference/skills", os.path.join(workspace_dir, "skills"))
     return workspace_dir

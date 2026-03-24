@@ -20,7 +20,7 @@ from langgraph.types import Checkpointer
 from deepagents._models import resolve_model
 from deepagents.backends import StateBackend
 from deepagents.backends.protocol import BackendFactory, BackendProtocol
-from deepagents.middleware.filesystem import FilesystemMiddleware
+# from deepagents.middleware.filesystem import FilesystemMiddleware
 from deepagents.middleware.memory import MemoryMiddleware
 from deepagents.middleware.patch_tool_calls import PatchToolCallsMiddleware
 from deepagents.middleware.skills import SkillsMiddleware
@@ -31,7 +31,7 @@ from deepagents.middleware.subagents import (
     SubAgentMiddleware,
 )
 from deepagents.middleware.summarization import create_summarization_middleware
-
+from yard.filesystem_plus import FilesystemPlusMiddleware as FilesystemMiddleware
 BASE_AGENT_PROMPT = """You are a personal home assistant.
 """  # noqa: E501
 
