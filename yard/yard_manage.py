@@ -7,11 +7,13 @@ from deepagents.backends import FilesystemBackend
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage, AIMessageChunk
 
+from yard.events import InputEvent, OutputEvent
 from yard.mem0_middleware import Mem0Middleware
 from yard.graph import create_deep_agent
 from yard.configs.config import load_config
 from yard.context_middleware import ContextMiddleware
 from yard.init_workspace import init_workspace
+from yard.heartbeat import run_heartbeat_enqueue_loop
 
 def create_glm_model(config):
 
@@ -101,7 +103,52 @@ class YardManager:
             checkpointer=MemorySaver(),  
             middleware=[ContextMiddleware(backend=backend, source_path=yard_manager.config.workspace_dir)],
         )
+
+        # Agent internal queues (input -> worker -> output)
+        yard_manager.agent_input_queue = asyncio.Queue(maxsize=1000)
+        yard_manager.agent_output_queue = asyncio.Queue(maxsize=1000)
+        yard_manager._agent_input_processing = False
+
+        # start background tasks
+        yard_manager._worker_stop = asyncio.Event()
+        yard_manager._worker_task = asyncio.create_task(
+            yard_manager._agent_input_worker(),
+            name="input_worker",
+        )
+        yard_manager._heartbeat_stop = asyncio.Event()
+        yard_manager._heartbeat_task = asyncio.create_task(
+            run_heartbeat_enqueue_loop(
+                agent=yard_manager,
+                stop_event=yard_manager._heartbeat_stop,
+            ),
+            name="heartbeat_enqueue",
+        )
         return yard_manager
+
+    async def aclose(self) -> None:
+        """Stop background worker and heartbeat task."""
+        worker_stop = getattr(self, "_worker_stop", None)
+        hb_stop = getattr(self, "_heartbeat_stop", None)
+        if worker_stop is not None:
+            worker_stop.set()
+        if hb_stop is not None:
+            hb_stop.set()
+
+        worker_task = getattr(self, "_worker_task", None)
+        hb_task = getattr(self, "_heartbeat_task", None)
+        if worker_task is not None and not worker_task.done():
+            worker_task.cancel()
+        if hb_task is not None and not hb_task.done():
+            hb_task.cancel()
+
+        # Best-effort await
+        for task in (worker_task, hb_task):
+            if task is None:
+                continue
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
 
 
     async def achat(self, user_input: str, thread_id = "yard-manager-demo"):
@@ -130,8 +177,44 @@ class YardManager:
               
      
             
-           
+    async def astream(self, event: InputEvent):
+        event_id = event.event_id
+        trigger_by = event.event_type
 
+        # Turn start boundary
+        self.agent_output_queue.put_nowait(
+            OutputEvent(data={}, trigger_by=trigger_by, event_id=event_id, phase="start")
+        )
+
+        # Stream middle chunks
+        async for chunk in self.achat(event.content):
+            print(f"astream: {chunk}")
+            self.agent_output_queue.put_nowait(
+                OutputEvent(data=chunk, trigger_by=trigger_by, event_id=event_id, phase="middle")
+            )
+
+        # Turn end boundary
+        self.agent_output_queue.put_nowait(
+            OutputEvent(data={}, trigger_by=trigger_by, event_id=event_id, phase="end")
+        )
+
+
+
+    async def _agent_input_worker(self) -> None:
+        while not self._worker_stop.is_set():
+            if self._agent_input_processing:
+                await asyncio.sleep(0.1)
+                continue
+            try:
+                item = await self.agent_input_queue.get()
+                self._agent_input_processing = True
+                try:
+                    await self.astream(item)
+                finally:
+                    self._agent_input_processing = False
+                    self.agent_input_queue.task_done()
+            except asyncio.CancelledError:
+                return           
 
 if __name__ == "__main__":
     async def main():
