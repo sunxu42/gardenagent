@@ -35,7 +35,11 @@ def create_glm_model(config):
 async def load_mcp_tools(config):
     with open(config.mcp_servers_yaml) as f:
         mcp_servers_config = yaml.safe_load(f)
-    mcp_client = MultiServerMCPClient(mcp_servers_config)
+    try:
+        mcp_client = MultiServerMCPClient(mcp_servers_config)
+    except Exception as e:
+        raise e
+
     all_tools = []
     for name in mcp_client.connections.keys():
         try:
@@ -223,10 +227,10 @@ if __name__ == "__main__":
         # print graph
         graph = yard_manager.agent.get_graph(xray=True)
         graph.draw_mermaid_png(output_file_path="yard_manager.png")
-        # async for chunk in yard_manager.achat("帮我割草"):
-        #     content = chunk.get("content", "")
-        #     res += content
-        # print(res)
+        async for chunk in yard_manager.achat("帮我割草"):
+            content = chunk.get("content", "")
+            res += content
+        print(res)
 
 
     asyncio.run(main())

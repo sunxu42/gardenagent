@@ -1,35 +1,37 @@
 import asyncio
-import time
+import inspect
 import os
-from typing import Callable, Dict, Any, Optional
-from loguru import logger
-from src.log import setup_logger
-    
-from src.agent_layer.agents.agent_factory import AgentFactory
 import uuid
 
-# abandon old interface: process_intermediate_text and process_final_text 
-# use new interface: read_event and put_event 
-# and write new process method
+from typing import Any, Awaitable, Callable, Dict, Optional
+
+from src.log import setup_logger, logger
+from src.agent_layer.agents.agent_factory import AgentFactory
 
 
 class AgentService:
-    def __init__(self, agent_config: Optional[Dict[str, Any]] = None):
+    def __init__(self, agent_config: dict = {}):
+        self.agent_config = agent_config 
+
+        self.agent = None
+        self.queue = asyncio.Queue(maxsize=1000)
+        self.result_callback: Optional[Callable[[Dict[str, Any]], Any]] = None
+        
+        
+        self._read_task: Optional[asyncio.Task] = None
+
+        self.session_id: Optional[str] = None
         self.is_running = False
         self.query_cache = set()
         self.is_new_session = True
-        self.agent = None
-        self.queue = asyncio.Queue(maxsize=1000)
-        self.result_callback = None
-    
-    def set_result_callback(self, callback: Callable[[Dict[str, Any]], None]):
+
+    def set_result_callback(self, callback: Callable[[Dict[str, Any]], Any]):
         self.result_callback = callback
 
     async def start(self):
         try:
-            agent_config = {
-                "agent_type": "yard_manager",
-            }   
+            agent_config = dict(self.agent_config) if self.agent_config else {}
+            agent_config.setdefault("agent_type", "yard_manager")
             self.agent = await AgentFactory.async_create_app(agent_config)
             self.is_running = True
             logger.info(f"Agent 服务已启动")
@@ -39,6 +41,26 @@ class AgentService:
     
     async def stop(self):
         self.is_running = False
+
+        # Best-effort: unblock read_event/process loops.
+        try:
+            if self.agent is not None:
+                out_q = getattr(self.agent, "agent_output_queue", None)
+                if out_q is not None:
+                    out_q.put_nowait(None)
+        except Exception:
+            # Unblock is best-effort; don't fail stop.
+            pass
+
+        try:
+            self.queue.put_nowait({"_stop": True})
+        except Exception:
+            pass
+
+        # Cancel local drain task if it's still alive.
+        if self._read_task is not None and not self._read_task.done():
+            self._read_task.cancel()
+
         # 关闭agent的线程池
         # await self.agent.shutdown()
         if self.agent is not None and hasattr(self.agent, "aclose"):
@@ -48,79 +70,18 @@ class AgentService:
                 logger.warning(f"agent aclose failed: {e}")
         logger.info("Agent 服务已停止")
 
-
     async def start_session(self):
         self.session_id = uuid.uuid4().hex
         self.is_new_session = False
 
-
     async def end_session(self):
         self.query_cache = set()
         self.is_new_session = True
-
-
-    # async def process(self):
-    #     while self.is_running:
-    #         try:
-    #             message = await self.queue.get()
-    #             if message:
-    #                 text = message.get('text', '')
-    #                 is_final = message.get('is_final', False)
-    #                 if self.is_new_session:
-    #                     await self.start_session()                        
-    #                 if is_final:
-    #                     await self.process_final_text(text)
-    #                 else:
-    #                     await self.process_intermediate_text(text)
-  
-    #         except asyncio.CancelledError:
-    #             logger.info("Agent 处理循环已取消")
-    #             break
-    #         except Exception as e:
-    #             logger.error(f"接收文本时出错: {e}")
-    #             await asyncio.sleep(0.1)
-           
-    # async def process_intermediate_text(self, text: str):
-        
-    #     if text in self.query_cache:
-    #         return
-        
-                
-    #     self.query_cache.add(text)
-    #     try:
-    #         logger.info(f"处理中间文本: {text}")
-
-    #         # 创建LLM调用任务，不等待结果
-    #         self.agent.create_llm_call_task(text)
-            
-    #     except Exception as e:
-    #         logger.error(f"处理中间文本时出错: {e}")
-    
-    # async def process_final_text(self, text: str):
-    #     logger.info(f"处理最终文本: {text}")
-    #     count = 0
-    #     first_content = True
-    #     async for response in self.agent.achat(text):
-    #         if response:
-                
-    #             if "content" in response:
-    #                 if first_content:
-    #                     await self.publish_response({"msg_type": "SENTENCE_START"})
-    #                     first_content = False
-    #                 response = {"role": "assistant", "content": response.get("content", "")}
-    #             elif "updates" in response:
-    #                 response = {"role": "updates", "updates": response.get("updates", "")}
-
-
-    #             await self.publish_response({"msg_type": "response", "response": response})
-
-
-
-    #     await self.publish_response({"msg_type": "SENTENCE_END"})
-    #     await self.end_session()
-
     
     async def publish_response(self, message: Dict[str, Any]):
+        if self.result_callback is None:
+            logger.warning("publish_response: result_callback not set")
+            return
         await self.result_callback(message)
 
 
@@ -146,7 +107,11 @@ class AgentService:
                     data = getattr(evt, "data", None)
 
                     # By default: do not forward heartbeat to front-end.
-                    if trigger_by == "heartbeat":
+                    if (
+                        trigger_by == "heartbeat"
+                        and isinstance(data, dict)
+                        and data.get("content", "").strip() == "HEARTBEAT_OK"
+                    ):
                         continue
 
                     if phase == "start":
@@ -161,7 +126,9 @@ class AgentService:
                             await self.publish_response({"msg_type": "SENTENCE_END"})
                             started.discard(event_id)
                             try:
-                                await self.end_session()
+                                # Avoid resetting session when multiple events interleave.
+                                if not started:
+                                    await self.end_session()
                             except Exception:
                                 pass
                         continue
@@ -212,7 +179,7 @@ class AgentService:
         except Exception as e:
             logger.error(f"read_event: loop failed: {e}")
 
-    async def put_event(self, event: Dict[str, Any]):
+    async def put_event(self, event: Any):
         in_q = getattr(self.agent, "agent_input_queue", None)
         if in_q is None:
             logger.warning("put_event: agent_input_queue not found on agent")
@@ -235,14 +202,17 @@ class AgentService:
             await in_q.put(input_event)
         except Exception as e:
             logger.error(f"put_event failed: {e}")
+    
     async def process(self):
         # Start draining agent outputs to front-end.
-        read_task = asyncio.create_task(self.read_event(), name="agent_read_event")
+        self._read_task = asyncio.create_task(self.read_event(), name="agent_read_event")
         try:
             while self.is_running:
                 message = await self.queue.get()
                 if not message:
                     continue
+                if isinstance(message, dict) and message.get("_stop") is True:
+                    return
 
                 text = message.get("text", "")
                 is_final = message.get("is_final", False)
@@ -279,32 +249,35 @@ class AgentService:
             logger.info("AgentService.process cancelled")
         finally:
             # Stop draining outputs.
-            read_task.cancel()
+            if self._read_task is not None:
+                self._read_task.cancel()
             try:
-                await read_task
+                if self._read_task is not None:
+                    await self._read_task
             except asyncio.CancelledError:
                 pass
     
 
-async def main():
-    # 配置统一日志
-    setup_logger(log_file=os.getenv('AGENT_SERVICE_LOG', 'logs/agent_service.log'), enable_console=True)
-    
-    robot =  AgentService()
-    try:
-        # 启动服务
-        await robot.start()
-        
-            # 开始监听和处理    
-        await robot.process()
-        
-    except KeyboardInterrupt:
-        logger.info("收到停止信号")
-    except Exception as e:
-        logger.error(f"服务运行出错: {e}")
-    finally:
-        await robot.stop()
+
 
 
 if __name__ == "__main__":
+    async def main():
+        # 配置统一日志
+        setup_logger(log_file=os.getenv('AGENT_SERVICE_LOG', 'logs/agent_service.log'), enable_console=True)
+        
+        robot =  AgentService()
+        try:
+            # 启动服务
+            await robot.start()
+            
+                # 开始监听和处理    
+            await robot.process()
+            
+        except KeyboardInterrupt:
+            logger.info("收到停止信号")
+        except Exception as e:
+            logger.error(f"服务运行出错: {e}")
+        finally:
+            await robot.stop()
     asyncio.run(main())
