@@ -15,3 +15,4 @@ tts_outputs/
 *.lmdb
 uv.lock
 .env
+workspace/
