@@ -14,6 +14,8 @@ from yard.configs.config import load_config
 from yard.context_middleware import ContextMiddleware
 from yard.init_workspace import init_workspace
 from yard.heartbeat import run_heartbeat_enqueue_loop
+from yard.timer import LocalSchedulerService, create_cron_tool
+from yard.system_tools import create_session_status_tool
 
 def create_glm_model(config):
 
@@ -93,6 +95,10 @@ class YardManager:
         yard_manager = cls(config)
         workspace_dir = init_workspace(yard_manager.config.workspace_dir)
         yard_manager.tools = await load_mcp_tools(yard_manager.config)
+        yard_manager.local_scheduler = LocalSchedulerService(agent=yard_manager)
+        yard_manager.local_scheduler.start()
+        yard_manager.tools.append(create_cron_tool(yard_manager.local_scheduler))
+        yard_manager.tools.append(create_session_status_tool())
         backend = FilesystemBackend(
             root_dir=yard_manager.config.workspace_dir, 
             virtual_mode=True
@@ -131,6 +137,10 @@ class YardManager:
 
     async def aclose(self) -> None:
         """Stop background worker and heartbeat task."""
+        local_scheduler = getattr(self, "local_scheduler", None)
+        if local_scheduler is not None:
+            await local_scheduler.shutdown()
+
         worker_stop = getattr(self, "_worker_stop", None)
         hb_stop = getattr(self, "_heartbeat_stop", None)
         if worker_stop is not None:
@@ -192,7 +202,6 @@ class YardManager:
 
         # Stream middle chunks
         async for chunk in self.achat(event.content):
-            print(f"astream: {chunk}")
             self.agent_output_queue.put_nowait(
                 OutputEvent(data=chunk, trigger_by=trigger_by, event_id=event_id, phase="middle")
             )

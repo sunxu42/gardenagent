@@ -1,7 +1,7 @@
 opuslib_next
-loguru>=0.7.0
+loguru
 fastmcp
-langgraph==1.0.4
+langgraph
 langchain
 langchain-core
 langchain-community
@@ -9,3 +9,4 @@ langchain-mcp-adapters
 langchain-openai
 deepagents
 mem0ai
+apscheduler

@@ -7,7 +7,7 @@ from yard.events import InputEvent, HEARTBEAT_INPUT_EVENT
 
 HeartbeatPrompt = """Read HEARTBEAT.md if it exists (workspace context). Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply HEARTBEAT_OK."""
 
-DEFAULT_INTERVAL_SEC = 1 * 60
+DEFAULT_INTERVAL_SEC = 30 * 60
 DEFAULT_RETRY_DELAY_SEC = 60.0
 
 
@@ -35,6 +35,16 @@ async def run_heartbeat_enqueue_loop(
         )
 
     while not local_stop.is_set():
+        scheduler = getattr(agent, "local_scheduler", None)
+        if scheduler is not None:
+            try:
+                consumed = await scheduler.consume_pending_wake()
+            except Exception as e:
+                logger.error("consume pending wake failed: {}", e)
+                consumed = False
+            if consumed:
+                logger.info("consumed pending wake before heartbeat interval")
+
         try:
             await asyncio.wait_for(local_stop.wait(), timeout=interval_sec)
             return
