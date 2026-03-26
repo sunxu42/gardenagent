@@ -20,7 +20,6 @@ class Handler:
         self.agent_service = None
         self.session_id = None
         self.is_interrupting = False  # 打断标志，防止打断过程中的重复触发
-        self.agent_process_task = None  # AgentService处理循环任务
         self.first_token = False
         self.text_buffer = []
         
@@ -30,20 +29,12 @@ class Handler:
     async def setup_services(self):
         from src.agent_layer.agent_service import AgentService
         self.agent_service = AgentService()
-        await self.agent_service.start()
         self.agent_service.set_result_callback(self.agent_result_handler)
-        self.agent_process_task = asyncio.create_task(self.agent_service.process())
+        await self.agent_service.start()
         
         logger.info(f"handler 创建成功")
     
     async def cleanup_services(self):
-        if self.agent_process_task:
-            self.agent_process_task.cancel()
-            try:
-                await self.agent_process_task
-            except asyncio.CancelledError:
-                pass
-        
         if self.agent_service:
             await self.agent_service.stop()
         

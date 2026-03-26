@@ -27,6 +27,7 @@ from src.transport_layer.base import TransportBase
 class Handler:
     
     def __init__(self, config, transport: TransportBase, client_id: str):
+        self.config = config
         self.transport = transport
         self.client_id = client_id  # 当前客户端ID
         
@@ -54,9 +55,6 @@ class Handler:
         self.client_is_speaking = False
         self.is_interrupting = False  # 打断标志，防止打断过程中的重复触发
         
-        # 服务任务
-        self.agent_process_task = None  # AgentService处理循环任务
-
         # 统计时延
         self.timing_stats = {
             "user_voice_stop_time": 0.0, # 用户语音停止时间
@@ -89,9 +87,9 @@ class Handler:
             self.audio_service.set_result_callback(self.asr_result_handler)
         
         # 创建 AgentService
-        self.agent_service = AgentService()
-        await self.agent_service.start()
+        self.agent_service = AgentService(self.config.agent_config)
         self.agent_service.set_result_callback(self.agent_result_handler)
+        await self.agent_service.start()
         
         # 创建 TTSService（仅在启用语音输出时）
         if self.enable_audio_output:
@@ -100,20 +98,9 @@ class Handler:
             await self.tts_service.start()
             self.tts_service.set_result_callback(self.tts_result_handler)
         
-        # 启动 AgentService 的处理循环
-        self.agent_process_task = asyncio.create_task(self.agent_service.process())
-        
         logger.info(f"handler 创建成功")
     
     async def cleanup_services(self):
-        
-        # 停止 AgentService 处理循环
-        if self.agent_process_task:
-            self.agent_process_task.cancel()
-            try:
-                await self.agent_process_task
-            except asyncio.CancelledError:
-                pass
         
         # 停止所有服务
         if self.audio_service:

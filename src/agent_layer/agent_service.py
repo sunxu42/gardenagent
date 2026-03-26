@@ -1,5 +1,4 @@
 import asyncio
-import inspect
 import os
 import uuid
 
@@ -7,7 +6,7 @@ from typing import Any, Awaitable, Callable, Dict, Optional
 
 from src.log import setup_logger, logger
 from src.agent_layer.agents.agent_factory import AgentFactory
-
+from yard.events import InputEvent, USER_INPUT_EVENT
 
 class AgentService:
     def __init__(self, agent_config: dict = {}):
@@ -19,21 +18,35 @@ class AgentService:
         
         
         self._read_task: Optional[asyncio.Task] = None
+        self._process_task: Optional[asyncio.Task] = None
 
-        self.session_id: Optional[str] = None
         self.is_running = False
-        self.query_cache = set()
         self.is_new_session = True
 
     def set_result_callback(self, callback: Callable[[Dict[str, Any]], Any]):
         self.result_callback = callback
 
+    def _validate_agent(self) -> None:
+        if not hasattr(self.agent, "agent_output_queue"):
+            raise RuntimeError("agent_output_queue not found on agent")
+        if not hasattr(self.agent, "agent_input_queue"):
+            raise RuntimeError("agent_input_queue not found on agent")
+
+    def _out_q(self) -> Any:
+        self._validate_agent()
+        return self.agent.agent_output_queue
+
+    def _in_q(self) -> Any:
+        self._validate_agent()
+        return self.agent.agent_input_queue
+
     async def start(self):
         try:
-            agent_config = dict(self.agent_config) if self.agent_config else {}
-            agent_config.setdefault("agent_type", "yard_manager")
-            self.agent = await AgentFactory.async_create_app(agent_config)
+            self.agent = await AgentFactory.async_create_app(self.agent_config)
+            self._validate_agent()
             self.is_running = True
+            self._read_task = asyncio.create_task(self.read_event())
+            self._process_task = asyncio.create_task(self.put_event())
             logger.info(f"Agent 服务已启动")
         except Exception as e:
             logger.error(f"启动 Agent 服务失败: {e}")
@@ -41,28 +54,25 @@ class AgentService:
     
     async def stop(self):
         self.is_running = False
-
-        # Best-effort: unblock read_event/process loops.
         try:
-            if self.agent is not None:
-                out_q = getattr(self.agent, "agent_output_queue", None)
-                if out_q is not None:
-                    out_q.put_nowait(None)
+            self.agent.agent_output_queue.put_nowait(None)
         except Exception:
-            # Unblock is best-effort; don't fail stop.
             pass
-
         try:
             self.queue.put_nowait({"_stop": True})
         except Exception:
             pass
 
-        # Cancel local drain task if it's still alive.
-        if self._read_task is not None and not self._read_task.done():
-            self._read_task.cancel()
+        for t in (self._process_task, self._read_task):
+            if t is None:
+                continue
+            if not t.done():
+                t.cancel()
+            try:
+                await t
+            except asyncio.CancelledError:
+                pass
 
-        # 关闭agent的线程池
-        # await self.agent.shutdown()
         if self.agent is not None and hasattr(self.agent, "aclose"):
             try:
                 await self.agent.aclose()
@@ -71,11 +81,9 @@ class AgentService:
         logger.info("Agent 服务已停止")
 
     async def start_session(self):
-        self.session_id = uuid.uuid4().hex
         self.is_new_session = False
 
     async def end_session(self):
-        self.query_cache = set()
         self.is_new_session = True
     
     async def publish_response(self, message: Dict[str, Any]):
@@ -84,14 +92,8 @@ class AgentService:
             return
         await self.result_callback(message)
 
-
     async def read_event(self):
-        out_q = getattr(self.agent, "agent_output_queue", None)
-        if out_q is None:
-            logger.warning("read_event: agent_output_queue not found on agent")
-            return
-
-        # Track sentence state per event_id (safer if outputs interleave).
+        out_q = self._out_q()
         started: set[str] = set()
 
         try:
@@ -178,84 +180,37 @@ class AgentService:
             logger.info("read_event: cancelled")
         except Exception as e:
             logger.error(f"read_event: loop failed: {e}")
-
-    async def put_event(self, event: Any):
-        in_q = getattr(self.agent, "agent_input_queue", None)
-        if in_q is None:
-            logger.warning("put_event: agent_input_queue not found on agent")
-            return
-        try:
-            # Support both dict-style events and already-built InputEvent objects.
-            from yard.events import InputEvent, USER_INPUT_EVENT
-
-            if isinstance(event, InputEvent):
-                await in_q.put(event)
-                return
-            # Dict event from handler
-            text = event.get("content") or event.get("text") or ""
-            if not text:
-                return
-
-            event_id = event.get("event_id") or uuid.uuid4().hex
-            event_type = event.get("event_type") or USER_INPUT_EVENT
-            input_event = InputEvent(content=text, event_id=event_id, event_type=event_type)
-            await in_q.put(input_event)
-        except Exception as e:
-            logger.error(f"put_event failed: {e}")
     
-    async def process(self):
-        # Start draining agent outputs to front-end.
-        self._read_task = asyncio.create_task(self.read_event(), name="agent_read_event")
-        try:
-            while self.is_running:
-                message = await self.queue.get()
-                if not message:
-                    continue
-                if isinstance(message, dict) and message.get("_stop") is True:
-                    return
+    async def put_event(self):
+        
+        while self.is_running:
+            in_q = self._in_q()
+            message = await self.queue.get()
+            if not message:
+                continue
+            if isinstance(message, dict) and message.get("_stop") is True:
+                return
 
-                text = message.get("text", "")
-                is_final = message.get("is_final", False)
-                source = message.get("source", "user")
+            text = message.get("text", "")
+            is_final = message.get("is_final", False)
 
-                if not text:
-                    continue
+            if not text:
+                continue
 
-                if not is_final:
-                    # Intermediate ASR text: fire-and-forget.
-                    if text in self.query_cache:
-                        continue
-                    self.query_cache.add(text)
-                    try:
-                        if hasattr(self.agent, "create_llm_call_task"):
-                            self.agent.create_llm_call_task(text)
-                    except Exception as e:
-                        logger.error(f"处理中间文本时出错: {e}")
-                    continue
+            if not is_final:
+                # 暂时下线中间文本处理
+                continue
+  
 
-                # Final user turn: enqueue into yard input queue.
-                if self.is_new_session:
-                    await self.start_session()
+            if self.is_new_session:
+                await self.start_session()
 
-                # Map both user and asr finals to yard "user" event_type.
-                await self.put_event(
-                    {
-                        "content": text,
-                        "event_type": "user",
-                        "source": source,
-                    }
-                )
-        except asyncio.CancelledError:
-            logger.info("AgentService.process cancelled")
-        finally:
-            # Stop draining outputs.
-            if self._read_task is not None:
-                self._read_task.cancel()
-            try:
-                if self._read_task is not None:
-                    await self._read_task
-            except asyncio.CancelledError:
-                pass
+            input_event = InputEvent(
+                content=text, 
+                event_id=uuid.uuid4().hex, 
+                event_type=USER_INPUT_EVENT,
+            )
+            await in_q.put(input_event)
     
 
 
@@ -270,9 +225,6 @@ if __name__ == "__main__":
         try:
             # 启动服务
             await robot.start()
-            
-                # 开始监听和处理    
-            await robot.process()
             
         except KeyboardInterrupt:
             logger.info("收到停止信号")

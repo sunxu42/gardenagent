@@ -134,6 +134,7 @@ class AudioConfig:
 class UnifiedConfig(BaseModel):
     input_modality: list[str] = ["text", "audio"] # 至少["text"]
     output_modality: list[str] = ["text", "audio"] # 至少["text"]
+    agent_config: dict = {"agent_type": "yard_manager"}
 
 
 def load_config():
