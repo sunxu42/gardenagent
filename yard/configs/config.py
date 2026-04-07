@@ -3,9 +3,18 @@ from pathlib import Path
 from typing import Optional
 
 from dotenv import load_dotenv
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+import yaml
 
-load_dotenv(os.path.join(os.getcwd(), ".env"))
+CWD = os.getcwd()
+DEFAULT_CONFIG_FILE = os.path.join(CWD, ".config.yaml")
+DEFAULT_ENV_FILE = os.path.join(CWD, ".env")
+PROVIDER_ENV_KEY = {
+    "glm": ("GLM_OPENAI_API_KEY", "GLM_OPENAI_BASE_URL"),
+}
+SUPPORT_LLM_PROVIDERS = PROVIDER_ENV_KEY.keys()
+
+load_dotenv(DEFAULT_ENV_FILE)
 
 class Config(BaseModel):
     skills_dir: str = "skills"
@@ -18,26 +27,31 @@ class Config(BaseModel):
     user_md: str = "USER.md"
 
     mem0_api_key: Optional[str] = None
-
-    llm_api_key: Optional[str] = None
-    llm_base_url: Optional[str] = None
-    llm_model_name: Optional[str] = None
-
-    def add_config(self, config: dict):
-        for key, value in config.items():
-            if hasattr(self, key):
-                setattr(self, key, value)
+    llm_provider: Optional[str] = Field(default="glm")
+    llm_api_key: Optional[str] = Field(default=None)
+    llm_base_url: Optional[str] = Field(default=None)
+    llm_model_name: Optional[str] = Field(default="glm-4-flash")
 
 
-def load_config() -> Config:
-    config = Config(
-        mem0_api_key=os.getenv("MEM0_API_KEY"),
-        llm_model_name=os.getenv("LLM_MODEL_NAME"),
-    )
+def _read_yaml(file_path: str) -> dict:
+    with open(file_path, 'r') as file:
+        return yaml.safe_load(file)
 
-    if config.llm_model_name and "glm" in config.llm_model_name:
-        config.llm_api_key = os.getenv("GLM_OPENAI_API_KEY")
-        config.llm_base_url = os.getenv("GLM_OPENAI_BASE_URL")
+
+def load_config(runtime_config: Optional[dict] = None) -> Config:
+    if not os.path.isfile(DEFAULT_CONFIG_FILE):
+        raw: dict = {}
+    else:
+        loaded = _read_yaml(DEFAULT_CONFIG_FILE)
+        raw = loaded if isinstance(loaded, dict) else {}
+    config = Config(**raw)
+    api_key, base_url = PROVIDER_ENV_KEY.get(config.llm_provider.lower(), (None, None))
+    
+    config.llm_api_key = os.getenv(api_key)
+    config.llm_base_url = os.getenv(base_url)
+
+    if not config.llm_api_key or not config.llm_base_url:
+        raise ValueError(f"LLM API key and base url are required for {config.llm_model_name}")
 
     # validate if none, raise error
     if not config.llm_model_name or not config.llm_base_url or not config.llm_api_key:

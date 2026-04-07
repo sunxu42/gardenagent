@@ -81,14 +81,8 @@ class YardManager:
 
     def __init__(self, config=None):
 
-        self.config = self._merge_config(config)
+        self.config = load_config(config)
 
-    def _merge_config(self, config):
-        base_config = load_config()
-        if config:
-            # 将传入的 dict 配置合并到基础配置对象上（只覆盖已存在字段）
-            base_config.add_config(config)
-        return base_config
 
     @classmethod
     async def create(cls, config=None):

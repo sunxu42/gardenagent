@@ -1,0 +1,41 @@
+# # === src 层配置（对应 UnifiedConfig） ===
+# host: "0.0.0.0"
+# port: 8005
+
+# input_modality: [text, audio]
+# output_modality: [text, audio]
+
+# handler_type: "default"
+# agent_type: "herta_manager"
+
+# logging:
+#   log_level: "INFO"
+#   log_file: "logs/websocket_server.log"
+#   log_rotation: "1 day"
+#   log_retention: "7 days"
+#   disable_modules: ["src.agent_layer"]
+
+# audio:
+#   sample_rate: 16000
+#   channels: 1
+#   bits_per_sample: 16
+#   asr_provider_name: "DoubaoStreamingASR"
+#   aliyun_HOST: "nls-gateway-cn-shanghai.aliyuncs.com"
+
+# tts:
+#   tts_provider_name: "HuoshanTTS"
+#   huoshan_tts_ws_url: "wss://openspeech.bytedance.com/api/v3/tts/bidirection"
+#   huoshan_tts_resource_id: "volc.service_type.10029"
+#   aliyun_host: "nls-gateway-cn-beijing.aliyuncs.com"
+
+# # === herta 层配置 ===
+# skills_dir: "skills"
+# workspace_dir: "herta/workspace"
+
+# subagents_yaml: "herta/configs/subagents.yaml"
+# mcp_servers_yaml: "herta/configs/mcp_servers.yaml"
+# agents_md: "AGENTS.md"
+# goal_md: "GOAL.md"
+# user_md: "USER.md"
+# llm_provider: "glm"
+# llm_model_name: "glm-4-flash"

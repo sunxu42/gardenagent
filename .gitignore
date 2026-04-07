@@ -15,4 +15,5 @@ tts_outputs/
 *.lmdb
 uv.lock
 .env
+.config.yaml
 workspace/

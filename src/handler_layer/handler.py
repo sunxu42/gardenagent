@@ -19,7 +19,6 @@ import uuid
 from typing import Dict, Any, Optional
 from loguru import logger
 
-from src.config import WebSocketConfig, AudioConfig, TTSConfig
 from src.utils.opus_encoder_utils import OpusCodecUtils
 from src.transport_layer.base import TransportBase
 
@@ -33,8 +32,8 @@ class Handler:
         
         # Opus 编解码工具
         self.opus_utils = OpusCodecUtils(
-            sample_rate=WebSocketConfig.audio_sample_rate,
-            channels=WebSocketConfig.audio_channels,
+            sample_rate=config.audio_config.sample_rate,
+            channels=config.audio_config.channels,
             frame_size_ms=60,
         )
         
@@ -81,20 +80,18 @@ class Handler:
         
         # 创建 AudioService（仅在启用语音输入时）
         if self.enable_audio_input:
-            audio_config = AudioConfig()
-            self.audio_service = AudioService(audio_config)
+            self.audio_service = AudioService(self.config.audio_config)
             await self.audio_service.start()
             self.audio_service.set_result_callback(self.asr_result_handler)
         
         # 创建 AgentService
-        self.agent_service = AgentService(self.config.agent_config)
+        self.agent_service = AgentService({"agent_type": self.config.agent_type})
         self.agent_service.set_result_callback(self.agent_result_handler)
         await self.agent_service.start()
         
         # 创建 TTSService（仅在启用语音输出时）
         if self.enable_audio_output:
-            tts_config = TTSConfig()
-            self.tts_service = TTSService(tts_config)
+            self.tts_service = TTSService(self.config.tts_config)
             await self.tts_service.start()
             self.tts_service.set_result_callback(self.tts_result_handler)
         
@@ -176,10 +173,10 @@ class Handler:
             "version": 1,
             "transport": "websocket",
             "audio_params": {
-                "channels": WebSocketConfig.audio_channels,
+                "channels": self.config.audio_config.channels,
                 "format": "opus",
                 "frame_duration": self.frame_duration_ms,
-                "sample_rate": WebSocketConfig.audio_sample_rate
+                "sample_rate": self.config.audio_config.sample_rate
             },
             "session_id": self.session_id
         }

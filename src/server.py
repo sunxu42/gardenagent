@@ -6,7 +6,7 @@ import asyncio
 from src.transport_layer import WebSocketTransport
 from src.handler_layer.handler_manager import HandlerManager
 from src.log import setup_logger, logger
-from src.config import WebSocketConfig
+from src.config import load_config
 setup_logger(log_level='DEBUG',disable_modules=[])
 
 
@@ -16,8 +16,9 @@ setup_logger(log_level='DEBUG',disable_modules=[])
 class Server:
     
     def __init__(self):
-        self.transport = WebSocketTransport(host=WebSocketConfig.host, port=WebSocketConfig.port)
-        self.handler_manager = HandlerManager(self.transport, WebSocketConfig.handler_type)
+        cfg = load_config()
+        self.transport = WebSocketTransport(host=cfg.host, port=cfg.port)
+        self.handler_manager = HandlerManager(self.transport, cfg.handler_type)
     
     async def start(self):
         # 注册连接和断开回调
