@@ -17,5 +17,3 @@ uv.lock
 .env
 .config.yaml
 workspace/
-
-.cursor/
