@@ -460,6 +460,264 @@
             color: #333;
             font-weight: 500;
         }
+
+        /* 机器人设定（工作区 Markdown）— 次要区域，置底 */
+        .md-workspace-panel {
+            margin-top: 8px;
+        }
+
+        .md-workspace-panel .md-ws-intro {
+            margin: 0 0 12px 0;
+            color: #475569;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .md-workspace-panel .md-ws-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .md-workspace-panel .md-ws-toolbar button {
+            padding: 8px 14px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            background: #fff;
+            color: #334155;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+
+        .md-workspace-panel .md-ws-toolbar button:hover {
+            background: #f8fafc;
+            border-color: #94a3b8;
+        }
+
+        .md-workspace-panel .md-ws-toolbar button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .md-workspace-panel .md-ws-connection {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .md-workspace-panel .md-ws-connection label {
+            color: #475569;
+        }
+
+        .md-workspace-panel .md-ws-connection input[type="text"] {
+            flex: 1;
+            min-width: 220px;
+            padding: 6px 8px;
+            border: 1px solid #cbd5e1;
+            border-radius: 5px;
+            font-size: 13px;
+        }
+
+        /* MD 展示框支持用户拖拽高度 */
+        .md-ws-layout {
+            height: min(80vh, 720px);
+            min-height: 400px;
+            max-height: 85vh;
+            resize: vertical;
+            overflow: auto;
+        }
+
+        .md-ws-layout {
+            display: flex;
+            gap: 12px;
+            align-items: stretch;
+        }
+
+        .md-ws-tree-wrap {
+            width: 260px;
+            flex-shrink: 0;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background: #fff;
+            overflow: auto;
+            padding: 8px;
+            box-sizing: border-box;
+            height: 100%;
+            min-height: 0;
+        }
+
+        .md-ws-editor-wrap {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 0;
+            background: #fff;
+            box-sizing: border-box;
+            overflow: hidden;
+            height: 100%;
+            min-height: 0;
+        }
+
+        .md-ws-editor-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 8px 10px;
+            border-bottom: 1px solid #e2e8f0;
+            background: #fafafa;
+            flex-shrink: 0;
+        }
+
+        .md-ws-editor-header .md-ws-current-path {
+            flex: 1;
+            min-width: 0;
+            font-size: 12px;
+            color: #64748b;
+            word-break: break-all;
+            padding: 4px 0 0 0;
+            margin: 0;
+            border: none;
+            background: transparent;
+        }
+
+        .md-ws-editor-header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+
+        /* 状态文案在保存按钮左侧 */
+        #workspaceMdStatus {
+            margin: 0;
+            font-size: 12px;
+            line-height: 1.3;
+            color: #64748b;
+            max-width: 220px;
+            text-align: right;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #workspaceMdStatus.ok {
+            color: #2e7d32;
+        }
+
+        #workspaceMdStatus.error {
+            color: #c62828;
+        }
+
+        /* 保存：与页面主按钮同色（继承全局 button，仅保证在面板内不被工具栏灰样式覆盖） */
+        #workspaceMdSave {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            background-color: #4285f4;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-size: 14px;
+        }
+
+        #workspaceMdSave:hover:not(:disabled) {
+            background-color: #3367d6;
+        }
+
+        #workspaceMdSave:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        .md-ws-editor-wrap textarea {
+            flex: 1;
+            min-height: 200px;
+            width: 100%;
+            box-sizing: border-box;
+            font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+            font-size: 13px;
+            line-height: 1.45;
+            padding: 10px 12px;
+            border: none;
+            border-radius: 0;
+            resize: none;
+            overflow-y: auto;
+            outline: none;
+        }
+
+        .md-ws-editor-wrap textarea:focus {
+            box-shadow: inset 0 0 0 2px rgba(66, 133, 244, 0.3);
+        }
+
+        .md-ws-editor-wrap textarea:disabled {
+            background: #f8fafc;
+            color: #94a3b8;
+        }
+
+        .md-tree-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            padding-left: 14px;
+        }
+
+        .md-tree-list.root {
+            padding-left: 0;
+        }
+
+        .md-tree-row {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            user-select: none;
+        }
+
+        .md-tree-row:hover {
+            background: #f0f7f2;
+        }
+
+        .md-tree-row.active {
+            background: #d8eedc;
+            font-weight: 500;
+        }
+
+        .md-tree-caret {
+            display: inline-block;
+            width: 14px;
+            font-size: 10px;
+            color: #666;
+        }
+
+        .md-tree-node.collapsed>.md-tree-children {
+            display: none;
+        }
+
+        .md-tree-node.collapsed>.md-tree-row .md-tree-caret::before {
+            content: '▶';
+        }
+
+        .md-tree-node:not(.collapsed)>.md-tree-row .md-tree-caret::before {
+            content: '▼';
+        }
+
+        .md-tree-file>.md-tree-row .md-tree-caret {
+            visibility: hidden;
+        }
     </style>
 </head>
 
@@ -549,6 +807,36 @@
                 <div id="conversation" class="conversation"></div>
                 <div id="logContainer">
                     <div class="log-entry log-info">准备就绪，请连接服务器开始测试...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section md-workspace-panel">
+            <h2>机器人能力与设定</h2>
+            <p class="md-ws-intro">
+                在这里编辑当前机器人工作区里的说明文档（例如身份、行为规则、技能说明等）。在左侧选中文件，在右侧直接修改正文；保存后，机器人下次读取这些文件时会使用最新内容。
+            </p>
+            <div class="md-ws-connection">
+                <label for="workspaceMdApiBase">Markdown 后台地址:</label>
+                <input type="text" id="workspaceMdApiBase" value="http://127.0.0.1:8010"
+                    placeholder="例如：http://127.0.0.1:8010（默认与上方 IP 一致，仅端口不同）" />
+            </div>
+            <div class="md-ws-toolbar">
+                <button type="button" id="workspaceMdRefreshTree">刷新文件列表</button>
+            </div>
+            <div class="md-ws-layout">
+                <div class="md-ws-tree-wrap">
+                    <ul class="md-tree-list root" id="workspaceMdTree"></ul>
+                </div>
+                <div class="md-ws-editor-wrap">
+                    <div class="md-ws-editor-header">
+                        <div class="md-ws-current-path" id="workspaceMdCurrentPath">未选择文件</div>
+                        <div class="md-ws-editor-header-actions">
+                            <span id="workspaceMdStatus" aria-live="polite"></span>
+                            <button type="button" id="workspaceMdSave" disabled>保存</button>
+                        </div>
+                    </div>
+                    <textarea id="workspaceMdEditor" placeholder="请先在左侧选择一个 .md 文件…" disabled></textarea>
                 </div>
             </div>
         </div>
@@ -2204,10 +2492,230 @@
             }
         }
 
+        // —— 工作区 Markdown 面板（独立 HTTP API）——
+        const workspaceMdState = {
+            currentPath: null,
+            baseline: '',
+            apiBase: ''
+        };
+
+        function workspaceMdGetApiBase() {
+            const el = document.getElementById('workspaceMdApiBase');
+            return (el && el.value || '').trim().replace(/\/$/, '');
+        }
+
+        function workspaceMdSetStatus(msg, kind) {
+            const el = document.getElementById('workspaceMdStatus');
+            if (!el) return;
+            el.textContent = msg || '';
+            el.className = kind || '';
+        }
+
+        function workspaceMdUpdateSaveButtonState() {
+            const saveBtn = document.getElementById('workspaceMdSave');
+            const ta = document.getElementById('workspaceMdEditor');
+            if (!saveBtn || !ta) return;
+            const dirty = workspaceMdIsDirty();
+            saveBtn.disabled = !workspaceMdState.currentPath || ta.disabled || !dirty;
+        }
+
+        function workspaceMdIsDirty() {
+            const ta = document.getElementById('workspaceMdEditor');
+            if (!ta || !workspaceMdState.currentPath) return false;
+            return ta.value !== workspaceMdState.baseline;
+        }
+
+        function workspaceMdConfirmLoseChanges() {
+            if (!workspaceMdIsDirty()) return true;
+            return confirm('当前文件有未保存修改，确定要离开吗？');
+        }
+
+        function workspaceMdBuildTreeNodes(children, ul) {
+            (children || []).forEach(function (node) {
+                const li = document.createElement('li');
+                li.className = 'md-tree-node' + (node.type === 'dir' ? ' md-tree-dir collapsed' : ' md-tree-file');
+                const row = document.createElement('div');
+                row.className = 'md-tree-row';
+                const caret = document.createElement('span');
+                caret.className = 'md-tree-caret';
+                row.appendChild(caret);
+                const label = document.createElement('span');
+                label.textContent = node.name;
+                row.appendChild(label);
+                li.appendChild(row);
+
+                if (node.type === 'dir') {
+                    const sub = document.createElement('ul');
+                    sub.className = 'md-tree-list md-tree-children';
+                    workspaceMdBuildTreeNodes(node.children || [], sub);
+                    li.appendChild(sub);
+                    row.addEventListener('click', function (ev) {
+                        ev.stopPropagation();
+                        li.classList.toggle('collapsed');
+                    });
+                } else {
+                    row.dataset.path = node.path;
+                    row.addEventListener('click', function (ev) {
+                        ev.stopPropagation();
+                        workspaceMdOpenFile(node.path, row);
+                    });
+                }
+                ul.appendChild(li);
+            });
+        }
+
+        function workspaceMdClearTreeSelection() {
+            document.querySelectorAll('.md-tree-row.active').forEach(function (r) {
+                r.classList.remove('active');
+            });
+        }
+
+        async function workspaceMdLoadTree() {
+            const base = workspaceMdGetApiBase();
+            workspaceMdState.apiBase = base;
+            const treeEl = document.getElementById('workspaceMdTree');
+            if (!treeEl) return;
+            treeEl.innerHTML = '';
+            if (!base) {
+                workspaceMdSetStatus('无法连接编辑服务', 'error');
+                return;
+            }
+            workspaceMdSetStatus('正在加载文件列表…');
+            try {
+                const res = await fetch(base + '/api/workspace-md/tree');
+                const data = await res.json().catch(function () { return null; });
+                if (!res.ok) {
+                    workspaceMdSetStatus((data && data.error) || ('HTTP ' + res.status), 'error');
+                    return;
+                }
+                workspaceMdBuildTreeNodes(data.children || [], treeEl);
+                workspaceMdSetStatus('列表已更新', 'ok');
+            } catch (e) {
+                workspaceMdSetStatus('无法加载文件列表（请确认本机已启动工作区文档服务）', 'error');
+            }
+        }
+
+        async function workspaceMdOpenFile(path, rowEl) {
+            if (!workspaceMdConfirmLoseChanges()) return;
+            const base = workspaceMdGetApiBase();
+            if (!base) {
+                workspaceMdSetStatus('无法连接编辑服务', 'error');
+                return;
+            }
+            workspaceMdClearTreeSelection();
+            if (rowEl) rowEl.classList.add('active');
+
+            const ta = document.getElementById('workspaceMdEditor');
+            const pathEl = document.getElementById('workspaceMdCurrentPath');
+            workspaceMdSetStatus('正在加载…');
+            try {
+                const url = base + '/api/workspace-md/content?path=' + encodeURIComponent(path);
+                const res = await fetch(url);
+                const data = await res.json().catch(function () { return null; });
+                if (!res.ok) {
+                    workspaceMdSetStatus((data && data.error) || ('HTTP ' + res.status), 'error');
+                    workspaceMdUpdateSaveButtonState();
+                    return;
+                }
+                workspaceMdState.currentPath = path;
+                workspaceMdState.baseline = data.content != null ? data.content : '';
+                ta.value = workspaceMdState.baseline;
+                ta.disabled = false;
+                if (pathEl) {
+                    pathEl.textContent = path;
+                }
+                workspaceMdSetStatus('已加载', 'ok');
+                workspaceMdUpdateSaveButtonState();
+            } catch (e) {
+                workspaceMdSetStatus('加载失败: ' + e.message, 'error');
+                workspaceMdUpdateSaveButtonState();
+            }
+        }
+
+        async function workspaceMdSave() {
+            const base = workspaceMdGetApiBase();
+            const path = workspaceMdState.currentPath;
+            const ta = document.getElementById('workspaceMdEditor');
+            if (!base || !path || !ta) return;
+            workspaceMdSetStatus('正在保存…');
+            try {
+                const url = base + '/api/workspace-md/content?path=' + encodeURIComponent(path);
+                const res = await fetch(url, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+                    body: ta.value
+                });
+                if (res.status === 204 || res.ok) {
+                    workspaceMdState.baseline = ta.value;
+                    workspaceMdSetStatus('已保存', 'ok');
+                    workspaceMdUpdateSaveButtonState();
+                    return;
+                }
+                const data = await res.json().catch(function () { return null; });
+                workspaceMdSetStatus((data && data.error) || ('HTTP ' + res.status), 'error');
+            } catch (e) {
+                workspaceMdSetStatus('保存失败: ' + e.message, 'error');
+            }
+        }
+
+        function initWorkspaceMdPanel() {
+            const refresh = document.getElementById('workspaceMdRefreshTree');
+            const saveBtn = document.getElementById('workspaceMdSave');
+            const apiInput = document.getElementById('workspaceMdApiBase');
+
+            // 默认逻辑与上方 WebSocket 地址保持一致，只是端口改为 8010
+            if (apiInput) {
+                // 优先使用用户上次保存的 Markdown 后台地址
+                const savedMdBase = localStorage.getItem('workspaceMdApiBase');
+                if (savedMdBase) {
+                    apiInput.value = savedMdBase;
+                } else {
+                    // 如果没有独立配置，则根据当前 WebSocket 地址推导一个默认值
+                    try {
+                        const wsInput = document.getElementById('serverUrl');
+                        const wsUrl = (wsInput && wsInput.value || '').trim();
+                        if (wsUrl) {
+                            const u = new URL(wsUrl);
+                            // 与上面保持相同的主机/IP，只调整协议和端口
+                            u.protocol = (u.protocol === 'wss:') ? 'https:' : 'http:';
+                            u.port = '8010';
+                            apiInput.value = u.origin;
+                        }
+                    } catch (e) {
+                        // 忽略推导错误，保留默认值
+                    }
+                }
+
+                apiInput.addEventListener('change', function () {
+                    const v = apiInput.value.trim();
+                    localStorage.setItem('workspaceMdApiBase', v);
+                });
+            }
+
+            if (refresh) refresh.addEventListener('click', function () {
+                if (!workspaceMdConfirmLoseChanges()) return;
+                workspaceMdLoadTree();
+            });
+            if (saveBtn) saveBtn.addEventListener('click', workspaceMdSave);
+            const ta = document.getElementById('workspaceMdEditor');
+            if (ta) {
+                ta.addEventListener('input', workspaceMdUpdateSaveButtonState);
+            }
+            window.addEventListener('beforeunload', function (e) {
+                if (workspaceMdIsDirty()) {
+                    e.preventDefault();
+                    e.returnValue = '';
+                }
+            });
+            workspaceMdLoadTree();
+            workspaceMdUpdateSaveButtonState();
+        }
+
         // 初始化应用
         function initApp() {
             initVisualizer();
             initEventListeners();
+            initWorkspaceMdPanel();
 
             // 检查libopus.js是否正确加载
             checkOpusLoaded();
