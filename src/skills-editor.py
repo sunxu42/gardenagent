@@ -1,7 +1,7 @@
 """
 Local HTTP API for browsing and editing Markdown files under yard/workspace.
 
-Run from repo root: python yard/workspace_md_server.py
+Run from repo root: python src/skills-editor.py
 Default: http://127.0.0.1:8010
 """
 from __future__ import annotations
@@ -13,7 +13,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-WORKSPACE_ROOT = Path(__file__).resolve().parent / "workspace"
+WORKSPACE_ROOT = REPO_ROOT / "yard" / "workspace"
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8010
 
@@ -209,3 +209,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

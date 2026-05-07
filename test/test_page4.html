@@ -502,6 +502,28 @@
             cursor: not-allowed;
         }
 
+        .md-workspace-panel .md-ws-connection {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .md-workspace-panel .md-ws-connection label {
+            color: #475569;
+        }
+
+        .md-workspace-panel .md-ws-connection input[type="text"] {
+            flex: 1;
+            min-width: 220px;
+            padding: 6px 8px;
+            border: 1px solid #cbd5e1;
+            border-radius: 5px;
+            font-size: 13px;
+        }
+
         /* MD 展示框支持用户拖拽高度 */
         .md-ws-layout {
             height: min(80vh, 720px);
@@ -794,7 +816,11 @@
             <p class="md-ws-intro">
                 在这里编辑当前机器人工作区里的说明文档（例如身份、行为规则、技能说明等）。在左侧选中文件，在右侧直接修改正文；保存后，机器人下次读取这些文件时会使用最新内容。
             </p>
-            <input type="hidden" id="workspaceMdApiBase" value="http://127.0.0.1:8010" />
+            <div class="md-ws-connection">
+                <label for="workspaceMdApiBase">Markdown 后台地址:</label>
+                <input type="text" id="workspaceMdApiBase" value="http://127.0.0.1:8010"
+                    placeholder="例如：http://127.0.0.1:8010（默认与上方 IP 一致，仅端口不同）" />
+            </div>
             <div class="md-ws-toolbar">
                 <button type="button" id="workspaceMdRefreshTree">刷新文件列表</button>
             </div>
@@ -2635,6 +2661,37 @@
         function initWorkspaceMdPanel() {
             const refresh = document.getElementById('workspaceMdRefreshTree');
             const saveBtn = document.getElementById('workspaceMdSave');
+            const apiInput = document.getElementById('workspaceMdApiBase');
+
+            // 默认逻辑与上方 WebSocket 地址保持一致，只是端口改为 8010
+            if (apiInput) {
+                // 优先使用用户上次保存的 Markdown 后台地址
+                const savedMdBase = localStorage.getItem('workspaceMdApiBase');
+                if (savedMdBase) {
+                    apiInput.value = savedMdBase;
+                } else {
+                    // 如果没有独立配置，则根据当前 WebSocket 地址推导一个默认值
+                    try {
+                        const wsInput = document.getElementById('serverUrl');
+                        const wsUrl = (wsInput && wsInput.value || '').trim();
+                        if (wsUrl) {
+                            const u = new URL(wsUrl);
+                            // 与上面保持相同的主机/IP，只调整协议和端口
+                            u.protocol = (u.protocol === 'wss:') ? 'https:' : 'http:';
+                            u.port = '8010';
+                            apiInput.value = u.origin;
+                        }
+                    } catch (e) {
+                        // 忽略推导错误，保留默认值
+                    }
+                }
+
+                apiInput.addEventListener('change', function () {
+                    const v = apiInput.value.trim();
+                    localStorage.setItem('workspaceMdApiBase', v);
+                });
+            }
+
             if (refresh) refresh.addEventListener('click', function () {
                 if (!workspaceMdConfirmLoseChanges()) return;
                 workspaceMdLoadTree();

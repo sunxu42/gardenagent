@@ -16,10 +16,10 @@ flowchart LR
     Src --> Yard["yard/ 智能体内核<br/>(deepagents)"]
     Yard -.MCP.-> MCP["mcp_servers/garden_system<br/>FastMCP :8000"]
     Yard <--> Workspace[("yard/workspace/<br/>记忆 / 配置 / 技能")]
-    MdServer["workspace_md_server :8010"] <--> Workspace
+    MdServer["skills-editor :8010"] <--> Workspace
 ```
 
-旁路的 `yard/workspace_md_server.py` 是一个本地 HTTP 服务，用来在浏览器里查看和编辑 `yard/workspace/` 下的 Markdown 文件（智能体的"记忆"和配置），跑不跑都不影响主流程。
+旁路的 `src/skills-editor.py` 是一个本地 HTTP 服务，用来在浏览器里查看和编辑 `yard/workspace/` 下的 Markdown 文件（智能体的"记忆"和配置），跑不跑都不影响主流程。
 
 ## 配置
 
@@ -59,7 +59,7 @@ python mcp_servers/garden_system/mcp_server.py
 python src/server.py
 
 # Markdown 工作区后台（可选，用来在浏览器里编辑 yard/workspace/ 下的 .md）
-python yard/workspace_md_server.py
+python src/skills-editor.py
 ```
 
 如果只想跑智能体本体试一下：
