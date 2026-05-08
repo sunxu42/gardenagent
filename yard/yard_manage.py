@@ -1,4 +1,5 @@
 import asyncio
+import os
 import yaml
 
 from langchain_openai import ChatOpenAI
@@ -16,6 +17,8 @@ from yard.init_workspace import init_workspace
 from yard.heartbeat import run_heartbeat_enqueue_loop
 from yard.timer import LocalSchedulerService, create_cron_tool
 from yard.system_tools import create_session_status_tool
+from langfuse import get_client
+from langfuse.langchain import CallbackHandler
 
 def create_glm_model(config):
 
@@ -82,6 +85,27 @@ class YardManager:
     def __init__(self, config=None):
 
         self.config = load_config(config)
+        self.langfuse_client = self._init_langfuse_client()
+        self.langfuse_handler = self._init_langfuse_handler()
+
+    def _langfuse_enabled(self):
+        return bool(os.getenv("LANGFUSE_PUBLIC_KEY") and os.getenv("LANGFUSE_SECRET_KEY"))
+
+    def _init_langfuse_client(self):
+        if not self._langfuse_enabled():
+            return None
+        try:
+            return get_client()
+        except Exception:
+            return None
+
+    def _init_langfuse_handler(self):
+        if not self._langfuse_enabled():
+            return None
+        try:
+            return CallbackHandler()
+        except Exception:
+            return None
 
 
     @classmethod
@@ -160,9 +184,16 @@ class YardManager:
 
 
     async def achat(self, user_input: str, thread_id = "yard-manager-demo"):
+        stream_config = {"configurable": {"thread_id": thread_id}}
+        if self.langfuse_handler is not None:
+            stream_config["callbacks"] = [self.langfuse_handler]
+            stream_config["metadata"] = {
+                "langfuse_session_id": thread_id,
+                "langfuse_tags": ["yard-manager"],
+            }
         async for chunk, _ in self.agent.astream(
             {"messages": [("user", user_input)]},
-            config={"configurable": {"thread_id": thread_id}},
+            config=stream_config,
             stream_mode="messages",
         ):
             if isinstance(chunk, AIMessageChunk):
@@ -194,16 +225,24 @@ class YardManager:
             OutputEvent(data={}, trigger_by=trigger_by, event_id=event_id, phase="start")
         )
 
-        # Stream middle chunks
-        async for chunk in self.achat(event.content):
-            self.agent_output_queue.put_nowait(
-                OutputEvent(data=chunk, trigger_by=trigger_by, event_id=event_id, phase="middle")
-            )
+        try:
+            # Stream middle chunks
+            thread_id = str(event_id) if event_id else "yard-manager-demo"
+            async for chunk in self.achat(event.content, thread_id=thread_id):
+                self.agent_output_queue.put_nowait(
+                    OutputEvent(data=chunk, trigger_by=trigger_by, event_id=event_id, phase="middle")
+                )
 
-        # Turn end boundary
-        self.agent_output_queue.put_nowait(
-            OutputEvent(data={}, trigger_by=trigger_by, event_id=event_id, phase="end")
-        )
+            # Turn end boundary
+            self.agent_output_queue.put_nowait(
+                OutputEvent(data={}, trigger_by=trigger_by, event_id=event_id, phase="end")
+            )
+        finally:
+            if self.langfuse_client is not None:
+                try:
+                    self.langfuse_client.flush()
+                except Exception:
+                    pass
 
 
 

@@ -10,3 +10,5 @@ langchain-openai
 deepagents
 mem0ai
 apscheduler
+langfuse
+python-dotenv

@@ -16,6 +16,8 @@ dependencies = [
     "langchain_openai",
     "langchain-mcp-adapters",
     "mem0ai",
+    "langfuse",
+    "python-dotenv",
 ]
 
 [build-system]
