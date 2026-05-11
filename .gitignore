@@ -17,3 +17,8 @@ uv.lock
 .env
 .config.yaml
 workspace/
+
+# editor config files
+.cursor/
+.vscode/
+.idea/
