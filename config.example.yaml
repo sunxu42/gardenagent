@@ -1,4 +1,4 @@
-# # === src 层配置（对应 UnifiedConfig） ===
+# === src 层配置（对应 UnifiedConfig） ===
 # host: "0.0.0.0"
 # port: 8005
 
@@ -6,7 +6,7 @@
 # output_modality: [text, audio]
 
 # handler_type: "default"
-# agent_type: "herta_manager"
+# agent_type: "yard_manager"
 
 # logging:
 #   log_level: "INFO"
@@ -28,14 +28,11 @@
 #   huoshan_tts_resource_id: "volc.service_type.10029"
 #   aliyun_host: "nls-gateway-cn-beijing.aliyuncs.com"
 
-# # === herta 层配置 ===
+# === yard 层配置（对应 yard.configs.config.Config） ===
 # skills_dir: "skills"
-# workspace_dir: "herta/workspace"
-
-# subagents_yaml: "herta/configs/subagents.yaml"
-# mcp_servers_yaml: "herta/configs/mcp_servers.yaml"
-# agents_md: "AGENTS.md"
-# goal_md: "GOAL.md"
-# user_md: "USER.md"
+# workspace_dir: "yard/workspace"
+# prompts_dir: "yard/prompts"
+# subagents_yaml: "yard/configs/subagents.yaml"
+# mcp_servers_yaml: "yard/configs/mcp_servers.yaml"
 # llm_provider: "glm"
 # llm_model_name: "glm-4-flash"
