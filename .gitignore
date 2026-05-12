@@ -22,3 +22,8 @@ workspace/
 .cursor/
 .vscode/
 .idea/
+
+# superpowered files (track design specs; keep plans/local artifacts ignored)
+docs/superpowers/**
+tests/
+.pytest_cache/
