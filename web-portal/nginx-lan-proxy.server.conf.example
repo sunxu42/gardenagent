@@ -1,0 +1,50 @@
+# 将本片段放进 nginx 主配置的 http { ... } 内，或 include 进来。
+# 使用前请修改 root、证书路径；证书见 web-portal/ssl/
+#
+# 局域网访问：https://你的IP:8080/（本示例为 8080 仅 HTTPS，便于麦克风等 API）
+#
+# 本机需已启动：
+#   python src/server.py              （WebSocket :8005）
+#   python src/skills-editor-server.py （HTTP API :8010）
+
+server {
+    listen       8080 ssl;
+    server_name  _;
+
+    ssl_certificate      D:/Codes/gardenagent/web-portal/ssl/gardenagent.crt;
+    ssl_certificate_key  D:/Codes/gardenagent/web-portal/ssl/gardenagent.key;
+    ssl_session_cache    shared:SSL:1m;
+    ssl_session_timeout  5m;
+    ssl_protocols        TLSv1.2 TLSv1.3;
+    ssl_ciphers          HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+
+    root   D:/Codes/gardenagent/web-portal;
+    index  index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # wss://你的IP:8080/ws → 本机 8005
+    location /ws {
+        proxy_pass http://127.0.0.1:8005;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout  86400s;
+        proxy_send_timeout  86400s;
+    }
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:8010;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}

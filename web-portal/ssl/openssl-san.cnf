@@ -1,0 +1,23 @@
+# 用于生成本地 / 局域网自签名证书（Subject Alternative Name）
+# 若用 https://局域网IP 访问，必须把「你电脑的局域网 IP」写在 IP.2（可增删 IP.3 …）
+
+[req]
+default_bits       = 2048
+prompt             = no
+default_md         = sha256
+distinguished_name = dn
+x509_extensions    = v3_req
+
+[dn]
+CN = gardenagent-dev
+
+[v3_req]
+subjectAltName = @alt_names
+basicConstraints = CA:FALSE
+keyUsage = digitalSignature, keyEncipherment
+
+[alt_names]
+DNS.1 = localhost
+IP.1  = 127.0.0.1
+# 改成你本机局域网 IP，例如 ipconfig 里看到的 IPv4：
+IP.2  = 172.27.10.87

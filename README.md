@@ -12,7 +12,7 @@
 
 ```mermaid
 flowchart LR
-    Web["前端 (test/ 网页)"] <--> Src["src/ 多模态服务端<br/>WebSocket :8005"]
+    Web["前端 (web-portal/)"] <--> Src["src/ 多模态服务端<br/>WebSocket :8005"]
     Src --> Yard["yard/ 智能体内核<br/>(deepagents)"]
     Yard -.MCP.-> MCP["mcp_servers/garden_system<br/>FastMCP :8000"]
     Yard <--> Workspace[("yard/workspace/<br/>记忆 / 配置 / 技能")]
@@ -55,10 +55,10 @@ GLM_OPENAI_BASE_URL=...
 # 庭院设备 MCP Server（要让智能体能控制设备就启动它）
 python mcp_servers/garden_system/mcp_server.py
 
-# 多模态服务端，前端用浏览器打开 test/ 下的页面连这个
+# 多模态服务端，前端用浏览器打开 web-portal/index.html 连这个
 python src/server.py
 
-# Markdown 工作区后台（可选，用来在浏览器里编辑 yard/workspace/ 下的 .md）
+# Yaml 工作区后台（可选，用来在浏览器里编辑 yard/prompts/ 下的 yaml文件）
 python src/skills-editor.py
 ```
 
@@ -72,5 +72,4 @@ python examples/demo.py
 
 - **启动报 `LLM API key and base url are required`**：`.env` 里的 `GLM_OPENAI_API_KEY` / `GLM_OPENAI_BASE_URL` 没填好。
 - **智能体调不到设备工具**：确认 MCP Server 已在 `:8000` 启动，并在 `yard/configs/mcp_servers.yaml` 里放开对应配置（默认是注释掉的）。MCP Server 不可达不会让程序崩溃，但日志里会有 `[warn] MCP server '...' is unavailable`。
-- **首次跑没有 `yard/workspace/`**：正常现象，`YardManager` 启动时会从 `yard/reference/` 自动初始化工作区；该目录被 `.gitignore` 忽略。
 - **不想用语音**：在 `.config.yaml` 里把 `input_modality` / `output_modality` 都设成 `["text"]`，可以跳过 ASR / TTS 的所有 key 配置。
