@@ -461,7 +461,7 @@
             font-weight: 500;
         }
 
-        /* 机器人设定（工作区 Markdown）— 次要区域，置底 */
+        /* 提示词模板（yard/prompts YAML）— 次要区域，置底 */
         .md-workspace-panel {
             margin-top: 8px;
         }
@@ -599,7 +599,7 @@
         }
 
         /* 状态文案在保存按钮左侧 */
-        #workspaceMdStatus {
+        #promptsYamlStatus {
             margin: 0;
             font-size: 12px;
             line-height: 1.3;
@@ -611,16 +611,16 @@
             text-overflow: ellipsis;
         }
 
-        #workspaceMdStatus.ok {
+        #promptsYamlStatus.ok {
             color: #2e7d32;
         }
 
-        #workspaceMdStatus.error {
+        #promptsYamlStatus.error {
             color: #c62828;
         }
 
         /* 保存：与页面主按钮同色（继承全局 button，仅保证在面板内不被工具栏灰样式覆盖） */
-        #workspaceMdSave {
+        #promptsYamlSave {
             padding: 8px 15px;
             border: none;
             border-radius: 5px;
@@ -631,11 +631,11 @@
             font-size: 14px;
         }
 
-        #workspaceMdSave:hover:not(:disabled) {
+        #promptsYamlSave:hover:not(:disabled) {
             background-color: #3367d6;
         }
 
-        #workspaceMdSave:disabled {
+        #promptsYamlSave:disabled {
             background-color: #cccccc;
             cursor: not-allowed;
         }
@@ -812,31 +812,31 @@
         </div>
 
         <div class="section md-workspace-panel">
-            <h2>机器人能力与设定</h2>
+            <h2>提示词与角色配置（yard/prompts）</h2>
             <p class="md-ws-intro">
-                在这里编辑当前机器人工作区里的说明文档（例如身份、行为规则、技能说明等）。在左侧选中文件，在右侧直接修改正文；保存后，机器人下次读取这些文件时会使用最新内容。
+                运行时提示词由代码从 <code>yard/prompts</code> 下的 YAML 动态组装。左侧为目录与 <code>.yaml</code> / <code>.yml</code> 文件树，选中后在右侧编辑并保存，会写回仓库中的对应文件（需本机启动 <code>skills-editor-server</code>，默认端口 8010）。
             </p>
             <div class="md-ws-connection">
-                <label for="workspaceMdApiBase">Markdown 后台地址:</label>
-                <input type="text" id="workspaceMdApiBase" value="http://127.0.0.1:8010"
-                    placeholder="例如：http://127.0.0.1:8010（默认与上方 IP 一致，仅端口不同）" />
+                <label for="promptsYamlApiBase">提示词编辑服务地址:</label>
+                <input type="text" id="promptsYamlApiBase" value="http://127.0.0.1:8010"
+                    placeholder="例如：http://127.0.0.1:8010（与 skills-editor-server 一致）" />
             </div>
             <div class="md-ws-toolbar">
-                <button type="button" id="workspaceMdRefreshTree">刷新文件列表</button>
+                <button type="button" id="promptsYamlRefreshTree">刷新文件列表</button>
             </div>
             <div class="md-ws-layout">
                 <div class="md-ws-tree-wrap">
-                    <ul class="md-tree-list root" id="workspaceMdTree"></ul>
+                    <ul class="md-tree-list root" id="promptsYamlTree"></ul>
                 </div>
                 <div class="md-ws-editor-wrap">
                     <div class="md-ws-editor-header">
-                        <div class="md-ws-current-path" id="workspaceMdCurrentPath">未选择文件</div>
+                        <div class="md-ws-current-path" id="promptsYamlCurrentPath">未选择文件</div>
                         <div class="md-ws-editor-header-actions">
-                            <span id="workspaceMdStatus" aria-live="polite"></span>
-                            <button type="button" id="workspaceMdSave" disabled>保存</button>
+                            <span id="promptsYamlStatus" aria-live="polite"></span>
+                            <button type="button" id="promptsYamlSave" disabled>保存</button>
                         </div>
                     </div>
-                    <textarea id="workspaceMdEditor" placeholder="请先在左侧选择一个 .md 文件…" disabled></textarea>
+                    <textarea id="promptsYamlEditor" placeholder="请先在左侧选择一个 YAML 文件…" disabled></textarea>
                 </div>
             </div>
         </div>
@@ -2492,45 +2492,45 @@
             }
         }
 
-        // —— 工作区 Markdown 面板（独立 HTTP API）——
-        const workspaceMdState = {
+        // —— yard/prompts YAML 面板（skills-editor-server，/api/prompts-yaml/*）——
+        const promptsYamlState = {
             currentPath: null,
             baseline: '',
             apiBase: ''
         };
 
-        function workspaceMdGetApiBase() {
-            const el = document.getElementById('workspaceMdApiBase');
+        function promptsYamlGetApiBase() {
+            const el = document.getElementById('promptsYamlApiBase');
             return (el && el.value || '').trim().replace(/\/$/, '');
         }
 
-        function workspaceMdSetStatus(msg, kind) {
-            const el = document.getElementById('workspaceMdStatus');
+        function promptsYamlSetStatus(msg, kind) {
+            const el = document.getElementById('promptsYamlStatus');
             if (!el) return;
             el.textContent = msg || '';
             el.className = kind || '';
         }
 
-        function workspaceMdUpdateSaveButtonState() {
-            const saveBtn = document.getElementById('workspaceMdSave');
-            const ta = document.getElementById('workspaceMdEditor');
+        function promptsYamlUpdateSaveButtonState() {
+            const saveBtn = document.getElementById('promptsYamlSave');
+            const ta = document.getElementById('promptsYamlEditor');
             if (!saveBtn || !ta) return;
-            const dirty = workspaceMdIsDirty();
-            saveBtn.disabled = !workspaceMdState.currentPath || ta.disabled || !dirty;
+            const dirty = promptsYamlIsDirty();
+            saveBtn.disabled = !promptsYamlState.currentPath || ta.disabled || !dirty;
         }
 
-        function workspaceMdIsDirty() {
-            const ta = document.getElementById('workspaceMdEditor');
-            if (!ta || !workspaceMdState.currentPath) return false;
-            return ta.value !== workspaceMdState.baseline;
+        function promptsYamlIsDirty() {
+            const ta = document.getElementById('promptsYamlEditor');
+            if (!ta || !promptsYamlState.currentPath) return false;
+            return ta.value !== promptsYamlState.baseline;
         }
 
-        function workspaceMdConfirmLoseChanges() {
-            if (!workspaceMdIsDirty()) return true;
+        function promptsYamlConfirmLoseChanges() {
+            if (!promptsYamlIsDirty()) return true;
             return confirm('当前文件有未保存修改，确定要离开吗？');
         }
 
-        function workspaceMdBuildTreeNodes(children, ul) {
+        function promptsYamlBuildTreeNodes(children, ul) {
             (children || []).forEach(function (node) {
                 const li = document.createElement('li');
                 li.className = 'md-tree-node' + (node.type === 'dir' ? ' md-tree-dir collapsed' : ' md-tree-file');
@@ -2547,7 +2547,7 @@
                 if (node.type === 'dir') {
                     const sub = document.createElement('ul');
                     sub.className = 'md-tree-list md-tree-children';
-                    workspaceMdBuildTreeNodes(node.children || [], sub);
+                    promptsYamlBuildTreeNodes(node.children || [], sub);
                     li.appendChild(sub);
                     row.addEventListener('click', function (ev) {
                         ev.stopPropagation();
@@ -2557,126 +2557,122 @@
                     row.dataset.path = node.path;
                     row.addEventListener('click', function (ev) {
                         ev.stopPropagation();
-                        workspaceMdOpenFile(node.path, row);
+                        promptsYamlOpenFile(node.path, row);
                     });
                 }
                 ul.appendChild(li);
             });
         }
 
-        function workspaceMdClearTreeSelection() {
+        function promptsYamlClearTreeSelection() {
             document.querySelectorAll('.md-tree-row.active').forEach(function (r) {
                 r.classList.remove('active');
             });
         }
 
-        async function workspaceMdLoadTree() {
-            const base = workspaceMdGetApiBase();
-            workspaceMdState.apiBase = base;
-            const treeEl = document.getElementById('workspaceMdTree');
+        async function promptsYamlLoadTree() {
+            const base = promptsYamlGetApiBase();
+            promptsYamlState.apiBase = base;
+            const treeEl = document.getElementById('promptsYamlTree');
             if (!treeEl) return;
             treeEl.innerHTML = '';
             if (!base) {
-                workspaceMdSetStatus('无法连接编辑服务', 'error');
+                promptsYamlSetStatus('无法连接编辑服务', 'error');
                 return;
             }
-            workspaceMdSetStatus('正在加载文件列表…');
+            promptsYamlSetStatus('正在加载文件列表…');
             try {
-                const res = await fetch(base + '/api/workspace-md/tree');
+                const res = await fetch(base + '/api/prompts-yaml/tree');
                 const data = await res.json().catch(function () { return null; });
                 if (!res.ok) {
-                    workspaceMdSetStatus((data && data.error) || ('HTTP ' + res.status), 'error');
+                    promptsYamlSetStatus((data && data.error) || ('HTTP ' + res.status), 'error');
                     return;
                 }
-                workspaceMdBuildTreeNodes(data.children || [], treeEl);
-                workspaceMdSetStatus('列表已更新', 'ok');
+                promptsYamlBuildTreeNodes(data.children || [], treeEl);
+                promptsYamlSetStatus('列表已更新', 'ok');
             } catch (e) {
-                workspaceMdSetStatus('无法加载文件列表（请确认本机已启动工作区文档服务）', 'error');
+                promptsYamlSetStatus('无法加载文件列表（请确认本机已启动 skills-editor-server）', 'error');
             }
         }
 
-        async function workspaceMdOpenFile(path, rowEl) {
-            if (!workspaceMdConfirmLoseChanges()) return;
-            const base = workspaceMdGetApiBase();
+        async function promptsYamlOpenFile(path, rowEl) {
+            if (!promptsYamlConfirmLoseChanges()) return;
+            const base = promptsYamlGetApiBase();
             if (!base) {
-                workspaceMdSetStatus('无法连接编辑服务', 'error');
+                promptsYamlSetStatus('无法连接编辑服务', 'error');
                 return;
             }
-            workspaceMdClearTreeSelection();
+            promptsYamlClearTreeSelection();
             if (rowEl) rowEl.classList.add('active');
 
-            const ta = document.getElementById('workspaceMdEditor');
-            const pathEl = document.getElementById('workspaceMdCurrentPath');
-            workspaceMdSetStatus('正在加载…');
+            const ta = document.getElementById('promptsYamlEditor');
+            const pathEl = document.getElementById('promptsYamlCurrentPath');
+            promptsYamlSetStatus('正在加载…');
             try {
-                const url = base + '/api/workspace-md/content?path=' + encodeURIComponent(path);
+                const url = base + '/api/prompts-yaml/content?path=' + encodeURIComponent(path);
                 const res = await fetch(url);
                 const data = await res.json().catch(function () { return null; });
                 if (!res.ok) {
-                    workspaceMdSetStatus((data && data.error) || ('HTTP ' + res.status), 'error');
-                    workspaceMdUpdateSaveButtonState();
+                    promptsYamlSetStatus((data && data.error) || ('HTTP ' + res.status), 'error');
+                    promptsYamlUpdateSaveButtonState();
                     return;
                 }
-                workspaceMdState.currentPath = path;
-                workspaceMdState.baseline = data.content != null ? data.content : '';
-                ta.value = workspaceMdState.baseline;
+                promptsYamlState.currentPath = path;
+                promptsYamlState.baseline = data.content != null ? data.content : '';
+                ta.value = promptsYamlState.baseline;
                 ta.disabled = false;
                 if (pathEl) {
-                    pathEl.textContent = path;
+                    pathEl.textContent = 'yard/prompts/' + path;
                 }
-                workspaceMdSetStatus('已加载', 'ok');
-                workspaceMdUpdateSaveButtonState();
+                promptsYamlSetStatus('已加载', 'ok');
+                promptsYamlUpdateSaveButtonState();
             } catch (e) {
-                workspaceMdSetStatus('加载失败: ' + e.message, 'error');
-                workspaceMdUpdateSaveButtonState();
+                promptsYamlSetStatus('加载失败: ' + e.message, 'error');
+                promptsYamlUpdateSaveButtonState();
             }
         }
 
-        async function workspaceMdSave() {
-            const base = workspaceMdGetApiBase();
-            const path = workspaceMdState.currentPath;
-            const ta = document.getElementById('workspaceMdEditor');
+        async function promptsYamlSave() {
+            const base = promptsYamlGetApiBase();
+            const path = promptsYamlState.currentPath;
+            const ta = document.getElementById('promptsYamlEditor');
             if (!base || !path || !ta) return;
-            workspaceMdSetStatus('正在保存…');
+            promptsYamlSetStatus('正在保存…');
             try {
-                const url = base + '/api/workspace-md/content?path=' + encodeURIComponent(path);
+                const url = base + '/api/prompts-yaml/content?path=' + encodeURIComponent(path);
                 const res = await fetch(url, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'text/plain; charset=utf-8' },
                     body: ta.value
                 });
                 if (res.status === 204 || res.ok) {
-                    workspaceMdState.baseline = ta.value;
-                    workspaceMdSetStatus('已保存', 'ok');
-                    workspaceMdUpdateSaveButtonState();
+                    promptsYamlState.baseline = ta.value;
+                    promptsYamlSetStatus('已保存', 'ok');
+                    promptsYamlUpdateSaveButtonState();
                     return;
                 }
                 const data = await res.json().catch(function () { return null; });
-                workspaceMdSetStatus((data && data.error) || ('HTTP ' + res.status), 'error');
+                promptsYamlSetStatus((data && data.error) || ('HTTP ' + res.status), 'error');
             } catch (e) {
-                workspaceMdSetStatus('保存失败: ' + e.message, 'error');
+                promptsYamlSetStatus('保存失败: ' + e.message, 'error');
             }
         }
 
-        function initWorkspaceMdPanel() {
-            const refresh = document.getElementById('workspaceMdRefreshTree');
-            const saveBtn = document.getElementById('workspaceMdSave');
-            const apiInput = document.getElementById('workspaceMdApiBase');
+        function initPromptsYamlPanel() {
+            const refresh = document.getElementById('promptsYamlRefreshTree');
+            const saveBtn = document.getElementById('promptsYamlSave');
+            const apiInput = document.getElementById('promptsYamlApiBase');
 
-            // 默认逻辑与上方 WebSocket 地址保持一致，只是端口改为 8010
             if (apiInput) {
-                // 优先使用用户上次保存的 Markdown 后台地址
-                const savedMdBase = localStorage.getItem('workspaceMdApiBase');
-                if (savedMdBase) {
-                    apiInput.value = savedMdBase;
+                const savedBase = localStorage.getItem('promptsYamlApiBase');
+                if (savedBase) {
+                    apiInput.value = savedBase;
                 } else {
-                    // 如果没有独立配置，则根据当前 WebSocket 地址推导一个默认值
                     try {
                         const wsInput = document.getElementById('serverUrl');
                         const wsUrl = (wsInput && wsInput.value || '').trim();
                         if (wsUrl) {
                             const u = new URL(wsUrl);
-                            // 与上面保持相同的主机/IP，只调整协议和端口
                             u.protocol = (u.protocol === 'wss:') ? 'https:' : 'http:';
                             u.port = '8010';
                             apiInput.value = u.origin;
@@ -2688,34 +2684,34 @@
 
                 apiInput.addEventListener('change', function () {
                     const v = apiInput.value.trim();
-                    localStorage.setItem('workspaceMdApiBase', v);
+                    localStorage.setItem('promptsYamlApiBase', v);
                 });
             }
 
             if (refresh) refresh.addEventListener('click', function () {
-                if (!workspaceMdConfirmLoseChanges()) return;
-                workspaceMdLoadTree();
+                if (!promptsYamlConfirmLoseChanges()) return;
+                promptsYamlLoadTree();
             });
-            if (saveBtn) saveBtn.addEventListener('click', workspaceMdSave);
-            const ta = document.getElementById('workspaceMdEditor');
+            if (saveBtn) saveBtn.addEventListener('click', promptsYamlSave);
+            const ta = document.getElementById('promptsYamlEditor');
             if (ta) {
-                ta.addEventListener('input', workspaceMdUpdateSaveButtonState);
+                ta.addEventListener('input', promptsYamlUpdateSaveButtonState);
             }
             window.addEventListener('beforeunload', function (e) {
-                if (workspaceMdIsDirty()) {
+                if (promptsYamlIsDirty()) {
                     e.preventDefault();
                     e.returnValue = '';
                 }
             });
-            workspaceMdLoadTree();
-            workspaceMdUpdateSaveButtonState();
+            promptsYamlLoadTree();
+            promptsYamlUpdateSaveButtonState();
         }
 
         // 初始化应用
         function initApp() {
             initVisualizer();
             initEventListeners();
-            initWorkspaceMdPanel();
+            initPromptsYamlPanel();
 
             // 检查libopus.js是否正确加载
             checkOpusLoaded();

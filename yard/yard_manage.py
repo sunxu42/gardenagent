@@ -1,4 +1,5 @@
 import asyncio
+import os
 import yaml
 
 from langchain_openai import ChatOpenAI
@@ -8,14 +9,15 @@ from langgraph.checkpoint.memory import MemorySaver
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage, AIMessageChunk
 
 from yard.events import InputEvent, OutputEvent
-from yard.mem0_middleware import Mem0Middleware
+from yard.middlewares import PersonaPromptMiddleware
 from yard.graph import create_deep_agent
 from yard.configs.config import load_config
-from yard.context_middleware import ContextMiddleware
 from yard.init_workspace import init_workspace
 from yard.heartbeat import run_heartbeat_enqueue_loop
 from yard.timer import LocalSchedulerService, create_cron_tool
 from yard.system_tools import create_session_status_tool
+from langfuse import get_client
+from langfuse.langchain import CallbackHandler
 
 def create_glm_model(config):
 
@@ -35,7 +37,7 @@ def create_glm_model(config):
 
 
 async def load_mcp_tools(config):
-    with open(config.mcp_servers_yaml) as f:
+    with open(config.mcp_servers_yaml, encoding='utf-8') as f:
         mcp_servers_config = yaml.safe_load(f)
     try:
         mcp_client = MultiServerMCPClient(mcp_servers_config)
@@ -53,7 +55,7 @@ async def load_mcp_tools(config):
     return all_tools
 
 def load_subagents(config_path) -> list:
-    with open(config_path) as f:
+    with open(config_path, encoding='utf-8') as f:
         config = yaml.safe_load(f)
     available_tools = {}
     subagents = []
@@ -82,6 +84,27 @@ class YardManager:
     def __init__(self, config=None):
 
         self.config = load_config(config)
+        self.langfuse_client = self._init_langfuse_client()
+        self.langfuse_handler = self._init_langfuse_handler()
+
+    def _langfuse_enabled(self):
+        return bool(os.getenv("LANGFUSE_PUBLIC_KEY") and os.getenv("LANGFUSE_SECRET_KEY"))
+
+    def _init_langfuse_client(self):
+        if not self._langfuse_enabled():
+            return None
+        try:
+            return get_client()
+        except Exception:
+            return None
+
+    def _init_langfuse_handler(self):
+        if not self._langfuse_enabled():
+            return None
+        try:
+            return CallbackHandler()
+        except Exception:
+            return None
 
 
     @classmethod
@@ -94,18 +117,18 @@ class YardManager:
         yard_manager.tools.append(create_cron_tool(yard_manager.local_scheduler))
         yard_manager.tools.append(create_session_status_tool())
         backend = FilesystemBackend(
-            root_dir=yard_manager.config.workspace_dir, 
-            virtual_mode=True
-            )
+            root_dir=yard_manager.config.workspace_dir,
+            virtual_mode=True,
+        )
+        persona_mw = PersonaPromptMiddleware(yard_manager.config.prompts_dir)
         yard_manager.agent = create_deep_agent(
             model=create_glm_model(yard_manager.config),
             tools=yard_manager.tools,
-            # memory=[yard_manager.config.agents_md],
+            system_prompt=None,
             skills=[yard_manager.config.skills_dir],
-            # subagents=load_subagents(yard_manager.config.subagents_yaml),
             backend=backend,
-            checkpointer=MemorySaver(),  
-            middleware=[ContextMiddleware(backend=backend, source_path=yard_manager.config.workspace_dir)],
+            checkpointer=MemorySaver(),
+            middleware=[persona_mw],
         )
 
         # Agent internal queues (input -> worker -> output)
@@ -160,9 +183,16 @@ class YardManager:
 
 
     async def achat(self, user_input: str, thread_id = "yard-manager-demo"):
+        stream_config = {"configurable": {"thread_id": thread_id}}
+        if self.langfuse_handler is not None:
+            stream_config["callbacks"] = [self.langfuse_handler]
+            stream_config["metadata"] = {
+                "langfuse_session_id": thread_id,
+                "langfuse_tags": ["yard-manager"],
+            }
         async for chunk, _ in self.agent.astream(
             {"messages": [("user", user_input)]},
-            config={"configurable": {"thread_id": thread_id}},
+            config=stream_config,
             stream_mode="messages",
         ):
             if isinstance(chunk, AIMessageChunk):
@@ -194,16 +224,24 @@ class YardManager:
             OutputEvent(data={}, trigger_by=trigger_by, event_id=event_id, phase="start")
         )
 
-        # Stream middle chunks
-        async for chunk in self.achat(event.content):
-            self.agent_output_queue.put_nowait(
-                OutputEvent(data=chunk, trigger_by=trigger_by, event_id=event_id, phase="middle")
-            )
+        try:
+            # Stream middle chunks
+            thread_id = str(event_id) if event_id else "yard-manager-demo"
+            async for chunk in self.achat(event.content, thread_id=thread_id):
+                self.agent_output_queue.put_nowait(
+                    OutputEvent(data=chunk, trigger_by=trigger_by, event_id=event_id, phase="middle")
+                )
 
-        # Turn end boundary
-        self.agent_output_queue.put_nowait(
-            OutputEvent(data={}, trigger_by=trigger_by, event_id=event_id, phase="end")
-        )
+            # Turn end boundary
+            self.agent_output_queue.put_nowait(
+                OutputEvent(data={}, trigger_by=trigger_by, event_id=event_id, phase="end")
+            )
+        finally:
+            if self.langfuse_client is not None:
+                try:
+                    self.langfuse_client.flush()
+                except Exception:
+                    pass
 
 
 

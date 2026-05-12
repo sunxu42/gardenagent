@@ -56,7 +56,7 @@ async def main():
     server = Server()
     try:
         await server.start()
-    except KeyboardInterrupt:
+    except asyncio.CancelledError:
         logger.info("收到停止信号")
     except Exception as e:
         logger.error(f"服务器运行错误: {e}")
@@ -65,4 +65,7 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass
