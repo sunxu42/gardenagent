@@ -9,7 +9,7 @@ meta:
   language_policy: adaptive
   schema_version: 2
   purpose: shared_baseline
-  owner: prompts/base/default.yaml
+  owner: prompts/base/base.yaml
 
 capabilities:
   index_preamble: >-

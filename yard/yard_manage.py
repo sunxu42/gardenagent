@@ -9,14 +9,13 @@ from langgraph.checkpoint.memory import MemorySaver
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage, AIMessageChunk
 
 from yard.events import InputEvent, OutputEvent
-from yard.mem0_middleware import Mem0Middleware
+from yard.middlewares import PersonaPromptMiddleware
 from yard.graph import create_deep_agent
 from yard.configs.config import load_config
 from yard.init_workspace import init_workspace
 from yard.heartbeat import run_heartbeat_enqueue_loop
 from yard.timer import LocalSchedulerService, create_cron_tool
 from yard.system_tools import create_session_status_tool
-from yard.persona import PromptBuilder
 from langfuse import get_client
 from langfuse.langchain import CallbackHandler
 
@@ -121,20 +120,15 @@ class YardManager:
             root_dir=yard_manager.config.workspace_dir,
             virtual_mode=True,
         )
-        # Compose the system prompt from prompts/*.yaml. The default
-        # persona is taken from prompts/manifests/personas.yaml.
-        yard_manager.prompt_builder = PromptBuilder(yard_manager.config.prompts_dir)
-        system_prompt = yard_manager.prompt_builder.build()
-        yard_manager.system_prompt = system_prompt
-
+        persona_mw = PersonaPromptMiddleware(yard_manager.config.prompts_dir)
         yard_manager.agent = create_deep_agent(
             model=create_glm_model(yard_manager.config),
             tools=yard_manager.tools,
-            system_prompt=system_prompt,
+            system_prompt=None,
             skills=[yard_manager.config.skills_dir],
             backend=backend,
             checkpointer=MemorySaver(),
-            middleware=[],
+            middleware=[persona_mw],
         )
 
         # Agent internal queues (input -> worker -> output)
