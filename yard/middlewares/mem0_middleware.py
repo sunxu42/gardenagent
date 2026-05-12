@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from langchain.agents.middleware.types import AgentMiddleware, AgentState, ModelRequest, ModelResponse
+from langchain.agents.middleware.types import AgentMiddleware, AgentState, ModelRequest
 from deepagents.middleware._utils import append_to_system_message
 from typing_extensions import NotRequired, TypedDict
 
@@ -27,6 +27,7 @@ class Mem0StateUpdate(TypedDict):
     """State update for Mem0Middleware."""
 
     mem0_memories: List[Dict[str, Any]]
+
 
 try:
     from mem0 import MemoryClient
@@ -67,20 +68,17 @@ class Mem0Middleware(AgentMiddleware[Mem0State, Any]):
         return Mem0StateUpdate(mem0_memories=results)
 
     async def abefore_agent(self, state: Mem0State, runtime) -> Mem0StateUpdate | None:
-        # Mem0 客户端是同步的，直接复用同步实现即可
         return self.before_agent(state, runtime)
-
 
     def modify_request(self, request: ModelRequest) -> ModelRequest:
         memories = request.state.get("mem0_memories") or []
-        
+
         if not memories:
             return request
 
         lines = ["## Long-term Memories (from Mem0)"]
         memories = memories["results"]
         for m in memories:
-            # Mem0 可能返回 dict，也可能直接返回字符串，这里做兼容处理
             if isinstance(m, dict):
                 content = m.get("content") or m.get("memory") or ""
             else:
@@ -99,7 +97,6 @@ class Mem0Middleware(AgentMiddleware[Mem0State, Any]):
         modified = self.modify_request(request)
         return await handler(modified)
 
-
     def after_model(self, state: AgentState[Any], runtime) -> AgentState[Any] | None:
         user_id = self._get_user_id(state)
         messages = state.get("messages") or []
@@ -117,10 +114,8 @@ class Mem0Middleware(AgentMiddleware[Mem0State, Any]):
                 convo.append({"role": "assistant", "content": t})
 
         if convo:
-            # 简单写入，不做复杂分类
             self.client.add(convo, user_id=user_id)
         return None
 
     async def aafter_model(self, state: AgentState[Any], runtime) -> AgentState[Any] | None:
         return self.after_model(state, runtime)
-
