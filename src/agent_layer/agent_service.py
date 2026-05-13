@@ -205,10 +205,17 @@ class AgentService:
             if self.is_new_session:
                 await self.start_session()
 
+            thread_id = message.get("thread_id")
+            if isinstance(thread_id, str) and thread_id.strip():
+                tid = thread_id.strip()
+            else:
+                tid = None
+
             input_event = InputEvent(
-                content=text, 
-                event_id=uuid.uuid4().hex, 
+                content=text,
+                event_id=uuid.uuid4().hex,
                 event_type=USER_INPUT_EVENT,
+                thread_id=tid,
             )
             await in_q.put(input_event)
     

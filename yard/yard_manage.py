@@ -1,3 +1,19 @@
+def _apply_langchain_reviver_explicit_default() -> None:
+    """langgraph's jsonplus sets LC_REVIVER = Reviver() at import; avoid pending deprecation."""
+    from langchain_core.load.load import Reviver
+
+    _orig = Reviver.__init__
+
+    def __init__(self, allowed_objects=None, *args, **kwargs):
+        if allowed_objects is None:
+            allowed_objects = "core"
+        return _orig(self, allowed_objects, *args, **kwargs)
+
+    Reviver.__init__ = __init__  # type: ignore[method-assign]
+
+
+_apply_langchain_reviver_explicit_default()
+
 import asyncio
 import os
 import yaml
@@ -225,8 +241,13 @@ class YardManager:
         )
 
         try:
-            # Stream middle chunks
-            thread_id = str(event_id) if event_id else "yard-manager-demo"
+            # Stream middle chunks：用户会话使用 InputEvent.thread_id（与 Handler 的 session/client 一致）；未设置时按 event_id 隔离（如心跳、定时任务占位）。
+            stable = getattr(event, "thread_id", None)
+            thread_id = (
+                stable.strip()
+                if isinstance(stable, str) and stable.strip()
+                else (str(event_id) if event_id else "yard-manager-demo")
+            )
             async for chunk in self.achat(event.content, thread_id=thread_id):
                 self.agent_output_queue.put_nowait(
                     OutputEvent(data=chunk, trigger_by=trigger_by, event_id=event_id, phase="middle")

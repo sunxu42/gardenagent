@@ -1,9 +1,13 @@
 """
 Local HTTP API for:
-- Browsing and editing Markdown under yard/workspace (/api/workspace-md/*).
-- Browsing and editing YAML under yard/prompts (/api/prompts-yaml/*).
+- Browsing and editing YAML under yard/prompts.
 
-Run from repo root: python src/skills-editor-server.py
+Public URL prefix (recommended for nginx same-origin): /api/prompt-editor/
+  - /api/prompt-editor/prompts-yaml/tree|content
+
+Legacy paths (still supported for direct :8010 clients): /api/prompts-yaml/*
+
+Run from repo root: python src/prompt-editor-server.py
 Default: http://0.0.0.0:8010
 """
 from __future__ import annotations
@@ -15,10 +19,18 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-WORKSPACE_ROOT = REPO_ROOT / "yard" / "workspace"
 PROMPTS_ROOT = REPO_ROOT / "yard" / "prompts"
 DEFAULT_HOST = "0.0.0.0"
 DEFAULT_PORT = 8010
+
+# Same-origin nginx should expose only /api/prompt-editor/*; keep /api/* for backward compatibility.
+PROMPT_EDITOR_API_PREFIX = "/api/prompt-editor"
+
+
+def _route_paths(subpath: str) -> frozenset[str]:
+    """subpath like 'prompts-yaml/tree' -> legacy and public full paths."""
+    sub = subpath.lstrip("/")
+    return frozenset({f"/api/{sub}", f"{PROMPT_EDITOR_API_PREFIX}/{sub}"})
 
 
 def _json_body(handler: BaseHTTPRequestHandler, payload: dict, status: int = 200) -> None:
@@ -45,24 +57,6 @@ def _error(handler: BaseHTTPRequestHandler, message: str, status: int = 400) -> 
     _json_body(handler, {"error": message}, status=status)
 
 
-def _safe_workspace_md_path(rel: str, workspace_root: Path) -> Path:
-    if rel is None or rel.strip() == "":
-        raise ValueError("missing path")
-    rel = rel.strip().replace("\\", "/")
-    parts = Path(rel).parts
-    if ".." in parts or (len(parts) > 0 and parts[0] == "/"):
-        raise ValueError("invalid path")
-    candidate = (workspace_root / rel).resolve()
-    root = workspace_root.resolve()
-    try:
-        candidate.relative_to(root)
-    except ValueError as e:
-        raise ValueError("path outside workspace") from e
-    if candidate.suffix.lower() != ".md":
-        raise ValueError("not a markdown file")
-    return candidate
-
-
 def _safe_prompts_yaml_path(rel: str, prompts_root: Path) -> Path:
     if rel is None or rel.strip() == "":
         raise ValueError("missing path")
@@ -79,33 +73,6 @@ def _safe_prompts_yaml_path(rel: str, prompts_root: Path) -> Path:
     if candidate.suffix.lower() not in (".yaml", ".yml"):
         raise ValueError("not a yaml file")
     return candidate
-
-
-def _list_tree_children(dir_path: Path, root: Path) -> list:
-    items: list = []
-    try:
-        entries = list(dir_path.iterdir())
-    except FileNotFoundError:
-        return items
-    dirs = sorted([e for e in entries if e.is_dir()], key=lambda x: x.name.lower())
-    md_files = sorted(
-        [e for e in entries if e.is_file() and e.suffix.lower() == ".md"],
-        key=lambda x: x.name.lower(),
-    )
-    for e in dirs:
-        rel = e.relative_to(root).as_posix()
-        items.append(
-            {
-                "name": e.name,
-                "path": rel,
-                "type": "dir",
-                "children": _list_tree_children(e, root),
-            }
-        )
-    for e in md_files:
-        rel = e.relative_to(root).as_posix()
-        items.append({"name": e.name, "path": rel, "type": "file"})
-    return items
 
 
 def _list_prompts_yaml_tree_children(dir_path: Path, root: Path) -> list:
@@ -135,9 +102,8 @@ def _list_prompts_yaml_tree_children(dir_path: Path, root: Path) -> list:
     return items
 
 
-def make_handler(workspace: Path, prompts: Path):
-    class WorkspaceMdHandler(BaseHTTPRequestHandler):
-        workspace_root = workspace
+def make_handler(prompts: Path):
+    class PromptEditorHandler(BaseHTTPRequestHandler):
         prompts_root = prompts
 
         def log_message(self, fmt: str, *args) -> None:
@@ -155,40 +121,7 @@ def make_handler(workspace: Path, prompts: Path):
 
         def do_GET(self) -> None:
             parsed = urlparse(self.path)
-            if parsed.path == "/api/workspace-md/tree":
-                root = self.workspace_root
-                if not root.exists():
-                    _json_body(self, {"children": []})
-                    return
-                try:
-                    children = _list_tree_children(root, root)
-                except OSError as e:
-                    _error(self, str(e), 500)
-                    return
-                _json_body(self, {"children": children})
-                return
-            if parsed.path == "/api/workspace-md/content":
-                qs = parse_qs(parsed.query)
-                raw = (qs.get("path") or [None])[0]
-                if raw is None:
-                    _error(self, "missing path query parameter")
-                    return
-                try:
-                    target = _safe_workspace_md_path(raw, self.workspace_root)
-                except ValueError as e:
-                    _error(self, str(e))
-                    return
-                if not target.is_file():
-                    _error(self, "file not found", 404)
-                    return
-                try:
-                    text = target.read_text(encoding="utf-8")
-                except OSError as e:
-                    _error(self, str(e), 500)
-                    return
-                _json_body(self, {"path": raw, "content": text})
-                return
-            if parsed.path == "/api/prompts-yaml/tree":
+            if parsed.path in _route_paths("prompts-yaml/tree"):
                 root = self.prompts_root
                 if not root.exists():
                     _json_body(self, {"children": []})
@@ -200,7 +133,7 @@ def make_handler(workspace: Path, prompts: Path):
                     return
                 _json_body(self, {"children": children})
                 return
-            if parsed.path == "/api/prompts-yaml/content":
+            if parsed.path in _route_paths("prompts-yaml/content"):
                 qs = parse_qs(parsed.query)
                 raw = (qs.get("path") or [None])[0]
                 if raw is None:
@@ -225,40 +158,7 @@ def make_handler(workspace: Path, prompts: Path):
 
         def do_PUT(self) -> None:
             parsed = urlparse(self.path)
-            if parsed.path == "/api/prompts-yaml/content":
-                qs = parse_qs(parsed.query)
-                raw = (qs.get("path") or [None])[0]
-                if raw is None:
-                    _error(self, "missing path query parameter")
-                    return
-                try:
-                    target = _safe_prompts_yaml_path(raw, self.prompts_root)
-                except ValueError as e:
-                    _error(self, str(e))
-                    return
-                length = self.headers.get("Content-Length")
-                try:
-                    n = int(length) if length else 0
-                except ValueError:
-                    _error(self, "bad Content-Length")
-                    return
-                body = self.rfile.read(n) if n > 0 else b""
-                try:
-                    text = body.decode("utf-8")
-                except UnicodeDecodeError:
-                    _error(self, "body must be utf-8")
-                    return
-                try:
-                    target.parent.mkdir(parents=True, exist_ok=True)
-                    target.write_text(text, encoding="utf-8")
-                except OSError as e:
-                    _error(self, str(e), 500)
-                    return
-                self.send_response(204)
-                self._send_cors()
-                self.end_headers()
-                return
-            if parsed.path != "/api/workspace-md/content":
+            if parsed.path not in _route_paths("prompts-yaml/content"):
                 _error(self, "not found", 404)
                 return
             qs = parse_qs(parsed.query)
@@ -267,7 +167,7 @@ def make_handler(workspace: Path, prompts: Path):
                 _error(self, "missing path query parameter")
                 return
             try:
-                target = _safe_workspace_md_path(raw, self.workspace_root)
+                target = _safe_prompts_yaml_path(raw, self.prompts_root)
             except ValueError as e:
                 _error(self, str(e))
                 return
@@ -293,23 +193,15 @@ def make_handler(workspace: Path, prompts: Path):
             self._send_cors()
             self.end_headers()
 
-    return WorkspaceMdHandler
+    return PromptEditorHandler
 
 
 def main() -> None:
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="Local editor API: workspace Markdown and yard/prompts YAML"
-    )
+    parser = argparse.ArgumentParser(description="Local editor API for yard/prompts YAML")
     parser.add_argument("--host", default=DEFAULT_HOST)
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
-    parser.add_argument(
-        "--workspace",
-        type=Path,
-        default=WORKSPACE_ROOT,
-        help="Workspace root directory (default: yard/workspace under repo)",
-    )
     parser.add_argument(
         "--prompts",
         type=Path,
@@ -317,12 +209,10 @@ def main() -> None:
         help="Prompts YAML root directory (default: yard/prompts under repo)",
     )
     args = parser.parse_args()
-    root = args.workspace.resolve()
     prompts = args.prompts.resolve()
-    handler_cls = make_handler(root, prompts)
+    handler_cls = make_handler(prompts)
     server = ThreadingHTTPServer((args.host, args.port), handler_cls)
-    print(f"Workspace MD server: http://{args.host}:{args.port}")
-    print(f"Workspace root: {root}")
+    print(f"Prompt editor API: http://{args.host}:{args.port}")
     print(f"Prompts YAML root: {prompts}")
     try:
         server.serve_forever()
@@ -334,4 +224,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

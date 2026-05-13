@@ -16,10 +16,10 @@ flowchart LR
     Src --> Yard["yard/ 智能体内核<br/>(deepagents)"]
     Yard -.MCP.-> MCP["mcp_servers/garden_system<br/>FastMCP :8000"]
     Yard <--> Workspace[("yard/workspace/<br/>记忆 / 配置 / 技能")]
-    MdServer["skills-editor :8010"] <--> Workspace
+    PromptEditor["prompt-editor :8010"] --> PromptsYaml["yard/prompts<br/>YAML 提示词"]
 ```
 
-旁路的 `src/skills-editor.py` 是一个本地 HTTP 服务，用来在浏览器里查看和编辑 `yard/workspace/` 下的 Markdown 文件（智能体的"记忆"和配置），跑不跑都不影响主流程。
+旁路的 `src/prompt-editor-server.py` 是一个本地 HTTP 服务，用来在浏览器里查看和编辑 `yard/prompts/` 下的 YAML 提示词配置，跑不跑都不影响主流程。经 nginx 同源暴露时，建议使用路径前缀 **`/api/prompt-editor/`**（详见 `web-portal/nginx-lan-proxy.server.conf.example`）；直连 `:8010` 时仍可使用兼容路径 **`/api/prompts-yaml/`**。
 
 ## 配置
 
@@ -58,8 +58,8 @@ python mcp_servers/garden_system/mcp_server.py
 # 多模态服务端，前端用浏览器打开 web-portal/index.html 连这个
 python src/server.py
 
-# Yaml 工作区后台（可选，用来在浏览器里编辑 yard/prompts/ 下的 yaml文件）
-python src/skills-editor.py
+# 提示词编辑后台（可选，用来在浏览器里编辑 yard/prompts/ 下的 yaml 文件）
+python src/prompt-editor-server.py
 ```
 
 如果只想跑智能体本体试一下：

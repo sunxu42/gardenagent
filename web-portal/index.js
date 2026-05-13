@@ -111,9 +111,13 @@ const timingResult = document.getElementById('timingResult');
 const stopButton = document.getElementById('stopButton');
 const conversationDiv = document.getElementById('conversation');
 const logContainer = document.getElementById('logContainer');
+const logPanel = document.getElementById('logPanel');
 
 // 日志函数
 function log(message, type = 'info') {
+    if (!logContainer) {
+        return;
+    }
     // 将消息按换行符分割成多行
     const lines = message.split('\n');
     const now = new Date();
@@ -1372,6 +1376,18 @@ function initEventListeners() {
         toggleButton.textContent = isExpanded ? '编辑' : '收起';
     });
 
+    if (logPanel && logPanel.tagName === 'DETAILS') {
+        logPanel.addEventListener('toggle', () => {
+            const hint = logPanel.querySelector('.log-panel-hint');
+            if (hint) {
+                hint.textContent = logPanel.open ? '收起' : '展开';
+            }
+            if (logPanel.open && logContainer) {
+                logContainer.scrollTop = logContainer.scrollHeight;
+            }
+        });
+    }
+
     // 标签页切换
     const tabs = document.querySelectorAll('.tab');
     tabs.forEach(tab => {
@@ -1661,7 +1677,8 @@ function initOpusEncoder() {
     }
 }
 
-// —— yard/prompts YAML 面板（skills-editor-server，/api/prompts-yaml/*）——
+// —— yard/prompts YAML 面板（prompt-editor-server，/api/prompt-editor/prompts-yaml/*）——
+const PROMPTS_YAML_API_PREFIX = '/api/prompt-editor/prompts-yaml';
 const promptsYamlState = {
     currentPath: null,
     baseline: '',
@@ -1731,7 +1748,7 @@ function promptsYamlHighlightDocument(text) {
 function promptsYamlRefreshHighlight() {
     const ta = document.getElementById('promptsYamlEditor');
     const code = document.getElementById('promptsYamlHighlight');
-    const backdrop = document.querySelector('.md-ws-yaml-backdrop');
+    const backdrop = document.querySelector('.prompts-yaml-backdrop');
     if (!ta || !code) return;
     code.innerHTML = promptsYamlHighlightDocument(ta.value);
     if (backdrop) {
@@ -1823,7 +1840,7 @@ async function promptsYamlLoadTree() {
     }
     promptsYamlSetStatus('正在加载文件列表…');
     try {
-        const res = await fetch(base + '/api/prompts-yaml/tree');
+        const res = await fetch(base + PROMPTS_YAML_API_PREFIX + '/tree');
         const data = await res.json().catch(function () { return null; });
         if (!res.ok) {
             promptsYamlSetStatus((data && data.error) || ('HTTP ' + res.status), 'error');
@@ -1832,7 +1849,7 @@ async function promptsYamlLoadTree() {
         promptsYamlBuildTreeNodes(data.children || [], treeEl);
         promptsYamlSetStatus('列表已更新', 'ok');
     } catch (e) {
-        promptsYamlSetStatus('无法加载文件列表（请确认本机已启动 skills-editor-server）', 'error');
+        promptsYamlSetStatus('无法加载文件列表（请确认本机已启动 prompt-editor-server）', 'error');
     }
 }
 
@@ -1850,7 +1867,7 @@ async function promptsYamlOpenFile(path, rowEl) {
     const pathEl = document.getElementById('promptsYamlCurrentPath');
     promptsYamlSetStatus('正在加载…');
     try {
-        const url = base + '/api/prompts-yaml/content?path=' + encodeURIComponent(path);
+        const url = base + PROMPTS_YAML_API_PREFIX + '/content?path=' + encodeURIComponent(path);
         const res = await fetch(url);
         const data = await res.json().catch(function () { return null; });
         if (!res.ok) {
@@ -1881,7 +1898,7 @@ async function promptsYamlSave() {
     if (!base || !path || !ta) return;
     promptsYamlSetStatus('正在保存…');
     try {
-        const url = base + '/api/prompts-yaml/content?path=' + encodeURIComponent(path);
+        const url = base + PROMPTS_YAML_API_PREFIX + '/content?path=' + encodeURIComponent(path);
         const res = await fetch(url, {
             method: 'PUT',
             headers: { 'Content-Type': 'text/plain; charset=utf-8' },
@@ -1938,7 +1955,7 @@ function initPromptsYamlPanel() {
     });
     if (saveBtn) saveBtn.addEventListener('click', promptsYamlSave);
     const ta = document.getElementById('promptsYamlEditor');
-    const backdrop = document.querySelector('.md-ws-yaml-backdrop');
+    const backdrop = document.querySelector('.prompts-yaml-backdrop');
     if (ta) {
         ta.addEventListener('input', function () {
             promptsYamlRefreshHighlight();
