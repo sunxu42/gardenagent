@@ -54,16 +54,18 @@ class Handler:
         self.client_is_speaking = False
         self.is_interrupting = False  # 打断标志，防止打断过程中的重复触发
         
-        # 统计时延
+        # 统计时延（user_voice_stop_time 为 None 表示客户端未上报停说时刻）
         self.timing_stats = {
-            "user_voice_stop_time": 0.0, # 用户语音停止时间
+            "user_voice_stop_time": None,
             "asr_stop_time": 0.0,
             "agent_first_token_time": 0.0,
             "tts_first_chunk_time": 0.0,
-            "asr_recognition_latency": 0.0, # ASR识别时延，从用户语音停止到ASR返回最终结果
-            "text_response_latency": 0.0, # 文本响应时延，从用户语音停止到系统回复第一个文本
-            "audio_response_latency": 0.0, # 音频响应时延，从用户语音停止到系统回复第一个音频包
+            "asr_recognition_latency": 0.0,  # ASR识别时延（见日志说明）
+            "text_response_latency": 0.0,
+            "audio_response_latency": 0.0,
         }
+        # 末次 ASR 中间结果时间，用于在未上报停说时估算「末段→final」时延
+        self._last_asr_partial_time: Optional[float] = None
         
         # 断开时间戳（用于超时清理）
         self._disconnected_at: Optional[float] = None
@@ -237,11 +239,27 @@ class Handler:
             
             text = result.get('text', '')
             is_final = result.get('is_final', False)
-            
+
+            if not is_final and text and text.strip():
+                self._last_asr_partial_time = time.time()
+
             if is_final:
-                self.timing_stats["asr_stop_time"] = time.time()
-                self.timing_stats["asr_recognition_latency"] = self.timing_stats["asr_stop_time"] - self.timing_stats["user_voice_stop_time"]
-                logger.info(f"ASR 识别时延: {self.timing_stats['asr_recognition_latency']}")
+                asr_t = time.time()
+                self.timing_stats["asr_stop_time"] = asr_t
+                voice_stop = self.timing_stats["user_voice_stop_time"]
+                if voice_stop is not None:
+                    self.timing_stats["asr_recognition_latency"] = asr_t - voice_stop
+                    logger.info(
+                        f"ASR 识别时延（停说→final）: {self.timing_stats['asr_recognition_latency']:.3f} s"
+                    )
+                elif self._last_asr_partial_time is not None:
+                    self.timing_stats["asr_recognition_latency"] = (
+                        asr_t - self._last_asr_partial_time
+                    )
+                    logger.info(
+                        f"ASR 末段时延（末次 partial→final）: {self.timing_stats['asr_recognition_latency']:.3f} s"
+                    )
+                self._last_asr_partial_time = None
             
             if not text:
                 return
@@ -260,7 +278,9 @@ class Handler:
                     'text': text,
                     'is_final': is_final,
                     'timestamp': result.get('timestamp', time.time()),
-                    'source': 'asr'
+                    'source': 'asr',
+                    # 与 LangGraph MemorySaver 的 thread_id 对齐，整段 WebSocket 会话共用一个线程以保留多轮上下文
+                    'thread_id': self.session_id or self.client_id,
                 }
                 await self.agent_service.queue.put(message)
                 logger.debug(f"ASR 结果已发送到 Agent 队列: {text} (is_final={is_final})")
@@ -292,10 +312,22 @@ class Handler:
             elif msg_type == "response":
                 response = result.get('response', '')
                 if self.first_token:
-                    self.timing_stats["agent_first_token_time"] = time.time()
-                    self.timing_stats["text_response_latency"] = self.timing_stats["agent_first_token_time"] - self.timing_stats["user_voice_stop_time"]
+                    first_t = time.time()
+                    self.timing_stats["agent_first_token_time"] = first_t
+                    voice_stop = self.timing_stats["user_voice_stop_time"]
+                    if voice_stop is not None:
+                        self.timing_stats["text_response_latency"] = first_t - voice_stop
+                        logger.info(
+                            f"文本响应时延（停说→首 token）: {self.timing_stats['text_response_latency']:.3f} s"
+                        )
+                    elif self.timing_stats["asr_stop_time"]:
+                        self.timing_stats["text_response_latency"] = (
+                            first_t - self.timing_stats["asr_stop_time"]
+                        )
+                        logger.info(
+                            f"文本响应时延（ASR final→首 token）: {self.timing_stats['text_response_latency']:.3f} s"
+                        )
                     self.first_token = False
-                    logger.info(f"文本响应时延: {self.timing_stats['text_response_latency']}")
                 
                 await self.send_json_to_client(response)
                 
@@ -340,8 +372,27 @@ class Handler:
             audio_data = result.get('audio_data', '')
             end_of_stream = result.get('end_of_stream', False)
             if self.first_audio_chunk and audio_data:
-                self.timing_stats["audio_response_latency"] = time.time() - self.timing_stats["user_voice_stop_time"]
-                logger.info(f"音频响应时延: {self.timing_stats['audio_response_latency']}")
+                now = time.time()
+                voice_stop = self.timing_stats["user_voice_stop_time"]
+                if voice_stop is not None:
+                    self.timing_stats["audio_response_latency"] = now - voice_stop
+                    logger.info(
+                        f"音频响应时延（停说→首包）: {self.timing_stats['audio_response_latency']:.3f} s"
+                    )
+                elif self.timing_stats["agent_first_token_time"]:
+                    self.timing_stats["audio_response_latency"] = (
+                        now - self.timing_stats["agent_first_token_time"]
+                    )
+                    logger.info(
+                        f"音频响应时延（首 token→首音频包）: {self.timing_stats['audio_response_latency']:.3f} s"
+                    )
+                elif self.timing_stats["asr_stop_time"]:
+                    self.timing_stats["audio_response_latency"] = (
+                        now - self.timing_stats["asr_stop_time"]
+                    )
+                    logger.info(
+                        f"音频响应时延（ASR final→首音频包）: {self.timing_stats['audio_response_latency']:.3f} s"
+                    )
                 self.first_audio_chunk = False
 
             # 状态管理：更新 client_is_speaking

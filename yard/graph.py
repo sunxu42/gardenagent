@@ -1,4 +1,4 @@
-"""Deep Agents come with planning, filesystem, and subagents."""
+"""Deep Agents: LangGraph agent with skills, summarization, and optional subagents."""
 
 from collections.abc import Callable, Sequence
 from typing import Any
@@ -20,7 +20,6 @@ from langgraph.types import Checkpointer
 from deepagents._models import resolve_model
 from deepagents.backends import StateBackend
 from deepagents.backends.protocol import BackendFactory, BackendProtocol
-# from deepagents.middleware.filesystem import FilesystemMiddleware
 from deepagents.middleware.memory import MemoryMiddleware
 from deepagents.middleware.patch_tool_calls import PatchToolCallsMiddleware
 from deepagents.middleware.skills import SkillsMiddleware
@@ -31,7 +30,7 @@ from deepagents.middleware.subagents import (
     SubAgentMiddleware,
 )
 from deepagents.middleware.summarization import create_summarization_middleware
-from yard.filesystem_plus import FilesystemPlusMiddleware as FilesystemMiddleware
+
 BASE_AGENT_PROMPT = """You are a personal home assistant.
 """  # noqa: E501
 
@@ -70,15 +69,8 @@ def create_deep_agent(  # noqa: C901, PLR0912  # Complex graph assembly logic wi
 
     !!! warning "Deep agents require a LLM that supports tool calling!"
 
-    By default, this agent has access to the following tools:
-
-    - `write_todos`: manage a todo list
-    - `ls`, `read_file`, `write_file`, `edit_file`, `glob`, `grep`: file operations
-    - `execute`: run shell commands
-    - `task`: call subagents
-
-    The `execute` tool allows running shell commands if the backend implements `SandboxBackendProtocol`.
-    For non-sandbox backends, the `execute` tool will return an error message.
+    Built-in filesystem tools (`ls`, `read_file`, `write_file`, etc.) are not registered
+    here; pass disk or execution needs via ``tools`` or a custom middleware if required.
 
     Args:
         model: The model to use.
@@ -97,16 +89,15 @@ def create_deep_agent(  # noqa: C901, PLR0912  # Complex graph assembly logic wi
             and pass the initialized model instance here.
         tools: The tools the agent should have access to.
 
-            In addition to custom tools you provide, deep agents include built-in tools for planning,
-            file management, and subagent spawning.
+            In addition to custom tools you provide, optional stacks may add planning or
+            subagent tools when enabled upstream.
         system_prompt: Custom system instructions to prepend before the base deep agent
             prompt.
 
             If a string, it's concatenated with the base prompt.
         middleware: Additional middleware to apply after the standard middleware stack
-            (`TodoListMiddleware`, `FilesystemMiddleware`, `SubAgentMiddleware`,
-            `SummarizationMiddleware`, `AnthropicPromptCachingMiddleware`,
-            `PatchToolCallsMiddleware`).
+            (`SkillsMiddleware` when ``skills`` is set, ``SummarizationMiddleware``,
+            ``AnthropicPromptCachingMiddleware``, ``PatchToolCallsMiddleware``, etc.).
         subagents: The subagents to use.
 
             Each subagent should be a `dict` with the following keys:
@@ -157,7 +148,6 @@ def create_deep_agent(  # noqa: C901, PLR0912  # Complex graph assembly logic wi
     # Build general-purpose subagent with default middleware stack
     gp_middleware: list[AgentMiddleware[Any, Any, Any]] = [
         TodoListMiddleware(),
-        FilesystemMiddleware(backend=backend),
         create_summarization_middleware(model, backend),
         AnthropicPromptCachingMiddleware(unsupported_model_behavior="ignore"),
         PatchToolCallsMiddleware(),
@@ -188,7 +178,6 @@ def create_deep_agent(  # noqa: C901, PLR0912  # Complex graph assembly logic wi
             # Build middleware: base stack + skills (if specified) + user's middleware
             subagent_middleware: list[AgentMiddleware[Any, Any, Any]] = [
                 TodoListMiddleware(),
-                FilesystemMiddleware(backend=backend),
                 create_summarization_middleware(subagent_model, backend),
                 AnthropicPromptCachingMiddleware(unsupported_model_behavior="ignore"),
                 PatchToolCallsMiddleware(),
@@ -224,7 +213,6 @@ def create_deep_agent(  # noqa: C901, PLR0912  # Complex graph assembly logic wi
         deepagent_middleware.append(SkillsMiddleware(backend=backend, sources=skills))
     deepagent_middleware.extend(
         [
-            FilesystemMiddleware(backend=backend),
             # SubAgentMiddleware(
             #     backend=backend,
             #     subagents=all_subagents,

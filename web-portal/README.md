@@ -1,6 +1,6 @@
 # GardenAI Web 门户（web-portal）
 
-浏览器端控制台：连接多模态服务（WebSocket）、文本/语音会话、编辑 `yard/prompts` 下 YAML（依赖本机 `skills-editor-server`）。
+浏览器端控制台：连接多模态服务（WebSocket）、文本/语音会话、编辑 `yard/prompts` 下 YAML（依赖本机 `prompt-editor-server`）。
 
 本机可直接打开 **`index.html`**；若希望 **局域网内其他设备** 通过 **`https://你的IP:8080`** 访问（含麦克风等需 **HTTPS 安全上下文** 的能力），请按下文配置 **nginx + TLS**。
 
@@ -12,13 +12,13 @@
 
 ```bash
 python src/server.py
-python src/skills-editor-server.py
+python src/prompt-editor-server.py
 ```
 
 | 服务 | 默认监听 | 用途 |
 |------|-----------|------|
 | `server.py` | `0.0.0.0:8005` | WebSocket，nginx 将 `/ws` 反代到此端口 |
-| `skills-editor-server.py` | `0.0.0.0:8010` | 提示词 YAML API，nginx 将 `/api/` 反代到此端口 |
+| `prompt-editor-server.py` | `0.0.0.0:8010` | `yard/prompts` YAML 编辑 API；nginx 将 **`/api/prompt-editor/`** 反代到此端口 |
 
 8005 / 8010 **不必对局域网单独放行**，只要本机 nginx 能访问 `127.0.0.1` 即可。
 
@@ -59,7 +59,7 @@ powershell -ExecutionPolicy Bypass -File .\generate-cert.ps1
    - **`root`** 指向本目录 **`web-portal`** 的绝对路径（Windows 可用 `D:/Codes/gardenagent/web-portal`）
    - **`ssl_certificate`** / **`ssl_certificate_key`** 指向上一步的 **`.crt`** / **`.key`**
    - **`location /ws`** → **`proxy_pass http://127.0.0.1:8005;`**，并设置 WebSocket 升级头
-   - **`location /api/`** → **`proxy_pass http://127.0.0.1:8010;`**
+   - **`location /api/prompt-editor/`** → **`proxy_pass http://127.0.0.1:8010/api/prompt-editor/;`**（路径前缀需与后端一致）
 
 可参考仓库内 **`nginx-lan-proxy.server.conf.example`**，整段复制进你的 `nginx.conf` 的 `http` 块后，再改 **`root`** 与证书路径。
 
@@ -86,7 +86,7 @@ nginx -s reload
 
 - 访问：**`https://你的局域网IPv4:8080/`**
 - 自签名证书会提示不安全 → **高级** → **继续访问**（正常现象）。
-- 页面脚本在「非 localhost 的 HTTPS」下会自动使用 **`wss://当前主机:8080/ws`**，并把提示词 API 基址设为 **`location.origin`**（与同源 **`/api/`** 一致）。
+- 页面脚本在「非 localhost 的 HTTPS」下会自动使用 **`wss://当前主机:8080/ws`**，并把提示词 API 基址设为 **`location.origin`**（与同源 **`/api/prompt-editor/`** 一致）。
 - 若仅在本机调试、不需要麦克风，也可用 **`http://127.0.0.1:8080`** —— 前提是 nginx 仍对该端口提供 **HTTP**；若你按上文只配置了 **`listen 8080 ssl`**，则本机也必须使用 **`https://127.0.0.1:8080`**。
 
 ---

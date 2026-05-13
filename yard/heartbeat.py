@@ -5,7 +5,7 @@ from loguru import logger
 
 from yard.events import InputEvent, HEARTBEAT_INPUT_EVENT
 
-HeartbeatPrompt = """Read HEARTBEAT.md if it exists (workspace context). Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply HEARTBEAT_OK."""
+HeartbeatPrompt = """Periodic heartbeat tick. Do not call tools or infer tasks from prior chats. If no explicit pending task is already available in current context, reply exactly HEARTBEAT_OK."""
 
 DEFAULT_INTERVAL_SEC = 30 * 60
 DEFAULT_RETRY_DELAY_SEC = 60.0

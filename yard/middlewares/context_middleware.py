@@ -13,13 +13,12 @@ USER_MD = "./USER.md"
 SOUL_MD = "./SOUL.md"
 IDENTITY_MD = "./IDENTITY.md"
 BOOTSTRAP_MD = "./BOOTSTRAP.md"
-HEARTBEAT_MD = "./HEARTBEAT.md"
 PROJECT_CONTEXT = """
 # Project Context
 The following project context files have been loaded:
 If SOUL.md is present, embody its persona and tone. Avoid stiff, generic replies; follow its guidance unless higher-priority instructions override it.
 """
-CONTEXT_FILES = [AGENTS_MD, SOUL_MD, USER_MD, IDENTITY_MD, HEARTBEAT_MD, BOOTSTRAP_MD]
+CONTEXT_FILES = [AGENTS_MD, SOUL_MD, USER_MD, IDENTITY_MD, BOOTSTRAP_MD]
 
 
 class ContextState(AgentState):
