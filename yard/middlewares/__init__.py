@@ -1,5 +1,5 @@
 from yard.middlewares.context_middleware import ContextMiddleware, ContextState
-from yard.middlewares.mem0_middleware import Mem0Middleware, Mem0State
+from yard.middlewares.mem0_oss_middleware import Mem0OssMiddleware, Mem0OssState
 from yard.middlewares.persona_prompt_middleware import (
     PersonaPromptMiddleware,
     PersonaPromptState,
@@ -9,8 +9,8 @@ from yard.middlewares.persona_prompt_middleware import (
 __all__ = [
     "ContextMiddleware",
     "ContextState",
-    "Mem0Middleware",
-    "Mem0State",
+    "Mem0OssMiddleware",
+    "Mem0OssState",
     "PersonaPromptMiddleware",
     "PersonaPromptState",
     "render_system_prompt",

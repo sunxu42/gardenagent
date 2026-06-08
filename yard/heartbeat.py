@@ -4,6 +4,7 @@ from typing import Any
 from loguru import logger
 
 from yard.events import InputEvent, HEARTBEAT_INPUT_EVENT
+from yard.memory.runtime.cold_path import add_daily_journal_if_present
 
 HeartbeatPrompt = """Periodic heartbeat tick. Do not call tools or infer tasks from prior chats. If no explicit pending task is already available in current context, reply exactly HEARTBEAT_OK."""
 
@@ -11,9 +12,14 @@ DEFAULT_INTERVAL_SEC = 30 * 60
 DEFAULT_RETRY_DELAY_SEC = 60.0
 
 
-def build_heartbeat_input_event(prompt: str | None = None) -> InputEvent:
+def build_heartbeat_input_event(prompt: str | None = None, thread_id: str | None = None) -> InputEvent:
     text = prompt if prompt is not None else HeartbeatPrompt
-    return InputEvent(content=text, event_id=uuid.uuid4().hex, event_type=HEARTBEAT_INPUT_EVENT)
+    return InputEvent(
+        content=text,
+        event_id=uuid.uuid4().hex,
+        event_type=HEARTBEAT_INPUT_EVENT,
+        thread_id=thread_id,
+    )
 
 
 async def run_heartbeat_enqueue_loop(
@@ -64,8 +70,31 @@ async def run_heartbeat_enqueue_loop(
         if _busy():
             continue
 
+        cfg = getattr(agent, "config", None)
+        if cfg and getattr(cfg, "memory_enabled", False) and getattr(
+            cfg, "memory_journal_on_heartbeat", True
+        ):
+            service = getattr(agent, "mem0_service", None)
+            workspace_dir = getattr(cfg, "workspace_dir", "yard/workspace")
+            debug_log_enabled = bool(getattr(cfg, "memory_debug_log_enabled", False))
+            debug_log_max_chars = int(getattr(cfg, "memory_debug_log_max_chars", 500) or 500)
+            try:
+                await add_daily_journal_if_present(
+                    service,
+                    workspace_dir,
+                    user_id=getattr(cfg, "mem0_user_id", None),
+                    debug_log_enabled=debug_log_enabled,
+                    debug_log_max_chars=debug_log_max_chars,
+                )
+            except Exception as e:
+                logger.warning("memory journal heartbeat failed: {}", e)
+
         try:
-            await q.put(build_heartbeat_input_event(prompt))
+            heartbeat_thread_id = getattr(agent, "_last_user_thread_id", None)
+            if not (isinstance(heartbeat_thread_id, str) and heartbeat_thread_id.strip()):
+                cfg_tid = getattr(getattr(agent, "config", None), "mem0_user_id", None)
+                heartbeat_thread_id = cfg_tid if isinstance(cfg_tid, str) and cfg_tid.strip() else "default"
+            await q.put(build_heartbeat_input_event(prompt, thread_id=heartbeat_thread_id))
             logger.info("heartbeat enqueued on agent input queue")
         except Exception as e:
             logger.error("heartbeat enqueue failed: {}", e)

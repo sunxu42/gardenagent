@@ -643,6 +643,16 @@ details.log-panel > summary::-webkit-details-marker {
     color: #94a3b8;
 }
 
+/* 只读时 textarea 仍需透明背景，否则盖住底层 syntax highlight（正文 color: transparent） */
+.prompts-yaml-editor-body textarea.prompts-yaml-editor--readonly {
+    cursor: default;
+    background: transparent;
+}
+
+.prompts-yaml-editor-body:has(textarea.prompts-yaml-editor--readonly) .prompts-yaml-backdrop {
+    background: #f8fafc;
+}
+
 .prompts-yaml-editor-body textarea:disabled {
     cursor: not-allowed;
 }

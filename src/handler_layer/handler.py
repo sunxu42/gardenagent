@@ -154,7 +154,11 @@ class Handler:
             # {"role": "user", "content": [{"type": "audio", "audio": "base64"}]}
             # {"role": "user", "content": [{"type": "image", "image": "base64"}]}
             # {"role": "user", "content": [{"type": "file", "file": "base64"}]}
-  
+
+            if data.get("type") == "clear_user_data":
+                await self.handle_clear_user_data(data)
+                return
+
             role = data.get('role', '')
 
             if role == 'hello':
@@ -185,6 +189,40 @@ class Handler:
         
         await self.transport.send_to_client(self.client_id, json.dumps(response))
         logger.info(f"发送 hello 响应到客户端")
+
+    async def handle_clear_user_data(self, data: Dict[str, Any]) -> None:
+        from yard.memory.admin.user_data import clear_user_data
+        from yard.memory.core.user_id import normalize_user_id
+
+        try:
+            requested = normalize_user_id(data.get("user_id"))
+        except ValueError as e:
+            await self.send_json_to_client(
+                {"type": "clear_user_data", "ok": False, "error": str(e)}
+            )
+            return
+        if requested != self.client_id:
+            await self.send_json_to_client(
+                {
+                    "type": "clear_user_data",
+                    "ok": False,
+                    "error": "user_id mismatch",
+                }
+            )
+            return
+        try:
+            result = await clear_user_data(requested)
+            if self.agent_service is not None:
+                self.agent_service.is_new_session = True
+            await self.send_json_to_client(
+                {"type": "clear_user_data", "ok": True, "result": result}
+            )
+            logger.info("用户数据已清空: client_id={}", self.client_id)
+        except Exception as e:
+            logger.error("清空用户数据失败: {!r}", e)
+            await self.send_json_to_client(
+                {"type": "clear_user_data", "ok": False, "error": str(e)}
+            )
     
     async def handle_timestamp(self):
         self.timing_stats["user_voice_stop_time"] = time.time()

@@ -7,6 +7,7 @@
 项目由三块组成：
 
 - **`src/`** — 基于 WebSocket 的多模态服务端，处理前端连接、ASR、TTS，并把消息转发给智能体。
+- **`frontend/`** — 独立移动优先聊天 UI（仅对话，不提供参数编辑/日志/控制入口）。
 - **`yard/`** — 智能体内核，基于 [`deepagents`](https://github.com/langchain-ai/deepagents) / LangGraph，负责对话、技能、记忆、心跳和定时任务。
 - **`mcp_servers/garden_system/`** — 用 [FastMCP](https://github.com/jlowin/fastmcp) 把设备控制能力暴露成工具，供智能体调用。
 
@@ -41,11 +42,42 @@ GLM_OPENAI_API_KEY=...
 GLM_OPENAI_BASE_URL=...
 ```
 
-按需再填 ASR / TTS / Mem0 的 key（只用文本对话时可以不填）。
+按需再填 ASR / TTS 的 key（只用文本对话时可以不填）。
 
 ### 3. `.config.yaml`（可选）
 
 需要改 host、port、模型名、工作区路径之类的运行时参数时，参考 `config.example.yaml` 在项目根目录建一个 `.config.yaml`。不建文件就跑默认值。
+
+### 4. Mem0 OSS 长期记忆（可选）
+
+在 `.config.yaml` 中启用（需已配置 GLM OpenAI 兼容端点，并指定 embedding 模型）：
+
+```yaml
+memory_enabled: true
+mem0_embedding_model: "embedding-3"   # 智谱等兼容 embedding 模型名
+mem0_embedding_dims: 1536
+```
+
+也可在 `.env` 中设置 `MEM0_EMBEDDING_MODEL`。向量索引落在 `yard/workspace/memory/faiss/`。在 web-portal 的 YAML 面板点击「查看记忆」可导出只读 `yard/prompts/memory/memory.yaml`（已 gitignore，不参与对话注入）。
+
+**Session 对话写入 Mem0**（动态策略，与 30 分钟 heartbeat 解耦，默认）：
+
+| 时机 | 默认 |
+|------|------|
+| LangGraph 对话摘要（上下文过长自动压缩） | 立即 flush 当前会话 |
+| 上一轮对话结束且空闲满 5 分钟 | flush（`memory_session_flush_idle_sec`） |
+| 进程退出 | 兜底 flush |
+| 用户说「记住」/ `remember` 工具 | 即时写入 |
+
+30 分钟 heartbeat 仅用于可选的 `memory/YYYY-MM-DD.md` 日记同步（`memory_journal_on_heartbeat`）。可在 `.config.yaml` 调整 `memory_session_flush_idle_sec`（设为 `0` 关闭空闲写入）、`memory_session_flush_on_summarization`。
+
+### 5. 灵魂提示词与心情（`yard/prompts`）
+
+- **灵魂文件**：`yard/prompts/soul.yaml` 合并原 base + 角色正文；`PersonaPromptMiddleware` 按通用模板渲染为 system prompt，每轮从磁盘热加载。
+- **few-shot**：`speech_examples` 等块写在 `soul.yaml` 中，由渲染器格式化为 User/Assistant 示例。
+- **心情**：情绪 middleware 使用 `yard/prompts/moods/levels.yaml` 五档说明；VAD baseline / TTS 音色 v1 为代码默认值，后续可在 frontend `/config` 编辑（TODO）。
+- **编辑**：`python src/prompt-editor-server.py` + 聊天页笔形图标进入 `/config`（桌面三栏，仅 `soul.yaml` 可表单编辑）。
+- 从旧结构迁移：`python scripts/merge_soul_yaml.py`（需保留 `base/` 与 `roles/Lora.yaml` 备份时方可重跑）。
 
 ## 运行
 
@@ -58,9 +90,19 @@ python mcp_servers/garden_system/mcp_server.py
 # 多模态服务端，前端用浏览器打开 web-portal/index.html 连这个
 python src/server.py
 
+# 新聊天前端（仅对话 UI）
+cd frontend && npm install && npm run dev
+
 # 提示词编辑后台（可选，用来在浏览器里编辑 yard/prompts/ 下的 yaml 文件）
 python src/prompt-editor-server.py
 ```
+
+## Frontend Chat
+
+- `frontend` 承载聊天与 `soul.yaml` 提示词配置（`/config`）；其它参数与日志仍可由 `web-portal` 修改。
+- 推荐联调顺序：
+  1. 启动服务端：`python src/server.py`
+  2. 启动前端：`cd frontend && npm install && npm run dev`
 
 如果只想跑智能体本体试一下：
 
