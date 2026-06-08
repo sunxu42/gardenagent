@@ -1,0 +1,41 @@
+/* 整页高度 = 视口；header/footer 自适应，中间 main 占剩余空间并内部滚动 */
+.mobile-shell.mobile-chat-page {
+  box-sizing: border-box;
+  height: 100dvh;
+  max-height: 100dvh;
+  min-height: 100dvh;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  padding-top: calc(8px + env(safe-area-inset-top));
+  padding-right: 12px;
+  padding-bottom: calc(8px + env(safe-area-inset-bottom));
+  padding-left: 12px;
+}
+
+.mobile-chat-page > header,
+.mobile-chat-page > footer {
+  min-height: 0;
+}
+
+.mobile-chat-page > footer.chat-footer {
+  padding-top: 2px;
+}
+
+.chat-scroll-area {
+  overflow-x: hidden;
+  overflow-y: auto;
+  min-height: 0;
+  padding: 4px 2px;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 底部输入：自动换行，最多约 4 行后纵向滚动 */
+.composer-textarea {
+  overflow-x: hidden;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
