@@ -1,0 +1,124 @@
+/* Chat — desktop & tablet layout (mobile shell unchanged below 768px) */
+
+.chat-app-shell {
+  min-height: 100dvh;
+}
+
+.chat-app-layout {
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .chat-app-shell {
+    background: linear-gradient(
+      165deg,
+      color-mix(in srgb, var(--app-bg-start) 72%, #ffffff) 0%,
+      color-mix(in srgb, var(--app-bg-mid) 55%, #ffffff) 45%,
+      var(--app-bg-end) 100%
+    );
+  }
+
+  .chat-app-layout {
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+
+  .mobile-shell.mobile-chat-page {
+    width: 100%;
+    max-width: 28rem;
+    margin: 0;
+    border-radius: 1.25rem;
+    border: 1px solid hsl(var(--border));
+    box-shadow:
+      0 1px 2px hsl(var(--foreground) / 0.04),
+      0 12px 40px hsl(var(--foreground) / 0.08);
+    height: min(100dvh - 2rem, 52rem);
+    max-height: min(100dvh - 2rem, 52rem);
+    min-height: min(100dvh - 2rem, 52rem);
+    overflow: hidden;
+  }
+
+  .chat-scroll-area {
+    padding: 8px 6px;
+  }
+
+  .chat-footer {
+    padding-top: 4px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .chat-app-layout {
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    max-width: 68rem;
+    margin: 0 auto;
+  }
+
+  .mobile-shell.mobile-chat-page {
+    flex: 0 1 28rem;
+    width: 28rem;
+    max-width: 28rem;
+  }
+
+  .chat-vad-panel {
+    flex: 0 0 22.5rem;
+    width: 22.5rem;
+    height: min(100dvh - 2rem, 52rem);
+    max-height: min(100dvh - 2rem, 52rem);
+    border-radius: 1.25rem;
+    box-shadow:
+      0 1px 2px hsl(var(--foreground) / 0.04),
+      0 8px 28px hsl(var(--foreground) / 0.06);
+  }
+}
+
+@media (min-width: 1280px) {
+  .chat-app-layout {
+    gap: 1.25rem;
+    max-width: 72rem;
+  }
+
+  .mobile-shell.mobile-chat-page {
+    flex: 0 1 32rem;
+    width: 32rem;
+    max-width: 32rem;
+  }
+
+  .chat-vad-panel {
+    flex: 0 0 24rem;
+    width: 24rem;
+  }
+}
+
+/* Message readability on wider chat columns */
+@media (min-width: 768px) {
+  .chat-message-list .msg-bubble--user,
+  .chat-message-list .msg-bubble--assistant {
+    max-width: 88%;
+  }
+}
+
+/* Settings from drawer */
+.chat-app-shell[data-font-size="large"] .mobile-chat-page {
+  font-size: 1.0625rem;
+}
+
+.chat-app-shell[data-font-size="large"] .mobile-chat-page .msg-author {
+  font-size: 0.9375rem;
+}
+
+.chat-app-shell[data-motion="reduced"] .msg-bubble--assistant[data-streaming="true"]::after {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-app-shell[data-motion="normal"] .msg-bubble--assistant[data-streaming="true"]::after {
+    animation: none;
+  }
+}
