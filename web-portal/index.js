@@ -1678,11 +1678,14 @@ function initOpusEncoder() {
 }
 
 // —— yard/prompts YAML 面板（prompt-editor-server，/api/prompt-editor/prompts-yaml/*）——
-const PROMPTS_YAML_API_PREFIX = '/api/prompt-editor/prompts-yaml';
+const PROMPT_EDITOR_API = '/api/prompt-editor';
+const PROMPTS_YAML_API_PREFIX = PROMPT_EDITOR_API + '/prompts-yaml';
+const MEMORY_YAML_PATH = 'memory/memory.yaml';
 const promptsYamlState = {
     currentPath: null,
     baseline: '',
-    apiBase: ''
+    apiBase: '',
+    readonly: false,
 };
 
 function promptsYamlEscapeHtml(s) {
@@ -1774,7 +1777,25 @@ function promptsYamlUpdateSaveButtonState() {
     const ta = document.getElementById('promptsYamlEditor');
     if (!saveBtn || !ta) return;
     const dirty = promptsYamlIsDirty();
-    saveBtn.disabled = !promptsYamlState.currentPath || ta.disabled || !dirty;
+    saveBtn.disabled =
+        !promptsYamlState.currentPath ||
+        ta.disabled ||
+        promptsYamlState.readonly ||
+        !dirty;
+}
+
+function promptsYamlSetReadonly(readonly) {
+    promptsYamlState.readonly = !!readonly;
+    const ta = document.getElementById('promptsYamlEditor');
+    const saveBtn = document.getElementById('promptsYamlSave');
+    if (ta) {
+        ta.readOnly = promptsYamlState.readonly;
+        ta.classList.toggle('prompts-yaml-editor--readonly', promptsYamlState.readonly);
+    }
+    if (saveBtn && promptsYamlState.readonly) {
+        saveBtn.disabled = true;
+    }
+    promptsYamlUpdateSaveButtonState();
 }
 
 function promptsYamlIsDirty() {
@@ -1815,7 +1836,7 @@ function promptsYamlBuildTreeNodes(children, ul) {
             row.dataset.path = node.path;
             row.addEventListener('click', function (ev) {
                 ev.stopPropagation();
-                promptsYamlOpenFile(node.path, row);
+                promptsYamlOpenFile(node.path, row, { readonly: !!node.readonly });
             });
         }
         ul.appendChild(li);
@@ -1853,7 +1874,8 @@ async function promptsYamlLoadTree() {
     }
 }
 
-async function promptsYamlOpenFile(path, rowEl) {
+async function promptsYamlOpenFile(path, rowEl, options) {
+    options = options || {};
     if (!promptsYamlConfirmLoseChanges()) return;
     const base = promptsYamlGetApiBase();
     if (!base) {
@@ -1879,11 +1901,13 @@ async function promptsYamlOpenFile(path, rowEl) {
         promptsYamlState.baseline = data.content != null ? data.content : '';
         ta.value = promptsYamlState.baseline;
         ta.disabled = false;
+        const readonly = !!(data.readonly || options.readonly);
+        promptsYamlSetReadonly(readonly);
         promptsYamlRefreshHighlight();
         if (pathEl) {
-            pathEl.textContent = 'yard/prompts/' + path;
+            pathEl.textContent = 'yard/prompts/' + path + (readonly ? '（只读）' : '');
         }
-        promptsYamlSetStatus('已加载', 'ok');
+        promptsYamlSetStatus(readonly ? '已加载（只读）' : '已加载', 'ok');
         promptsYamlUpdateSaveButtonState();
     } catch (e) {
         promptsYamlSetStatus('加载失败: ' + e.message, 'error');
@@ -1891,11 +1915,37 @@ async function promptsYamlOpenFile(path, rowEl) {
     }
 }
 
+async function promptsYamlViewMemory() {
+    const base = promptsYamlGetApiBase();
+    if (!base) {
+        promptsYamlSetStatus('无法连接编辑服务', 'error');
+        return;
+    }
+    if (!promptsYamlConfirmLoseChanges()) return;
+    promptsYamlSetStatus('正在从 Mem0 导出记忆…');
+    try {
+        const res = await fetch(base + PROMPT_EDITOR_API + '/memory-yaml/refresh', {
+            method: 'POST',
+        });
+        const data = await res.json().catch(function () { return null; });
+        if (!res.ok) {
+            promptsYamlSetStatus((data && data.error) || ('HTTP ' + res.status), 'error');
+            return;
+        }
+        await promptsYamlLoadTree();
+        const path = (data && data.path) || MEMORY_YAML_PATH;
+        await promptsYamlOpenFile(path, null, { readonly: true });
+        promptsYamlSetStatus('记忆已导出（只读）', 'ok');
+    } catch (e) {
+        promptsYamlSetStatus('导出失败: ' + e.message, 'error');
+    }
+}
+
 async function promptsYamlSave() {
     const base = promptsYamlGetApiBase();
     const path = promptsYamlState.currentPath;
     const ta = document.getElementById('promptsYamlEditor');
-    if (!base || !path || !ta) return;
+    if (!base || !path || !ta || promptsYamlState.readonly) return;
     promptsYamlSetStatus('正在保存…');
     try {
         const url = base + PROMPTS_YAML_API_PREFIX + '/content?path=' + encodeURIComponent(path);
@@ -1919,6 +1969,7 @@ async function promptsYamlSave() {
 
 function initPromptsYamlPanel() {
     const refresh = document.getElementById('promptsYamlRefreshTree');
+    const viewMemory = document.getElementById('promptsYamlViewMemory');
     const saveBtn = document.getElementById('promptsYamlSave');
     const apiInput = document.getElementById('promptsYamlApiBase');
 
@@ -1953,6 +2004,7 @@ function initPromptsYamlPanel() {
         if (!promptsYamlConfirmLoseChanges()) return;
         promptsYamlLoadTree();
     });
+    if (viewMemory) viewMemory.addEventListener('click', promptsYamlViewMemory);
     if (saveBtn) saveBtn.addEventListener('click', promptsYamlSave);
     const ta = document.getElementById('promptsYamlEditor');
     const backdrop = document.querySelector('.prompts-yaml-backdrop');

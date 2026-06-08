@@ -52,30 +52,23 @@ class HandlerManager:
                 logger.error(f"清理断开连接 Handler 时出错: {e}")
     
     async def create_or_reuse_handler(self, client_id: str, is_reconnect: bool):
-        if is_reconnect and client_id in self.handlers:
-            # 复用现有 Handler
+        # 页面刷新时旧 WebSocket 已从连接池移除，is_reconnect 常为 False，但 Handler 仍在
+        # reconnect_timeout 窗口内 — 必须复用以保留 MemorySaver 多轮 checkpoint。
+        if client_id in self.handlers:
             handler = self.handlers[client_id]
-            logger.info(f"复用 Handler: client_id={client_id}")
-            
-            # 重新绑定连接（Handler 需要实现这个方法）
-            if hasattr(handler, 'rebind_connection'):
+            logger.info(
+                f"复用 Handler: client_id={client_id}, transport_reconnect={is_reconnect}"
+            )
+            if hasattr(handler, "rebind_connection"):
                 await handler.rebind_connection()
-            
-            # 清除断开标记
-            if hasattr(handler, '_disconnected_at'):
+            if hasattr(handler, "_disconnected_at"):
                 handler._disconnected_at = None
-        else:
-            # 创建新 Handler
-            if client_id in self.handlers:
-                logger.warning(f"客户端 {client_id} 的 Handler 已存在但未标记为重连，先清理")
-                await self._remove_handler_internal(client_id)
-            
-            logger.debug(f"正在创建 {self.handler_type} Handler: client_id={client_id}")
-            handler = load_class(self.handler_type, self.transport, client_id)
-            self.handlers[client_id] = handler
-            
-            # 启动服务
-            await handler.setup_services()
+            return
+
+        logger.debug(f"正在创建 {self.handler_type} Handler: client_id={client_id}")
+        handler = load_class(self.handler_type, self.transport, client_id)
+        self.handlers[client_id] = handler
+        await handler.setup_services()
     
     async def remove_handler(self, client_id: str):
         """

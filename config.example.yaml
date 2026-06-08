@@ -36,3 +36,28 @@
 # mcp_servers_yaml: "yard/configs/mcp_servers.yaml"
 # llm_provider: "glm"
 # llm_model_name: "glm-4-flash"
+
+# === Mem0 OSS 长期记忆（yard） ===
+# memory_enabled: true
+# mem0_embedding_model: "embedding-3"
+# mem0_embedding_dims: 1536
+# mem0_top_k: 6
+# mem0_inject_max_chars: 2000
+# mem0_faiss_path: null
+# memory_explicit_keyword_enabled: true
+# LangGraph 对话摘要（上下文过长自动压缩）后写入 Mem0
+# memory_session_flush_on_summarization: true
+# 上一轮对话结束后空闲多久写入 Mem0（秒），默认 300；0 关闭
+# memory_session_flush_idle_sec: 300
+# memory_session_flush_poll_sec: 30
+# memory_session_flush_on_shutdown: true
+# heartbeat 仅同步 workspace/memory/YYYY-MM-DD.md 日记
+# memory_journal_on_heartbeat: true
+
+# === 三路 API Key 路由（可选；不填则所有调用共用 llm_api_key）===
+# 情绪评估小模型独立 Key（防止与主模型抢配额）
+# emotion_appraisal_api_key: "your-emotion-key-here"
+# emotion_appraisal_base_url: "https://open.bigmodel.cn/api/paas/v4/"
+# Mem0 infer LLM 独立 Key（冷路径异步，可使用廉价配额）
+# mem0_llm_api_key: "your-mem0-key-here"
+# mem0_llm_base_url: "https://open.bigmodel.cn/api/paas/v4/"
