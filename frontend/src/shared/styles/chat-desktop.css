@@ -99,18 +99,10 @@
       0 16px 48px hsl(var(--foreground) / 0.1);
   }
 
-  /* 右侧 70%：锁定视口高度，内部滚动 */
-  .affect-rail {
-    flex: 7 1 0%;
+  .affect-panel-root {
+    flex: 1 1 auto;
     min-width: 0;
-    max-width: 70%;
-    height: 100%;
-    max-height: 100dvh;
     min-height: 0;
-    overflow: hidden;
-    align-self: stretch;
-    border-left: 1px solid hsl(var(--border) / 0.35);
-    background: hsl(var(--muted) / 0.18);
     color: hsl(var(--muted-foreground));
   }
 
@@ -179,7 +171,7 @@
     border-left: 1px solid hsl(var(--border) / 0.28);
   }
 
-  .affect-rail--guide-open .affect-history-panel {
+  .affect-panel-root--guide-open .affect-history-panel {
     flex: 0.95 1 0;
   }
 

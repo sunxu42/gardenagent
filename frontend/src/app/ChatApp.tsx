@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Composer } from "../features/chat/components/Composer";
 import { HeaderBar } from "../features/chat/components/HeaderBar";
 import { MessageList } from "../features/chat/components/MessageList";
 import { RetryHint } from "../features/chat/components/RetryHint";
 import { SettingsDrawer } from "../features/chat/components/SettingsDrawer";
 import { ClearUserDataDialog } from "../features/chat/components/ClearUserDataDialog";
-import { AffectDebugPanel } from "../features/chat/components/AffectDebugPanel";
+import { StrategyPanel } from "../features/strategy/StrategyPanel";
+import { parseStrategyPanelTab, type StrategyPanelTab } from "../features/strategy/types";
 import { chatReducer, initialChatState } from "../features/chat/store/chatReducer";
 import type { ChatSettings, ChatState, ThemeName } from "../features/chat/types";
 import { useChatHistoryPersistence } from "../features/chat/hooks/useChatHistoryPersistence";
@@ -16,6 +18,7 @@ import { getOrCreateUserId, rotateUserId } from "../lib/userId";
 import { clearLocalDataForUser } from "../lib/clearLocalUserData";
 import { loadSettingsForUser, saveSettingsForUser } from "../lib/settingsStorage";
 import { clearServerUserData } from "../services/userDataApi";
+import { useMediaQuery } from "../lib/useMediaQuery";
 
 const themeSet = new Set<ThemeName>(["mint-cute", "pink-blossom", "gray-mist", "orange-sunrise"]);
 
@@ -45,6 +48,44 @@ function initChatState(): ChatState {
 }
 
 export function ChatApp() {
+  const isDesktop = useMediaQuery("(min-width: 1024px)");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const strategyTab = parseStrategyPanelTab(searchParams.get("panel")) ?? "emotion";
+
+  const panelParam = searchParams.get("panel");
+
+  useEffect(() => {
+    if (isDesktop || !panelParam) {
+      return;
+    }
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("panel");
+        return next;
+      },
+      { replace: true },
+    );
+  }, [isDesktop, panelParam, setSearchParams]);
+
+  const handleStrategyTabChange = useCallback(
+    (tab: StrategyPanelTab) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (tab === "emotion") {
+            next.delete("panel");
+          } else {
+            next.set("panel", tab);
+          }
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
+
   const [state, dispatch] = useReducer(chatReducer, undefined, initChatState);
   const userIdRef = useRef(
     typeof window !== "undefined" ? getOrCreateUserId() : "user_ssr_placeholder",
@@ -249,13 +290,17 @@ export function ChatApp() {
         />
         </div>
         </div>
-        <AffectDebugPanel
-          history={state.affectHistory ?? []}
-          currentAgentVad={state.currentAgentVad ?? null}
-          baselineVad={state.baselineVad ?? null}
-          emotionProfile={state.emotionProfile ?? null}
-          currentRelationship={state.currentRelationship ?? null}
-        />
+        {isDesktop ? (
+          <StrategyPanel
+            activeTab={strategyTab}
+            onTabChange={handleStrategyTabChange}
+            history={state.affectHistory ?? []}
+            currentAgentVad={state.currentAgentVad ?? null}
+            baselineVad={state.baselineVad ?? null}
+            emotionProfile={state.emotionProfile ?? null}
+            currentRelationship={state.currentRelationship ?? null}
+          />
+        ) : null}
       </div>
     </div>
   );

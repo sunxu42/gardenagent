@@ -7,7 +7,7 @@ import { AffectTurnCard } from "./AffectTurnCard";
 const DEV_MODE_KEY = "garden-affect-dev-mode";
 const GUIDE_OPEN_KEY = "garden-affect-guide-open";
 
-interface AffectDebugPanelProps {
+export interface AffectDebugPanelProps {
   history?: AffectTurnRecord[];
   currentAgentVad?: VadPoint | null;
   baselineVad?: VadPoint | null;
@@ -101,9 +101,7 @@ export function AffectDebugPanel({
 
   return (
     <div
-      className={`affect-rail hidden h-full min-h-0 max-h-full shrink-0 overflow-hidden lg:flex ${guideOpen ? "affect-rail--guide-open" : ""}`}
-      role="complementary"
-      aria-label="情绪记录与说明"
+      className={`affect-panel-root h-full min-h-0 max-h-full w-full overflow-hidden flex ${guideOpen ? "affect-panel-root--guide-open" : ""}`}
     >
       <div
         className={`affect-sidebar-group h-full min-h-0 max-h-full overflow-hidden ${guideOpen ? "affect-sidebar-group--guide-open" : ""}`}

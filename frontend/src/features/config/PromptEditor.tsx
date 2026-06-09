@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { ArrowLeft, Save } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FileTree } from "./components/FileTree";
 import { PanelSection } from "./components/PanelSection";
@@ -23,8 +22,7 @@ import {
 } from "@/services/promptEditorApi";
 import "./config-desktop.css";
 
-export function ConfigPage() {
-  const navigate = useNavigate();
+export function PromptEditor() {
   const { containerRef, ratio, dragging, startDrag } = useConfigSplitPane(0.4);
   const [tree, setTree] = useState<TreeNode[]>([]);
   const [treeError, setTreeError] = useState<string | null>(null);
@@ -93,16 +91,6 @@ export function ConfigPage() {
     void loadFile(path);
   };
 
-  const handleBack = () => {
-    if (dirty) {
-      const action = window.confirm("有未保存的修改。确定离开？（确定=离开，取消=留在本页）");
-      if (!action) {
-        return;
-      }
-    }
-    navigate("/");
-  };
-
   const handleSave = async () => {
     if (!selectedPath || !editable) {
       return;
@@ -129,7 +117,7 @@ export function ConfigPage() {
 
   if (treeError) {
     return (
-      <div className="config-desktop-page flex items-center justify-center p-8">
+      <div className="config-desktop-page config-desktop-page--embedded flex items-center justify-center p-8">
         <div className="max-w-md rounded-lg bg-destructive/10 px-6 py-8 text-center">
           <p className="m-0 text-sm text-destructive">{treeError}</p>
         </div>
@@ -138,18 +126,8 @@ export function ConfigPage() {
   }
 
   return (
-    <div className="config-desktop-page">
+    <div className="config-desktop-page config-desktop-page--embedded">
       <header className="config-desktop-toolbar">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="cursor-pointer shrink-0"
-          aria-label="返回聊天"
-          onClick={handleBack}
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
         <div className="min-w-0 flex-1">
           <h1 className="config-desktop-toolbar__title">Prompt 配置</h1>
           {selectedPath ? (
