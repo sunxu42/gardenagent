@@ -50,7 +50,7 @@ export function ConfigPage() {
       setTree(children);
       setTreeError(null);
     } catch {
-      setTreeError("无法加载文件树。请在本机运行：python src/prompt-editor-server.py");
+      setTreeError("无法加载文件树。请确认已运行：python src/server.py");
     }
   }, []);
 

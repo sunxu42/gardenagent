@@ -29,7 +29,9 @@ dependencies = [
     "redis",
     "requests",
     "rich>=13.0.0",
+    "starlette",
     "typing-extensions",
+    "uvicorn",
     "websockets",
 ]
 

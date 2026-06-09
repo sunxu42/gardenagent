@@ -12,7 +12,7 @@ export default defineConfig({
         changeOrigin: true,
       },
       "/api/prompt-editor": {
-        target: "http://127.0.0.1:8010",
+        target: "http://127.0.0.1:8005",
         changeOrigin: true,
       },
     },

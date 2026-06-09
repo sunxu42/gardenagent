@@ -1,71 +1,32 @@
+"""Uvicorn entry point for the unified Garden server."""
+from __future__ import annotations
+
 import os
 import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import asyncio
-from src.transport_layer import WebSocketTransport
-from src.handler_layer.handler_manager import HandlerManager
-from src.log import setup_logger, logger
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+import uvicorn
+
 from src.config import load_config
-setup_logger(log_level='DEBUG',disable_modules=[])
+from src.log import setup_logger
 
 
-
-
-
-class Server:
-    
-    def __init__(self):
-        cfg = load_config()
-        self.transport = WebSocketTransport(host=cfg.host, port=cfg.port)
-        self.handler_manager = HandlerManager(self.transport, cfg.handler_type)
-    
-    async def start(self):
-        # 注册连接和断开回调
-        self.transport.register_connection_handler(
-            on_connect=self._on_client_connect,
-            on_disconnect=self._on_client_disconnect
-        )
-        
-        # 注册消息处理回调
-        self.transport.register_message_handler(self._on_message)
-        
-        # 启动 HandlerManager
-        await self.handler_manager.start()
-        
-        # 启动传输层
-        await self.transport.start()
-    
-    async def stop(self):
-        # 停止 HandlerManager
-        await self.handler_manager.stop()
-        # 停止传输层
-        await self.transport.stop()
-    
-    async def _on_client_connect(self, client_id: str, is_reconnect: bool):
-        await self.handler_manager.create_or_reuse_handler(client_id, is_reconnect)
-    
-    async def _on_client_disconnect(self, client_id: str):
-        await self.handler_manager.remove_handler(client_id)
-    
-    async def _on_message(self, client_id: str, message):
-        await self.handler_manager.handle_message(client_id, message)
-
-
-async def main():
-    server = Server()
-    try:
-        await server.start()
-    except asyncio.CancelledError:
-        logger.info("收到停止信号")
-    except Exception as e:
-        logger.error(f"服务器运行错误: {e}")
-    finally:
-        await server.stop()
+def main() -> None:
+    cfg = load_config()
+    setup_logger(
+        log_file=cfg.logging.log_file,
+        log_level=cfg.logging.log_level,
+        disable_modules=cfg.logging.disable_modules,
+    )
+    uvicorn.run(
+        "src.app:app",
+        host=cfg.host,
+        port=cfg.port,
+        log_level="info",
+        ws="websockets-sansio",
+    )
 
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        pass
+    main()

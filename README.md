@@ -13,14 +13,14 @@
 
 ```mermaid
 flowchart LR
-    Web["前端 (frontend/)"] <--> Src["src/ 多模态服务端<br/>WebSocket :8005"]
+    Web["前端 (frontend/)"] <--> Src["src/ 统一服务端<br/>WebSocket + HTTP API :8005"]
     Src --> Yard["yard/ 智能体内核<br/>(deepagents)"]
+    Src --> PromptsYaml["yard/prompts<br/>YAML 提示词"]
     Yard -.MCP.-> MCP["mcp_servers/garden_system<br/>FastMCP :8000"]
     Yard <--> Workspace[("yard/workspace/<br/>记忆 / 配置 / 技能")]
-    PromptEditor["prompt-editor :8010"] --> PromptsYaml["yard/prompts<br/>YAML 提示词"]
 ```
 
-旁路的 `src/prompt-editor-server.py` 是一个本地 HTTP 服务，用来在浏览器里查看和编辑 `yard/prompts/` 下的 YAML 提示词配置，跑不跑都不影响主流程。`frontend` 开发服务器已将 **`/api/prompt-editor/`** 代理到 `:8010`；生产环境经 nginx 同源暴露时同样使用该路径前缀。直连 `:8010` 时仍可使用兼容路径 **`/api/prompts-yaml/`**。
+`python src/server.py` 在同一端口（默认 `:8005`）提供 WebSocket 与 **`/api/prompt-editor/`** HTTP API，用于在浏览器里查看和编辑 `yard/prompts/` 下的 YAML 提示词配置。`frontend` 开发服务器已将 **`/ws`** 与 **`/api/prompt-editor/`** 均代理到 `:8005`；生产环境经 nginx 同源暴露时同样反代到 `:8005`。
 
 ## 配置
 
@@ -58,7 +58,7 @@ mem0_embedding_model: "embedding-3"   # 智谱等兼容 embedding 模型名
 mem0_embedding_dims: 1536
 ```
 
-也可在 `.env` 中设置 `MEM0_EMBEDDING_MODEL`。向量索引落在 `yard/workspace/memory/faiss/`。可通过 `prompt-editor-server` 的 `/api/prompt-editor/memory-yaml/refresh` 导出只读 `yard/prompts/memory/memory.yaml`（已 gitignore，不参与对话注入）。
+也可在 `.env` 中设置 `MEM0_EMBEDDING_MODEL`。向量索引落在 `yard/workspace/memory/faiss/`。可通过统一服务端的 `/api/prompt-editor/memory-yaml/refresh` 导出只读 `yard/prompts/memory/memory.yaml`（已 gitignore，不参与对话注入）。
 
 **Session 对话写入 Mem0**（动态策略，与 30 分钟 heartbeat 解耦，默认）：
 
@@ -76,7 +76,7 @@ mem0_embedding_dims: 1536
 - **灵魂文件**：`yard/prompts/soul.yaml` 合并原 base + 角色正文；`PersonaPromptMiddleware` 按通用模板渲染为 system prompt，每轮从磁盘热加载。
 - **few-shot**：`speech_examples` 等块写在 `soul.yaml` 中，由渲染器格式化为 User/Assistant 示例。
 - **心情**：情绪 middleware 使用 `yard/prompts/agent_mood.yaml`；用户侧回应策略在 `yard/prompts/affective.yaml`；VAD baseline / TTS 音色 v1 为代码默认值，后续可在 frontend `/config` 编辑（TODO）。
-- **编辑**：`python src/prompt-editor-server.py` + 聊天页笔形图标进入 `/config`（桌面三栏，仅 `soul.yaml` 可表单编辑）。
+- **编辑**：启动 `python src/server.py` 后，从聊天页笔形图标进入 `/config`（桌面三栏，仅 `soul.yaml` 可表单编辑）。
 - 从旧结构迁移：`python scripts/merge_soul_yaml.py`（需保留 `base/` 与 `roles/Lora.yaml` 备份时方可重跑）。
 
 ## 运行
@@ -87,14 +87,11 @@ mem0_embedding_dims: 1536
 # 庭院设备 MCP Server（要让智能体能控制设备就启动它）
 python mcp_servers/garden_system/mcp_server.py
 
-# 多模态服务端
+# 统一服务端（WebSocket + /api/prompt-editor HTTP API，默认 :8005）
 python src/server.py
 
 # 聊天前端（含 /config 提示词编辑）
 cd frontend && npm install && npm run dev
-
-# 提示词编辑后台（可选；frontend 已代理 /api/prompt-editor）
-python src/prompt-editor-server.py
 ```
 
 ## Frontend

@@ -273,8 +273,11 @@ class Handler:
             # {"role": "user", "content": [{"type": "file", "file": "base64"}]}
 
             role = data.get('role', '')
+            msg_type = data.get('type', '')
 
-            if role == 'hello':
+            if msg_type == 'voice_session':
+                await self.handle_voice_session(data)
+            elif role == 'hello':
                 await self.handle_hello(data)
             elif role == 'user':
                 await self.handle_user_message(data)
@@ -283,6 +286,27 @@ class Handler:
             logger.error(f"解析 JSON 消息失败: {e}, 消息: {message}")
         except Exception as e:
             logger.error(f"处理文本消息失败: {e}, 消息: {message}")
+
+    async def handle_voice_session(self, data: Dict[str, Any]) -> None:
+        """处理前端语音模式开关：{ type: voice_session, state: start|stop }。"""
+        state = data.get('state', '')
+        incoming_voice = data.get('voice_type')
+        if isinstance(incoming_voice, str) and incoming_voice.strip():
+            self.voice_type_override = incoming_voice.strip()
+
+        if state == 'start':
+            self.client_voice_session_active = True
+            if not self.enable_audio_input:
+                logger.warning("语音会话已开启，但 input_modality 未包含 audio，无法识别麦克风输入")
+            elif self.audio_service is None:
+                logger.warning("语音会话已开启，但 AudioService 未初始化")
+            else:
+                logger.info(f"客户端语音会话已开启: client_id={self.client_id}")
+        elif state == 'stop':
+            self.client_voice_session_active = False
+            logger.info(f"客户端语音会话已关闭: client_id={self.client_id}")
+        else:
+            logger.warning(f"未知 voice_session state: {state!r}")
 
     async def handle_hello(self, data: Dict[str, Any]):
         self._emitted_appraised_turn_ids.clear()

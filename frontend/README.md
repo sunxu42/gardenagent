@@ -9,13 +9,12 @@ npm install
 npm run dev
 ```
 
-开发服务器默认 `http://localhost:5173`，已将 `/ws` 代理到 `:8005`、`/api/prompt-editor` 代理到 `:8010`。
+开发服务器默认 `http://localhost:5173`，已将 `/ws` 与 `/api/prompt-editor` 均代理到 `:8005`。
 
-请先在项目根目录启动：
+请先在项目根目录启动统一服务端（WebSocket + 提示词编辑 API）：
 
 ```bash
 python src/server.py
-python src/prompt-editor-server.py   # /config 与记忆导出需要
 ```
 
 ## 局域网 HTTPS 语音

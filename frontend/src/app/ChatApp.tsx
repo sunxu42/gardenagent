@@ -159,9 +159,6 @@ export function ChatApp() {
     const oldUserId = userIdRef.current;
     try {
       await clearServerUserData(oldUserId);
-      if (chatApiRef.current && state.connectionStatus === "online") {
-        await chatApiRef.current.clearUserDataAndWait(oldUserId);
-      }
       await clearLocalDataForUser(oldUserId);
       rotateUserId();
       window.location.reload();
@@ -169,7 +166,7 @@ export function ChatApp() {
       setClearError(error instanceof Error ? error.message : "清空失败");
       setClearBusy(false);
     }
-  }, [state.connectionStatus]);
+  }, []);
 
   const startVoiceCall = () => {
     if (state.voiceCallActive) {

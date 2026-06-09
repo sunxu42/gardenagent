@@ -10,11 +10,9 @@ WebSocket 传输层实现
 """
 
 import asyncio
-from typing import Dict, Set, Optional, Callable, Any
-from urllib.parse import parse_qs, urlparse
+from typing import Dict, Optional, Callable, Any
 from loguru import logger
-import websockets
-from websockets.server import WebSocketServerProtocol
+from starlette.websockets import WebSocket, WebSocketDisconnect
 from .base import TransportBase
 
 
@@ -26,9 +24,8 @@ class WebSocketTransport(TransportBase):
         self.ping_interval = ping_interval
         self.ping_timeout = ping_timeout
         
-        self._connections: Dict[str, WebSocketServerProtocol] = {}  # client_id -> websocket
+        self._connections: Dict[str, WebSocket] = {}  # client_id -> websocket
         self._is_running = False
-        self._server = None
         
         self._on_message_callback: Optional[Callable[[str, Any], None]] = None
         # 回调签名：client_id, is_reconnect
@@ -40,7 +37,7 @@ class WebSocketTransport(TransportBase):
         return self._is_running
     
     @property
-    def connections(self) -> Dict[str, WebSocketServerProtocol]:
+    def connections(self) -> Dict[str, WebSocket]:
         return self._connections
     
     def register_message_handler(self, callback: Callable[[str, Any], None]):
@@ -67,9 +64,9 @@ class WebSocketTransport(TransportBase):
         self._on_connect_callback = on_connect
         self._on_disconnect_callback = on_disconnect
     
-    def _extract_client_id(self, websocket: WebSocketServerProtocol) -> Optional[str]:
+    def _extract_client_id(self, websocket: WebSocket) -> Optional[str]:
         """
-        从 WebSocket 请求头中提取 client-id
+        从 WebSocket 请求头或查询参数中提取 client-id
         
         Args:
             websocket: WebSocket 连接对象
@@ -78,23 +75,22 @@ class WebSocketTransport(TransportBase):
             客户端 ID，如果不存在则返回 None
         """
         try:
-            # websockets 库中，通过 request_headers 访问 HTTP 请求头
-            headers = websocket.request.headers
-            # 尝试不同的 header 名称（大小写不敏感）
-            client_id = headers.get('client-id') or headers.get('Client-Id') or headers.get('CLIENT-ID')
+            headers = websocket.headers
+            client_id = (
+                headers.get('client-id')
+                or headers.get('Client-Id')
+                or headers.get('CLIENT-ID')
+            )
             if client_id:
                 return client_id
 
-            request_path = getattr(websocket.request, "path", "") or ""
-            if request_path:
-                query_string = urlparse(request_path).query
-                if query_string:
-                    params = parse_qs(query_string)
-                    client_id = (params.get("client-id") or params.get("client_id") or [None])[0]
-                    if client_id:
-                        return client_id
+            client_id = (
+                websocket.query_params.get('client-id')
+                or websocket.query_params.get('client_id')
+            )
+            if client_id:
+                return client_id
 
-            # 如果没有找到，返回 None（业务层可以拒绝连接）
             return None
         except Exception as e:
             logger.error(f"提取客户端 ID 失败: {e}")
@@ -102,22 +98,10 @@ class WebSocketTransport(TransportBase):
     
     async def start(self):
         self._is_running = True
-        
-        async with websockets.serve(
-            self._handle_connection,
-            self.host,
-            self.port,
-            # ping_interval=self.ping_interval,
-            # ping_timeout=self.ping_timeout
-        ) as server:
-            self._server = server
-            logger.info(f"WebSocket服务器已启动: ws://{self.host}:{self.port}")
-            await asyncio.Future()  # 永久运行
     
     async def stop(self):
         self._is_running = False
         
-        # 关闭所有连接
         for client_id, websocket in list(self._connections.items()):
             try:
                 await websocket.close()
@@ -127,8 +111,9 @@ class WebSocketTransport(TransportBase):
         self._connections.clear()
         logger.info("WebSocket服务器已停止")
     
-    async def _handle_connection(self, websocket: WebSocketServerProtocol, path: str = ""):
-        # 从请求头提取 client_id
+    async def handle_starlette_connection(self, websocket: WebSocket) -> None:
+        await websocket.accept()
+
         client_id = self._extract_client_id(websocket)
         
         if not client_id:
@@ -139,30 +124,23 @@ class WebSocketTransport(TransportBase):
                 logger.error(f"关闭连接失败: {e}")
             return
         
-        # 检查是否是重连（相同 client_id 的连接已存在）
         is_reconnect = client_id in self._connections
         
         if is_reconnect:
-            # 立即关闭旧连接（不等待关闭完成）
             old_websocket = self._connections[client_id]
             logger.info(f"检测到客户端 {client_id} 重连，立即关闭旧连接")
-            # 立即从连接池移除，避免新消息发送到旧连接
             self._connections.pop(client_id, None)
-            # 后台关闭旧连接，不阻塞新连接
             asyncio.create_task(self._close_connection_async(old_websocket, client_id))
         
-        logger.debug(f"客户端连接: client_id={client_id}, is_reconnect={is_reconnect}, 路径: {path}")
+        logger.debug(f"客户端连接: client_id={client_id}, is_reconnect={is_reconnect}")
         
-        # 先添加到连接池，确保后续操作（如 rebind_connection 发送消息）可以访问连接
         self._connections[client_id] = websocket
         
-        # 调用连接回调
         if self._on_connect_callback:
             try:
                 await self._on_connect_callback(client_id, is_reconnect)
             except Exception as e:
                 logger.error(f"连接建立回调失败: {e}, 关闭连接")
-                # 如果回调失败，从连接池移除
                 self._connections.pop(client_id, None)
                 try:
                     await websocket.close(code=1011, reason="Handler initialization failed")
@@ -173,21 +151,25 @@ class WebSocketTransport(TransportBase):
         logger.info(f"客户端连接已建立: client_id={client_id}, is_reconnect={is_reconnect}")
         
         try:
-            # 消息循环
-            async for message in websocket:
-                await self._on_message(client_id, message)
+            while True:
+                message = await websocket.receive()
+                if message["type"] == "websocket.disconnect":
+                    break
+                if message["type"] == "websocket.receive":
+                    if "text" in message:
+                        await self._on_message(client_id, message["text"])
+                    elif "bytes" in message:
+                        await self._on_message(client_id, message["bytes"])
                 
-        except websockets.exceptions.ConnectionClosed:
+        except WebSocketDisconnect:
             logger.info(f"客户端断开连接: client_id={client_id}")
         except Exception as e:
             logger.error(f"处理客户端 {client_id} 消息失败: {e}")
         finally:
-            # 清理连接
             if self._connections.get(client_id) == websocket:
                 self._connections.pop(client_id, None)
             
             if self._connections.get(client_id) != websocket:
-                # 这是被替换的旧连接，不触发断开回调
                 logger.debug(f"旧连接 {client_id} 被替换，不触发断开回调")
             elif self._on_disconnect_callback:
                 try:
@@ -195,7 +177,7 @@ class WebSocketTransport(TransportBase):
                 except Exception as e:
                     logger.error(f"连接断开回调失败: {e}")
     
-    async def _close_connection_async(self, websocket: WebSocketServerProtocol, client_id: str):
+    async def _close_connection_async(self, websocket: WebSocket, client_id: str):
         """后台关闭连接（不阻塞主流程）"""
         try:
             await websocket.close(code=1000, reason="Reconnected")
@@ -218,6 +200,14 @@ class WebSocketTransport(TransportBase):
         else:
             logger.warning(f"收到消息但未注册消息处理器: {client_id}")
     
+    async def _send_data(self, websocket: WebSocket, data: Any) -> None:
+        if isinstance(data, str):
+            await websocket.send_text(data)
+        elif isinstance(data, bytes):
+            await websocket.send_bytes(data)
+        else:
+            await websocket.send_text(str(data))
+    
     async def send_to_client(self, client_id: str, data: Any) -> bool:
         websocket = self._connections.get(client_id)
         if not websocket:
@@ -225,9 +215,9 @@ class WebSocketTransport(TransportBase):
             return False
         
         try:
-            await websocket.send(data)
+            await self._send_data(websocket, data)
             return True
-        except websockets.exceptions.ConnectionClosed:
+        except WebSocketDisconnect:
             logger.warning(f"客户端 {client_id} 连接已关闭")
             self._connections.pop(client_id, None)
             return False
@@ -241,15 +231,14 @@ class WebSocketTransport(TransportBase):
         
         for client_id, websocket in list(self._connections.items()):
             try:
-                await websocket.send(data)
+                await self._send_data(websocket, data)
                 success_count += 1
-            except websockets.exceptions.ConnectionClosed:
+            except WebSocketDisconnect:
                 disconnected_clients.append(client_id)
             except Exception as e:
                 logger.error(f"广播消息到客户端 {client_id} 失败: {e}")
                 disconnected_clients.append(client_id)
         
-        # 清理已断开的连接
         for client_id in disconnected_clients:
             self._connections.pop(client_id, None)
         
@@ -260,4 +249,3 @@ class WebSocketTransport(TransportBase):
     
     def is_client_connected(self, client_id: str) -> bool:
         return client_id in self._connections
-

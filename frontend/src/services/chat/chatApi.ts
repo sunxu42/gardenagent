@@ -14,7 +14,6 @@ export interface ChatApi {
   connect: () => void;
   disconnect: () => void;
   sendText: (text: string) => void;
-  clearUserDataAndWait: (userId: string, timeoutMs?: number) => Promise<void>;
   syncVoiceType: () => void;
   startVoice: () => Promise<void>;
   stopVoice: () => Promise<void>;
@@ -36,8 +35,6 @@ export function createChatApi(options: CreateChatApiOptions): ChatApi {
   let socket: WebSocket | null = null;
   let fallbackAssistantMessageId: string | null = null;
   let voiceActive = false;
-  let clearUserDataResolver: ((ok: boolean, error?: string) => void) | null = null;
-  let clearUserDataTimer: ReturnType<typeof setTimeout> | null = null;
   const voiceClient = createVoiceClient();
 
   const ensureFallbackAssistantMessage = (): string => {
@@ -169,20 +166,6 @@ export function createChatApi(options: CreateChatApiOptions): ChatApi {
       }
 
       const raw = parsed as Record<string, unknown>;
-      if (raw.type === "clear_user_data") {
-        if (clearUserDataResolver) {
-          const ok = raw.ok === true;
-          const error = typeof raw.error === "string" ? raw.error : undefined;
-          clearUserDataResolver(ok, error);
-          clearUserDataResolver = null;
-          if (clearUserDataTimer) {
-            clearTimeout(clearUserDataTimer);
-            clearUserDataTimer = null;
-          }
-        }
-        return;
-      }
-
       const wsEvent = mapServerMessage(raw);
       applyMappedEvent(wsEvent);
     };
@@ -203,33 +186,6 @@ export function createChatApi(options: CreateChatApiOptions): ChatApi {
       return;
     }
     socket.send(JSON.stringify(buildUserText(text)));
-  };
-
-  const clearUserDataAndWait = (userId: string, timeoutMs = 8000): Promise<void> => {
-    if (!socket || socket.readyState !== WebSocket.OPEN) {
-      return Promise.reject(new Error("WebSocket 未连接"));
-    }
-    return new Promise((resolve, reject) => {
-      if (clearUserDataResolver) {
-        reject(new Error("已有清空操作进行中"));
-        return;
-      }
-      clearUserDataResolver = (ok, error) => {
-        if (ok) {
-          resolve();
-        } else {
-          reject(new Error(error || "清空 checkpoint 失败"));
-        }
-      };
-      clearUserDataTimer = setTimeout(() => {
-        if (clearUserDataResolver) {
-          clearUserDataResolver = null;
-          clearUserDataTimer = null;
-          reject(new Error("清空 checkpoint 超时"));
-        }
-      }, timeoutMs);
-      socket?.send(JSON.stringify({ type: "clear_user_data", user_id: userId }));
-    });
   };
 
   const sendVoiceSession = (state: "start" | "stop") => {
@@ -293,5 +249,5 @@ export function createChatApi(options: CreateChatApiOptions): ChatApi {
     options.onAction({ type: "voiceCallEnded" });
   };
 
-  return { connect, disconnect, sendText, clearUserDataAndWait, syncVoiceType, startVoice, stopVoice };
+  return { connect, disconnect, sendText, syncVoiceType, startVoice, stopVoice };
 }

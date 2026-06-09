@@ -9,7 +9,7 @@ GardenAI 开发用 HTTPS（自签名证书）
 
 3. 生成文件：gardenagent.crt、gardenagent.key（已加入 .gitignore，勿提交私钥到公开仓库）。
 
-4. nginx 配置 listen 8080 ssl 时，证书路径指向本目录；root 指向 frontend 构建产物（先执行 cd frontend && npm run build，再配置 root 为 frontend/dist 的绝对路径）。/ws 反代到 127.0.0.1:8005，/api/prompt-editor/ 反代到 127.0.0.1:8010。修改证书后重载 nginx：
+4. nginx 配置 listen 8080 ssl 时，证书路径指向本目录；root 指向 frontend 构建产物（先执行 cd frontend && npm run build，再配置 root 为 frontend/dist 的绝对路径）。/ws 与 /api/prompt-editor/ 均反代到 127.0.0.1:8005。修改证书后重载 nginx：
    nginx.exe -s reload
 
 5. Windows 防火墙放行 TCP 8080（入站规则）。
