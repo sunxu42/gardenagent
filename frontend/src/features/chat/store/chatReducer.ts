@@ -1,4 +1,5 @@
-import type { ChatAction, ChatMessage, ChatState } from "../types";
+import type { AffectTurnRecord, ChatAction, ChatMessage, ChatState } from "../types";
+import { baseAgentVadForDelta, computeVadDelta, upsertAffectRecord } from "../lib/affectMerge";
 import { DEFAULT_TTS_VOICE } from "../ttsVoices";
 
 export const initialChatState: ChatState = {
@@ -10,9 +11,11 @@ export const initialChatState: ChatState = {
   voiceState: "idle",
   voiceTranscript: "",
   voiceError: null,
-  vadHistory: [],
+  affectHistory: [],
   currentAgentVad: null,
   baselineVad: null,
+  emotionProfile: null,
+  currentRelationship: null,
   settings: {
     voiceEnabled: true,
     autoPlayVoice: true,
@@ -217,35 +220,95 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return {
         ...state,
         baselineVad: action.payload.baselineVad,
+        emotionProfile: action.payload.emotionProfile ?? state.emotionProfile,
         currentAgentVad: action.payload.currentVad ?? state.currentAgentVad,
+        currentRelationship: action.payload.relationship ?? state.currentRelationship,
       };
-    case "vadTurnEvaluated": {
-      const existingIndex = state.vadHistory.findIndex((item) => item.turnId === action.payload.turnId);
-      const baseForDelta = (
-        existingIndex >= 0
-          ? (state.vadHistory[existingIndex + 1]?.agentVadAfter ?? state.currentAgentVad ?? action.payload.agentVadAfter)
-          : (state.vadHistory[0]?.agentVadAfter ?? state.currentAgentVad ?? action.payload.agentVadAfter)
-      );
-      const record = {
-        turnId: action.payload.turnId,
+    case "affectTurnAppraised": {
+      const { turnId, timestamp } = action.payload;
+      const existing = state.affectHistory.find((item) => item.turnId === turnId);
+      const record: AffectTurnRecord = {
+        turnId,
         userText: action.payload.userText,
-        utteranceVad: action.payload.utteranceVad,
-        agentVadAfter: action.payload.agentVadAfter,
-        delta: {
-          v: action.payload.agentVadAfter.v - baseForDelta.v,
-          a: action.payload.agentVadAfter.a - baseForDelta.a,
-          d: action.payload.agentVadAfter.d - baseForDelta.d,
-        },
-        createdAt: action.payload.timestamp,
+        createdAt: timestamp,
+        schemaVersion: 2,
+        phase: existing?.phase === "settled" ? "settled" : "appraised",
+        userAffectVad: action.payload.userAffectVad,
+        userWeight: action.payload.userWeight,
+        relationship: action.payload.relationship,
+        interpersonalCue: action.payload.interpersonalCue,
+        responsePolicy: action.payload.responsePolicy,
+        agentVadTarget: action.payload.agentVadTarget ?? undefined,
+        actuationWeight: action.payload.actuationWeight,
+        synthesisRule: action.payload.synthesisRule ?? existing?.synthesisRule,
+        agentVadAfter: existing?.agentVadAfter,
+        delta: existing?.delta,
+        agentEmotion: existing?.agentEmotion,
+        emotionScale: existing?.emotionScale,
       };
-      const withoutCurrent =
-        existingIndex >= 0
-          ? state.vadHistory.filter((item) => item.turnId !== action.payload.turnId)
-          : state.vadHistory;
       return {
         ...state,
-        currentAgentVad: action.payload.agentVadAfter,
-        vadHistory: [record, ...withoutCurrent].slice(0, 30),
+        currentRelationship: action.payload.relationship ?? state.currentRelationship,
+        affectHistory: upsertAffectRecord(state.affectHistory, record),
+      };
+    }
+    case "affectTurnSettled": {
+      const { turnId, agentVadAfter, timestamp } = action.payload;
+      const existing = state.affectHistory.find((item) => item.turnId === turnId);
+      const baseForDelta = baseAgentVadForDelta(
+        state.affectHistory,
+        turnId,
+        state.currentAgentVad,
+        agentVadAfter,
+      );
+      const record: AffectTurnRecord = {
+        turnId,
+        userText: existing?.userText ?? "",
+        createdAt: existing?.createdAt ?? timestamp,
+        schemaVersion: existing?.schemaVersion ?? 2,
+        phase: "settled",
+        userAffectVad: existing?.userAffectVad ?? { v: 0, a: 0, d: 0 },
+        userWeight: existing?.userWeight,
+        relationship: existing?.relationship,
+        interpersonalCue: existing?.interpersonalCue,
+        responsePolicy: existing?.responsePolicy,
+        agentVadTarget: existing?.agentVadTarget,
+        actuationWeight: existing?.actuationWeight,
+        agentVadAfter,
+        delta: computeVadDelta(agentVadAfter, baseForDelta),
+        agentEmotion: action.payload.agentEmotion,
+        emotionScale: action.payload.emotionScale,
+      };
+      return {
+        ...state,
+        currentAgentVad: agentVadAfter,
+        affectHistory: upsertAffectRecord(state.affectHistory, record),
+      };
+    }
+    case "vadTurnEvaluated": {
+      const { turnId, agentVadAfter, utteranceVad, timestamp } = action.payload;
+      const baseForDelta = baseAgentVadForDelta(
+        state.affectHistory,
+        turnId,
+        state.currentAgentVad,
+        agentVadAfter,
+      );
+      const record: AffectTurnRecord = {
+        turnId,
+        userText: action.payload.userText,
+        createdAt: timestamp,
+        schemaVersion: 1,
+        phase: "settled",
+        userAffectVad: utteranceVad,
+        agentVadAfter,
+        delta: computeVadDelta(agentVadAfter, baseForDelta),
+        agentEmotion: "neutral",
+        emotionScale: 4,
+      };
+      return {
+        ...state,
+        currentAgentVad: agentVadAfter,
+        affectHistory: upsertAffectRecord(state.affectHistory, record),
       };
     }
     case "historyHydrated":
