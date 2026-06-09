@@ -1,0 +1,33 @@
+import type { LogLevel, LogModule } from "./logTypes";
+
+/** 与 yard/observability/logging/modules.py 保持一致 */
+export const MODULE_SHORT: Record<LogModule, string> = {
+  HANDLER: "HND",
+  ASR: "ASR",
+  AGENT: "AGT",
+  TTS: "TTS",
+  EMOTION: "AFF",
+  TRANSPORT: "TRN",
+  METRICS: "MET",
+  MEMORY: "MEM",
+  SYSTEM: "SYS",
+};
+
+export const MODULE_COLORS: Record<LogModule, string> = {
+  HANDLER: "#22d3ee",
+  ASR: "#60a5fa",
+  AGENT: "#a78bfa",
+  TTS: "#fb923c",
+  EMOTION: "#f472b6",
+  TRANSPORT: "#94a3b8",
+  METRICS: "#34d399",
+  MEMORY: "#fbbf24",
+  SYSTEM: "#e2e8f0",
+};
+
+export const LEVEL_COLORS: Record<LogLevel, string> = {
+  DEBUG: "#94a3b8",
+  INFO: "#e2e8f0",
+  WARNING: "#fbbf24",
+  ERROR: "#f87171",
+};
