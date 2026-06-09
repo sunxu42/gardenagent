@@ -5,7 +5,9 @@ from __future__ import annotations
 from typing import Any
 
 from langchain_core.tools import StructuredTool
-from loguru import logger
+from yard.observability.logging import LogModule, get_logger
+
+_log = get_logger(LogModule.SYSTEM)
 from pydantic import BaseModel, Field
 
 from langgraph.config import get_config
@@ -54,9 +56,8 @@ def create_remember_tool(
             return {"ok": False, "error": "missing thread_id"}
         try:
             if debug_log_enabled:
-                logger.info(
-                    "[mem0:add:remember] embedding_input(user): {}",
-                    _truncate(text, debug_log_max_chars),
+                _log.info(
+                    f"[mem0:add:remember] embedding_input(user): {_truncate(text, debug_log_max_chars)}",
                 )
             result = await service.aadd(
                 [{"role": "user", "content": text}],
@@ -68,10 +69,10 @@ def create_remember_tool(
                 },
                 infer=True,
             )
-            logger.info("remember tool: {}", text[:80])
+            _log.info(f"remember tool: {text[:80]}")
             return {"ok": True, "result": result}
         except Exception as e:
-            logger.warning("remember tool failed: {!r}", e)
+            _log.warning(f"remember tool failed: {e!r}")
             return {"ok": False, "error": repr(e)}
 
     return StructuredTool.from_function(

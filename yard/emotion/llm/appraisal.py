@@ -9,7 +9,9 @@ from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
-from loguru import logger
+from yard.observability.logging import LogModule, get_logger
+
+_log = get_logger(LogModule.EMOTION)
 from yard.configs.config import Config
 from yard.emotion.constants import EMOTION_APPRAISAL_TEMPERATURE
 from yard.emotion.core.policy import TurnAppraisalV2
@@ -149,13 +151,13 @@ class EmotionAppraiser:
         except Exception as e:
             msg = str(e)
             if "json_invalid" not in msg and "Invalid JSON" not in msg:
-                logger.warning("emotion appraisal v2 structured failed: {!r}; trying fallback", e)
+                _log.warning(f"emotion appraisal v2 structured failed: {e!r}; trying fallback")
         try:
             resp = self._fallback.invoke(self._messages_v2(text))
             content = resp.content if hasattr(resp, "content") else str(resp)
             return self._parse_v2_result(content)
         except Exception as e:
-            logger.warning("emotion appraisal v2 failed: {!r}", e)
+            _log.warning(f"emotion appraisal v2 failed: {e!r}")
             return None
 
     async def appraise_v2_async(self, user_text: str) -> TurnAppraisalV2 | None:
@@ -174,13 +176,13 @@ class EmotionAppraiser:
         except Exception as e:
             msg = str(e)
             if "json_invalid" not in msg and "Invalid JSON" not in msg:
-                logger.warning("emotion appraisal v2 structured failed: {!r}; trying fallback", e)
+                _log.warning(f"emotion appraisal v2 structured failed: {e!r}; trying fallback")
         try:
             resp = await self._fallback.ainvoke(self._messages_v2(text))
             content = resp.content if hasattr(resp, "content") else str(resp)
             return self._parse_v2_result(content)
         except Exception as e:
-            logger.warning("emotion appraisal v2 failed: {!r}", e)
+            _log.warning(f"emotion appraisal v2 failed: {e!r}")
             return None
 
 

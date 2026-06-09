@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from loguru import logger
+from yard.observability.logging import LogModule, get_logger
+
+_log = get_logger(LogModule.SYSTEM)
 
 @dataclass
 class MowerEvent:
@@ -52,7 +54,7 @@ class GardenSystem:
             "event_data": event_data,
             "event_timestamp": datetime.now(),
         })
-        logger.info(f"添加事件: {event_name}")
+        _log.info(f"添加事件: {event_name}")
 
     def add_event_log(self, event_name: str, event_data: dict):
         self.event_log.append({

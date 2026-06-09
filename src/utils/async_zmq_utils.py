@@ -2,7 +2,9 @@ import zmq
 import asyncio
 import threading
 from typing import Optional, Callable, Any
-from loguru import logger
+from yard.observability.logging import LogModule, get_logger
+
+_log = get_logger(LogModule.SYSTEM)
 
 
 class AsyncZMQSocket:
@@ -33,7 +35,7 @@ class AsyncZMQSocket:
         except zmq.Again:
             return None
         except Exception as e:
-            logger.error(f"异步接收消息失败: {e}")
+            _log.error(f"异步接收消息失败: {e}")
             return None
     
     async def send_async(self, data: bytes, flags: int = 0) -> bool:
@@ -46,7 +48,7 @@ class AsyncZMQSocket:
             await self._run_in_executor(self.socket.send, data, flags)
             return True
         except Exception as e:
-            logger.error(f"异步发送消息失败: {e}")
+            _log.error(f"异步发送消息失败: {e}")
             return False
     
     def close(self):
@@ -92,10 +94,10 @@ class AsyncZMQSubscriber:
             self.socket.socket.setsockopt(zmq.SUBSCRIBE, self.subscribe)
             self.socket.socket.setsockopt(zmq.RCVTIMEO, self.recv_timeout_ms)
             
-            logger.info(f"异步订阅者已启动: {self.address}")
+            _log.info(f"异步订阅者已启动: {self.address}")
             
         except Exception as e:
-            logger.error(f"启动异步订阅者失败: {e}")
+            _log.error(f"启动异步订阅者失败: {e}")
             raise
     
     async def recv_message(self) -> Optional[bytes]:
@@ -112,7 +114,7 @@ class AsyncZMQSubscriber:
             self.socket.close()
         if self.context:
             self.context.term()
-        logger.info("异步订阅者已停止")
+        _log.info("异步订阅者已停止")
 
 
 class AsyncZMQPublisher:
@@ -152,10 +154,10 @@ class AsyncZMQPublisher:
             # 等待连接建立
             await asyncio.sleep(0.1)
             
-            logger.info(f"异步发布者已启动: {self.address}")
+            _log.info(f"异步发布者已启动: {self.address}")
             
         except Exception as e:
-            logger.error(f"启动异步发布者失败: {e}")
+            _log.error(f"启动异步发布者失败: {e}")
             raise
     
     async def send_message(self, data: bytes) -> bool:
@@ -172,7 +174,7 @@ class AsyncZMQPublisher:
             self.socket.close()
         if self.context:
             self.context.term()
-        logger.info("异步发布者已停止")
+        _log.info("异步发布者已停止")
 
 
 # 便捷函数

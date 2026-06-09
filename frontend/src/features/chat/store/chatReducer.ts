@@ -16,6 +16,7 @@ export const initialChatState: ChatState = {
   baselineVad: null,
   emotionProfile: null,
   currentRelationship: null,
+  logEntries: [],
   settings: {
     voiceEnabled: true,
     autoPlayVoice: true,
@@ -321,11 +322,28 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         ...state,
         messages: mergeHistoryMessages(state.messages, action.payload.messages),
       };
+    case "logEntryReceived": {
+      const MAX_LOG_ENTRIES = 500;
+      const nextEntries = [...state.logEntries, action.payload.entry];
+      return {
+        ...state,
+        logEntries:
+          nextEntries.length > MAX_LOG_ENTRIES
+            ? nextEntries.slice(nextEntries.length - MAX_LOG_ENTRIES)
+            : nextEntries,
+      };
+    }
+    case "clearLogs":
+      return {
+        ...state,
+        logEntries: [],
+      };
     case "chatCleared":
       return {
         ...initialChatState,
         settings: state.settings,
         connectionStatus: state.connectionStatus,
+        logEntries: state.logEntries,
       };
     default:
       return state;

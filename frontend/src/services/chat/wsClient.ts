@@ -4,6 +4,8 @@ import type {
   RelationshipSnapshot,
   ResponsePolicySnapshot,
 } from "../../features/chat/types";
+import type { LogEntry, LogLevel, LogModule } from "../../features/logs/logTypes";
+import { LOG_LEVELS, LOG_MODULES } from "../../features/logs/logTypes";
 import { parseEmotionProfile } from "../../features/chat/lib/emotionProfile";
 
 export interface AssistantServerMessage {
@@ -35,6 +37,11 @@ export interface AssistantServerMessage {
   schema_version?: unknown;
   timestamp?: unknown;
   emotion?: unknown;
+  ts_ms?: unknown;
+  level?: unknown;
+  module?: unknown;
+  message?: unknown;
+  extra?: unknown;
 }
 
 export interface HelloOptions {
@@ -123,6 +130,7 @@ export type WsMappedEvent =
       agentVadAfter: { v: number; a: number; d: number };
       timestamp: number;
     }
+  | { type: "LOG_ENTRY"; entry: LogEntry }
   | { type: "IGNORE" };
 
 function readOptionalNumber(raw: unknown): number | undefined {
@@ -219,7 +227,62 @@ function readAgentName(...sources: unknown[]): string | undefined {
   return undefined;
 }
 
+const LOG_LEVEL_SET = new Set<string>(LOG_LEVELS);
+const LOG_MODULE_SET = new Set<string>(LOG_MODULES);
+
+function parseLogLevel(raw: unknown): LogLevel | null {
+  if (typeof raw !== "string") {
+    return null;
+  }
+  const upper = raw.toUpperCase();
+  return LOG_LEVEL_SET.has(upper) ? (upper as LogLevel) : null;
+}
+
+function parseLogModule(raw: unknown): LogModule | null {
+  if (typeof raw !== "string") {
+    return null;
+  }
+  const upper = raw.toUpperCase();
+  return LOG_MODULE_SET.has(upper) ? (upper as LogModule) : null;
+}
+
+function readLogExtra(raw: unknown): Record<string, unknown> | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return undefined;
+  }
+  return raw as Record<string, unknown>;
+}
+
+function parseLogEntry(msg: AssistantServerMessage): LogEntry | null {
+  const tsMs = Number(msg.ts_ms);
+  const level = parseLogLevel(msg.level);
+  const module = parseLogModule(msg.module);
+  const message = typeof msg.message === "string" ? msg.message : "";
+  if (!Number.isFinite(tsMs) || !level || !module || !message) {
+    return null;
+  }
+  const turnId = typeof msg.turn_id === "string" && msg.turn_id.trim() ? msg.turn_id.trim() : undefined;
+  const extra = readLogExtra(msg.extra);
+  return {
+    id: `log-${tsMs}-${module}-${Math.random().toString(36).slice(2, 9)}`,
+    tsMs,
+    level,
+    module,
+    message,
+    turnId,
+    extra,
+  };
+}
+
 export function mapServerMessage(msg: AssistantServerMessage): WsMappedEvent {
+  if (msg?.type === "log_entry") {
+    const entry = parseLogEntry(msg);
+    if (!entry) {
+      return { type: "IGNORE" };
+    }
+    return { type: "LOG_ENTRY", entry };
+  }
+
   if (msg?.type === "affect_turn_appraised") {
     const turnId = typeof msg.turn_id === "string" ? msg.turn_id.trim() : "";
     const userText = typeof msg.user_text === "string" ? msg.user_text : "";
@@ -438,6 +501,13 @@ export function mapEventToAction(
         agentVadAfter: event.agentVadAfter,
         timestamp: event.timestamp,
       },
+    };
+  }
+
+  if (event.type === "LOG_ENTRY") {
+    return {
+      type: "logEntryReceived",
+      payload: { entry: event.entry },
     };
   }
 

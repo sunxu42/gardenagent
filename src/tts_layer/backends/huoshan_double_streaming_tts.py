@@ -2,7 +2,9 @@ import asyncio
 import json
 import uuid
 from typing import Dict, Any, Optional
-from loguru import logger
+from yard.observability.logging import LogModule, get_logger
+
+_log = get_logger(LogModule.TTS)
 import websockets
 from .base import BaseTTS
 
@@ -47,7 +49,7 @@ class HuoshanTTS(BaseTTS):
         self.speech_rate = self.SPEECH_RATE
         self.loudness_rate = self.LOUDNESS_RATE
         self.pitch = self.PITCH
-        self.emotion = None          # 可被 set_emotion 覆盖
+        self.emotion = None          # 由 TTSService 按 appraisal 结果设置
         self.emotion_scale = 4
 
     # --- Protocol constants ---
@@ -94,10 +96,10 @@ class HuoshanTTS(BaseTTS):
             except TypeError:
                 self._ws = await websockets.connect(self.ws_url, extra_headers=headers, **connect_kwargs)
         except Exception as e:
-            logger.error(f"TTS 建立连接失败: {e}")
+            _log.error(f"TTS 建立连接失败: {e}")
             self._ws = None
             raise
-        logger.info(f"TTS 建立连接成功, resource_id={self.resource_id}, speaker={self.speaker}")
+        _log.info(f"TTS 建立连接成功, resource_id={self.resource_id}, speaker={self.speaker}")
 
     def _header_bytes(self, message_type: int, message_type_specific_flags: int, serial_method: int) -> bytes:
         return bytes([
@@ -240,7 +242,7 @@ class HuoshanTTS(BaseTTS):
                             json_data = json.loads(payload.decode("utf-8"))
                             self.current_text = json_data.get("text", "")
                         except Exception as e:
-                            logger.error(f"解析句子开始事件失败: {e}")
+                            _log.error(f"解析句子开始事件失败: {e}")
                 elif event == self._EVENT_TTSResponse and message_type == self._AUDIO_ONLY_RESPONSE:
                     # 处理音频数据
                     if payload:
@@ -250,10 +252,10 @@ class HuoshanTTS(BaseTTS):
                     break
 
             except websockets.ConnectionClosed:
-                logger.warning("TTS连接已关闭")
+                _log.warning("TTS连接已关闭")
                 break
             except Exception as e:
-                logger.error(f"处理TTS响应错误: {e}")
+                _log.error(f"处理TTS响应错误: {e}")
                 break
 
         if not session_finished:
@@ -276,7 +278,7 @@ class HuoshanTTS(BaseTTS):
                 and isinstance(self._forward_task, asyncio.Task)
                 and not self._forward_task.done()
             ):
-                logger.debug("检测到未完成的上个会话，关闭监听任务和连接...")
+                _log.debug("检测到未完成的上个会话，关闭监听任务和连接...")
                 await self.close_ws_forward()
             if not self._ws:
                 await self._connect()
@@ -291,10 +293,10 @@ class HuoshanTTS(BaseTTS):
 
             # 启动消息转发循环
             self._forward_task = asyncio.create_task(self._forward_loop())
-            logger.debug(f"TTS会话启动成功")
+            _log.debug(f"TTS会话启动成功")
             return True
         except Exception as e:
-            logger.error(f"启动TTS会话失败: {e}")
+            _log.error(f"启动TTS会话失败: {e}")
             await self.close_ws_forward()
             return False
 
@@ -315,11 +317,11 @@ class HuoshanTTS(BaseTTS):
                 try:
                     await self._forward_task
                 except Exception as e:
-                    logger.error(f"等待监听任务完成时发生错误: {e}")
+                    _log.error(f"等待监听任务完成时发生错误: {e}")
                 finally:
                     self._forward_task = None
         except Exception as e:
-            logger.error(f"结束会话失败: {e}")
+            _log.error(f"结束会话失败: {e}")
 
     async def send_text(self, text: str):
         try:
@@ -329,7 +331,7 @@ class HuoshanTTS(BaseTTS):
             await self._send_event(header, optional, payload)
 
         except Exception as e:
-            logger.error(f"发送文本失败: {e}")
+            _log.error(f"发送文本失败: {e}")
 
     async def cancel_session(self, session_id: str = None):
 
@@ -346,7 +348,7 @@ class HuoshanTTS(BaseTTS):
             payload = b"{}"
             await self._send_event(header, optional, payload)
         except Exception as e:
-            logger.error(f"取消会话失败: {e}")
+            _log.error(f"取消会话失败: {e}")
 
     async def finish_session(self, session_id: str = None):
         try:
@@ -364,11 +366,11 @@ class HuoshanTTS(BaseTTS):
                 try:
                     await self._forward_task
                 except Exception as e:
-                    logger.error(f"等待监听任务完成时发生错误: {e}")
+                    _log.error(f"等待监听任务完成时发生错误: {e}")
                 finally:
                     self._forward_task = None
         except Exception as e:
-            logger.error(f"结束会话失败: {e}")
+            _log.error(f"结束会话失败: {e}")
 
     def stop_processing(self):
         self.is_processing = False

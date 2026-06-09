@@ -2,6 +2,10 @@ from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional, Callable
 import asyncio
 
+from yard.observability.logging import LogModule, get_logger
+
+_log = get_logger(LogModule.ASR)
+
 
 class BaseASR(ABC):
     
@@ -34,8 +38,7 @@ class BaseASR(ABC):
             try:
                 await self.result_callback(result)
             except Exception as e:
-                from loguru import logger
-                logger.error(f"处理结果回调失败: {e}")
+                _log.error(f"处理结果回调失败: {e}")
     
     async def cleanup(self):
         self.is_processing = False

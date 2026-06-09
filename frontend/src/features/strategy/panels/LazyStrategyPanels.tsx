@@ -1,6 +1,7 @@
 import { lazy, Suspense, type ComponentType } from "react";
-import { Brain, ScrollText } from "lucide-react";
+import { Brain } from "lucide-react";
 import type { AffectDebugPanelProps } from "@/features/chat/components/AffectDebugPanel";
+import type { LogsPanelProps } from "@/features/logs/LogsPanel";
 import { StrategyPlaceholderPanel } from "./StrategyPlaceholderPanel";
 
 const AffectStrategyPanel = lazy(() =>
@@ -12,6 +13,12 @@ const AffectStrategyPanel = lazy(() =>
 const PromptStrategyPanel = lazy(() =>
   import("@/features/config/PromptEditor").then((m) => ({
     default: m.PromptEditor,
+  })),
+);
+
+const LogsStrategyPanel = lazy(() =>
+  import("@/features/logs/LogsPanel").then((m) => ({
+    default: m.LogsPanel,
   })),
 );
 
@@ -40,15 +47,7 @@ export const LazyPromptPanel = withSuspense(function PromptPanel() {
   return <PromptStrategyPanel />;
 });
 
-export function LogsPanel() {
-  return (
-    <StrategyPlaceholderPanel
-      icon={ScrollText}
-      title="运行日志"
-      description="会话与 Agent 运行日志将在此展示，便于排查策略与情绪模块行为。功能开发中。"
-    />
-  );
-}
+export const LazyLogsPanel = withSuspense<LogsPanelProps>(LogsStrategyPanel);
 
 export function MemoryPanel() {
   return (

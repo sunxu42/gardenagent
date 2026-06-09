@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, ConfigDict, Field
 import yaml
 
+from yard.observability.logging.config import LoggingConfig
+
 CWD = os.getcwd()
 DEFAULT_CONFIG_FILE = os.path.join(CWD, ".config.yaml")
 DEFAULT_ENV_FILE = os.path.join(CWD, ".env")
@@ -68,13 +70,6 @@ class AudioConfig(BaseModel):
             return getattr(self, key)
         return default
 
-
-class LoggingConfig(BaseModel):
-    log_level: str = "INFO"
-    log_file: str = "logs/websocket_server.log"
-    log_rotation: str = "1 day"
-    log_retention: str = "7 days"
-    disable_modules: list[str] = []
 
 class UnifiedConfig(BaseModel):
 

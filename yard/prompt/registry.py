@@ -5,7 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from loguru import logger
+from yard.observability.logging import LogModule, get_logger
+
+_log = get_logger(LogModule.AGENT)
 
 from yard.prompt.conditions import evaluate_when
 from yard.prompt.context import PromptContext
@@ -72,7 +74,7 @@ class PromptRegistry:
                 return get_renderer(module.renderer)(module, ctx, deps=self._deps).strip()
             return self._render_slice_module(module, ctx).strip()
         except Exception as e:
-            logger.warning("prompt module {!r} render failed: {!r}", module.id, e)
+            _log.warning(f"prompt module {module.id!r} render failed: {e!r}")
             return ""
 
     def _budgeted_pairs(self, rendered: list[tuple[PromptModule, str]]) -> list[tuple[PromptModule, str]]:
@@ -92,10 +94,8 @@ class PromptRegistry:
         if stable:
             joined = "\n\n".join(t for _, t in stable)
             if len(joined) > self._stable_max_chars:
-                logger.debug(
-                    "prompt budget truncating stable chars {} -> {}",
-                    len(joined),
-                    self._stable_max_chars,
+                _log.debug(
+                    f"prompt budget truncating stable chars {len(joined)} -> {self._stable_max_chars}",
                 )
                 joined = joined[: self._stable_max_chars].rstrip()
                 stable = [(stable[0][0], joined)] if joined else []
@@ -106,7 +106,7 @@ class PromptRegistry:
             if len(joined) <= self._volatile_max_chars:
                 break
             dropped = volatile_items.pop()
-            logger.debug("prompt budget dropped volatile module {!r}", dropped[0].id)
+            _log.debug(f"prompt budget dropped volatile module {dropped[0].id!r}")
 
         return stable + volatile_items
 

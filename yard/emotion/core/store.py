@@ -7,7 +7,9 @@ import os
 import tempfile
 from typing import Any, Optional
 
-from loguru import logger
+from yard.observability.logging import LogModule, get_logger
+
+_log = get_logger(LogModule.EMOTION)
 
 from yard.emotion.core.relationship import RelationshipState
 from yard.emotion.core.vad import VAD
@@ -26,7 +28,7 @@ class EmotionStore:
                 data = json.load(f)
             return data if isinstance(data, dict) else {}
         except Exception as e:
-            logger.warning("EmotionStore 读取失败，忽略旧值: {!r}", e)
+            _log.warning(f"EmotionStore 读取失败，忽略旧值: {e!r}")
             return {}
 
     def _atomic_write(self, data: dict[str, Any]) -> None:

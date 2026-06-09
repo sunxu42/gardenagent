@@ -5,7 +5,9 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
-from loguru import logger
+from yard.observability.logging import LogModule, get_logger
+
+_log = get_logger(LogModule.SYSTEM)
 
 from yard.memory.mem0.config import build_mem0_config_dict
 
@@ -44,9 +46,8 @@ class Mem0Service:
         if not config.memory_enabled:
             raise ValueError("memory_enabled is false")
         config_dict = build_mem0_config_dict(config)
-        logger.info(
-            "Initializing Mem0 OSS (FAISS path={})",
-            config_dict["vector_store"]["config"]["path"],
+        _log.info(
+            f"Initializing Mem0 OSS (FAISS path={config_dict['vector_store']['config']['path']})",
         )
         memory = Memory.from_config(config_dict)
         user_id = config.mem0_user_id or "default"

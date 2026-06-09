@@ -11,7 +11,10 @@ from typing import Any, Dict, List, NotRequired
 
 from langchain.agents.middleware.types import AgentMiddleware, AgentState, ModelRequest
 from deepagents.middleware._utils import append_to_system_message
-from loguru import logger
+from yard.observability.logging import LogModule, get_logger
+from yard.observability.logging.turn_log import log_memory_event
+
+_log = get_logger(LogModule.AGENT)
 from typing_extensions import TypedDict
 
 from langgraph.config import get_config
@@ -126,9 +129,8 @@ class Mem0OssMiddleware(AgentMiddleware[Mem0OssState, Any]):
             return already_added
         try:
             if self._debug_log_enabled:
-                logger.info(
-                    "[mem0:add:explicit_keyword] embedding_input(user): {}",
-                    self._truncate(match.fact_text),
+                _log.info(
+                    f"[mem0:add:explicit_keyword] embedding_input(user): {self._truncate(match.fact_text)}",
                 )
             self.service.add(
                 [{"role": "user", "content": match.fact_text}],
@@ -140,10 +142,15 @@ class Mem0OssMiddleware(AgentMiddleware[Mem0OssState, Any]):
                 },
                 infer=True,
             )
-            logger.info("Mem0 explicit_keyword add: {}", match.fact_text[:80])
+            log_memory_event(
+                f"memory write · explicit keyword ({len(match.fact_text)} chars)",
+                action="explicit_add",
+                source="explicit_keyword",
+                char_count=len(match.fact_text),
+            )
             return True
         except Exception as e:
-            logger.warning("Mem0 explicit_keyword add failed: {!r}", e)
+            _log.warning(f"Mem0 explicit_keyword add failed: {e!r}")
             return already_added
 
     def before_agent(self, state: Mem0OssState, runtime) -> Mem0OssStateUpdate | None:
@@ -169,7 +176,13 @@ class Mem0OssMiddleware(AgentMiddleware[Mem0OssState, Any]):
                     limit=self.config.mem0_top_k,
                 )
             except Exception as e:
-                logger.warning("Mem0 search failed: {!r}", e)
+                _log.warning(f"Mem0 search failed: {e!r}")
+        if last_user:
+            log_memory_event(
+                f"memory search · {len(memories)} hits",
+                action="search",
+                hit_count=len(memories),
+            )
 
         return Mem0OssStateUpdate(
             mem0_memories=memories,
@@ -192,9 +205,8 @@ class Mem0OssMiddleware(AgentMiddleware[Mem0OssState, Any]):
             if match:
                 try:
                     if self._debug_log_enabled:
-                        logger.info(
-                            "[mem0:add:explicit_keyword] embedding_input(user): {}",
-                            self._truncate(match.fact_text),
+                        _log.info(
+                            f"[mem0:add:explicit_keyword] embedding_input(user): {self._truncate(match.fact_text)}",
                         )
                     await self.service.aadd(
                         [{"role": "user", "content": match.fact_text}],
@@ -207,9 +219,14 @@ class Mem0OssMiddleware(AgentMiddleware[Mem0OssState, Any]):
                         infer=True,
                     )
                     explicit_added = True
-                    logger.info("Mem0 explicit_keyword add: {}", match.fact_text[:80])
+                    log_memory_event(
+                        f"memory write · explicit keyword ({len(match.fact_text)} chars)",
+                        action="explicit_add",
+                        source="explicit_keyword",
+                        char_count=len(match.fact_text),
+                    )
                 except Exception as e:
-                    logger.warning("Mem0 explicit_keyword add failed: {!r}", e)
+                    _log.warning(f"Mem0 explicit_keyword add failed: {e!r}")
 
         memories: list[dict[str, Any]] = []
         if last_user:
@@ -220,7 +237,12 @@ class Mem0OssMiddleware(AgentMiddleware[Mem0OssState, Any]):
                     limit=self.config.mem0_top_k,
                 )
             except Exception as e:
-                logger.warning("Mem0 search failed: {!r}", e)
+                _log.warning(f"Mem0 search failed: {e!r}")
+            log_memory_event(
+                f"memory search · {len(memories)} hits",
+                action="search",
+                hit_count=len(memories),
+            )
 
         return Mem0OssStateUpdate(
             mem0_memories=memories,

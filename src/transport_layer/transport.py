@@ -11,7 +11,9 @@ WebSocket 传输层实现
 
 import asyncio
 from typing import Dict, Optional, Callable, Any
-from loguru import logger
+from yard.observability.logging import LogModule, get_logger
+
+_log = get_logger(LogModule.TRANSPORT)
 from starlette.websockets import WebSocket, WebSocketDisconnect
 from .base import TransportBase
 
@@ -93,7 +95,7 @@ class WebSocketTransport(TransportBase):
 
             return None
         except Exception as e:
-            logger.error(f"提取客户端 ID 失败: {e}")
+            _log.error(f"提取客户端 ID 失败: {e}")
             return None
     
     async def start(self):
@@ -106,10 +108,10 @@ class WebSocketTransport(TransportBase):
             try:
                 await websocket.close()
             except Exception as e:
-                logger.error(f"关闭连接 {client_id} 失败: {e}")
+                _log.error(f"关闭连接 {client_id} 失败: {e}")
         
         self._connections.clear()
-        logger.info("WebSocket服务器已停止")
+        _log.info("WebSocket服务器已停止")
     
     async def handle_starlette_connection(self, websocket: WebSocket) -> None:
         await websocket.accept()
@@ -117,22 +119,22 @@ class WebSocketTransport(TransportBase):
         client_id = self._extract_client_id(websocket)
         
         if not client_id:
-            logger.error("客户端未提供 client-id，拒绝连接")
+            _log.error("客户端未提供 client-id，拒绝连接")
             try:
                 await websocket.close(code=1008, reason="Missing client-id header")
             except Exception as e:
-                logger.error(f"关闭连接失败: {e}")
+                _log.error(f"关闭连接失败: {e}")
             return
         
         is_reconnect = client_id in self._connections
         
         if is_reconnect:
             old_websocket = self._connections[client_id]
-            logger.info(f"检测到客户端 {client_id} 重连，立即关闭旧连接")
+            _log.info(f"检测到客户端 {client_id} 重连，立即关闭旧连接")
             self._connections.pop(client_id, None)
             asyncio.create_task(self._close_connection_async(old_websocket, client_id))
         
-        logger.debug(f"客户端连接: client_id={client_id}, is_reconnect={is_reconnect}")
+        _log.debug(f"客户端连接: client_id={client_id}, is_reconnect={is_reconnect}")
         
         self._connections[client_id] = websocket
         
@@ -140,15 +142,15 @@ class WebSocketTransport(TransportBase):
             try:
                 await self._on_connect_callback(client_id, is_reconnect)
             except Exception as e:
-                logger.error(f"连接建立回调失败: {e}, 关闭连接")
+                _log.error(f"连接建立回调失败: {e}, 关闭连接")
                 self._connections.pop(client_id, None)
                 try:
                     await websocket.close(code=1011, reason="Handler initialization failed")
                 except Exception as close_error:
-                    logger.error(f"关闭连接失败: {close_error}")
+                    _log.error(f"关闭连接失败: {close_error}")
                 return
         
-        logger.info(f"客户端连接已建立: client_id={client_id}, is_reconnect={is_reconnect}")
+        _log.info(f"客户端连接已建立: client_id={client_id}, is_reconnect={is_reconnect}")
         
         try:
             while True:
@@ -162,27 +164,27 @@ class WebSocketTransport(TransportBase):
                         await self._on_message(client_id, message["bytes"])
                 
         except WebSocketDisconnect:
-            logger.info(f"客户端断开连接: client_id={client_id}")
+            _log.info(f"客户端断开连接: client_id={client_id}")
         except Exception as e:
-            logger.error(f"处理客户端 {client_id} 消息失败: {e}")
+            _log.error(f"处理客户端 {client_id} 消息失败: {e}")
         finally:
             if self._connections.get(client_id) == websocket:
                 self._connections.pop(client_id, None)
             
             if self._connections.get(client_id) != websocket:
-                logger.debug(f"旧连接 {client_id} 被替换，不触发断开回调")
+                _log.debug(f"旧连接 {client_id} 被替换，不触发断开回调")
             elif self._on_disconnect_callback:
                 try:
                     await self._on_disconnect_callback(client_id)
                 except Exception as e:
-                    logger.error(f"连接断开回调失败: {e}")
+                    _log.error(f"连接断开回调失败: {e}")
     
     async def _close_connection_async(self, websocket: WebSocket, client_id: str):
         """后台关闭连接（不阻塞主流程）"""
         try:
             await websocket.close(code=1000, reason="Reconnected")
         except Exception as e:
-            logger.debug(f"后台关闭连接 {client_id} 完成: {e}")
+            _log.debug(f"后台关闭连接 {client_id} 完成: {e}")
     
     async def _on_message(self, client_id: str, message: Any):
         """
@@ -196,9 +198,9 @@ class WebSocketTransport(TransportBase):
             try:
                 await self._on_message_callback(client_id, message)
             except Exception as e:
-                logger.error(f"消息处理回调失败 (client_id={client_id}): {e}")
+                _log.error(f"消息处理回调失败 (client_id={client_id}): {e}")
         else:
-            logger.warning(f"收到消息但未注册消息处理器: {client_id}")
+            _log.warning(f"收到消息但未注册消息处理器: {client_id}")
     
     async def _send_data(self, websocket: WebSocket, data: Any) -> None:
         if isinstance(data, str):
@@ -211,18 +213,18 @@ class WebSocketTransport(TransportBase):
     async def send_to_client(self, client_id: str, data: Any) -> bool:
         websocket = self._connections.get(client_id)
         if not websocket:
-            logger.warning(f"客户端 {client_id} 不存在，无法发送消息")
+            _log.warning(f"客户端 {client_id} 不存在，无法发送消息")
             return False
         
         try:
             await self._send_data(websocket, data)
             return True
         except WebSocketDisconnect:
-            logger.warning(f"客户端 {client_id} 连接已关闭")
+            _log.warning(f"客户端 {client_id} 连接已关闭")
             self._connections.pop(client_id, None)
             return False
         except Exception as e:
-            logger.error(f"发送消息到客户端 {client_id} 失败: {e}")
+            _log.error(f"发送消息到客户端 {client_id} 失败: {e}")
             return False
     
     async def broadcast(self, data: Any) -> int:
@@ -236,7 +238,7 @@ class WebSocketTransport(TransportBase):
             except WebSocketDisconnect:
                 disconnected_clients.append(client_id)
             except Exception as e:
-                logger.error(f"广播消息到客户端 {client_id} 失败: {e}")
+                _log.error(f"广播消息到客户端 {client_id} 失败: {e}")
                 disconnected_clients.append(client_id)
         
         for client_id in disconnected_clients:

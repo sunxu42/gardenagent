@@ -7,7 +7,9 @@ from typing import Any
 from deepagents.middleware._utils import append_to_system_message
 from langchain.agents.middleware.types import AgentMiddleware, AgentState, ModelRequest
 from langchain_core.messages import SystemMessage
-from loguru import logger
+from yard.observability.logging import LogModule, get_logger
+
+_log = get_logger(LogModule.AGENT)
 
 from yard.prompt.context_builder import PromptContextBuilder
 from yard.prompt.registry import PromptRegistry
@@ -36,7 +38,7 @@ def _fallback_core_text(prompts_dir: str) -> str:
             return "\n\n".join(blocks)
         return render_system_prompt_generic(data)[:800]
     except Exception as e:
-        logger.warning("prompt composer fallback failed: {!r}", e)
+        _log.warning(f"prompt composer fallback failed: {e!r}")
         return "你是语音助手。请安全、清晰地回答用户。"
 
 
@@ -59,12 +61,9 @@ class PromptComposerMiddleware(AgentMiddleware[PromptComposerState, Any]):
         result = self._registry.compose_with_meta(ctx)
         text = result.text.strip() or _fallback_core_text(self._prompts_dir)
 
-        logger.debug(
-            "prompt.compose modules={} chars={} stable={} volatile={}",
-            result.module_ids,
-            result.chars,
-            result.stable_chars,
-            result.volatile_chars,
+        _log.debug(
+            f"prompt.compose modules={result.module_ids} chars={result.chars} "
+            f"stable={result.stable_chars} volatile={result.volatile_chars}",
         )
 
         base_flat = flatten_system_text(request.system_message)

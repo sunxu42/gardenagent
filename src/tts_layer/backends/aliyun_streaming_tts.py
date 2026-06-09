@@ -10,7 +10,9 @@ import websockets
 from typing import Dict, Any, Optional
 from datetime import datetime
 from urllib import parse
-from loguru import logger
+from yard.observability.logging import LogModule, get_logger
+
+_log = get_logger(LogModule.TTS)
 from .base import BaseTTS
 import requests
 
@@ -171,7 +173,7 @@ class AliyunStreamingTTS(BaseTTS):
         """确保WebSocket连接可用"""
         try:
             if self._is_token_expired():
-                logger.warning("Token已过期，正在自动刷新...")
+                _log.warning("Token已过期，正在自动刷新...")
                 self._refresh_token()
             
             current_time = time.time()
@@ -189,7 +191,7 @@ class AliyunStreamingTTS(BaseTTS):
             self.last_active_time = time.time()
             return self.ws
         except Exception as e:
-            logger.error(f"建立连接失败: {str(e)}")
+            _log.error(f"建立连接失败: {str(e)}")
             self.ws = None
             self.last_active_time = None
             raise
@@ -202,7 +204,7 @@ class AliyunStreamingTTS(BaseTTS):
                 and isinstance(self._monitor_task, asyncio.Task)
                 and not self._monitor_task.done()
             ):
-                logger.info("检测到未完成的上个会话，关闭监听任务和连接...")
+                _log.info("检测到未完成的上个会话，关闭监听任务和连接...")
                 await self.cleanup()
 
             # 建立新连接
@@ -236,10 +238,10 @@ class AliyunStreamingTTS(BaseTTS):
             }
             await self.ws.send(json.dumps(start_request))
             self.last_active_time = time.time()
-            logger.debug(f"TTS会话启动成功: {self._session_id}")
+            _log.debug(f"TTS会话启动成功: {self._session_id}")
             return True
         except Exception as e:
-            logger.error(f"启动TTS会话失败: {e}")
+            _log.error(f"启动TTS会话失败: {e}")
             await self.cleanup()
             return False
 
@@ -266,18 +268,18 @@ class AliyunStreamingTTS(BaseTTS):
                 try:
                     await self._monitor_task
                 except Exception as e:
-                    logger.error(f"等待监听任务完成时发生错误: {str(e)}")
+                    _log.error(f"等待监听任务完成时发生错误: {str(e)}")
                 finally:
                     self._monitor_task = None
             
         except Exception as e:
-            logger.error(f"结束会话失败: {str(e)}")
+            _log.error(f"结束会话失败: {str(e)}")
             await self.cleanup()
             raise
 
     async def send_text(self, text: str):
         if not self.ws:
-            logger.warning("WebSocket连接不存在或未在处理，无法发送文本")
+            _log.warning("WebSocket连接不存在或未在处理，无法发送文本")
             return
                 # 等待服务器准备好（收到SynthesisStarted事件）
         if not self._server_ready:
@@ -289,14 +291,14 @@ class AliyunStreamingTTS(BaseTTS):
                 waited += wait_interval
             
             if not self._server_ready:
-                logger.error("等待服务器准备就绪超时")
+                _log.error("等待服务器准备就绪超时")
                 return
         try:
             # 简单的文本清理（移除markdown标记）
             filtered_text = clean_markdown(text)
             # 阿里云要求 RunSynthesis 必须携带非空文本，过滤掉空请求
             if not filtered_text.strip():
-                logger.warning(
+                _log.warning(
                     f"Aliyun TTS 过滤掉空文本请求，不发送到服务端。原始文本: {repr(text)}"
                 )
                 return
@@ -313,7 +315,7 @@ class AliyunStreamingTTS(BaseTTS):
             await self.ws.send(json.dumps(run_request))
             self.last_active_time = time.time()
         except Exception as e:
-            logger.error(f"发送TTS文本失败: {str(e)}")
+            _log.error(f"发送TTS文本失败: {str(e)}")
 
     async def _start_monitor_tts_response(self):
         session_finished = False
@@ -340,7 +342,7 @@ class AliyunStreamingTTS(BaseTTS):
                                 payload_data = data.get("payload") or {}
                                 error_code = payload_data.get("error_code") or payload_data.get("code", "unknown")
                                 error_message = payload_data.get("error_message") or payload_data.get("message", "未知错误")
-                                logger.error(
+                                _log.error(
                                     f"Aliyun TTS TaskFailed: code={error_code}, "
                                     f"message={error_message}, raw={data}"
                                 )
@@ -349,16 +351,16 @@ class AliyunStreamingTTS(BaseTTS):
 
 
                         except json.JSONDecodeError:
-                            logger.warning(f"收到无效的JSON消息: {msg}")
+                            _log.warning(f"收到无效的JSON消息: {msg}")
                     
                     elif isinstance(msg, (bytes, bytearray)):  # 二进制消息（音频数据）
                         await self._handle_audio(msg, False)
                         
                 except websockets.ConnectionClosed:
-                    logger.warning("WebSocket连接已关闭")
+                    _log.warning("WebSocket连接已关闭")
                     break
                 except Exception as e:
-                    logger.error(f"处理TTS响应时出错: {e}")
+                    _log.error(f"处理TTS响应时出错: {e}")
                     break
             
             # 仅在连接异常时才关闭
@@ -378,7 +380,7 @@ class AliyunStreamingTTS(BaseTTS):
             except asyncio.CancelledError:
                 pass
             except Exception as e:
-                logger.warning(f"关闭时取消监听任务错误: {e}")
+                _log.warning(f"关闭时取消监听任务错误: {e}")
             self._monitor_task = None
 
         if self.ws:

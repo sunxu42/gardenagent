@@ -1,3 +1,5 @@
+import type { LogEntry } from "../logs/logTypes";
+
 export type MessageRole = "user" | "assistant";
 
 export type MessageStatus = "sending" | "streaming" | "done";
@@ -101,6 +103,7 @@ export interface ChatState {
   baselineVad: VadPoint | null;
   emotionProfile: EmotionProfile | null;
   currentRelationship: RelationshipSnapshot | null;
+  logEntries: LogEntry[];
 }
 
 export type ChatAction =
@@ -175,4 +178,6 @@ export type ChatAction =
     }
   | { type: "historyHydrated"; payload: { messages: ChatMessage[] } }
   | { type: "historyPrepended"; payload: { messages: ChatMessage[] } }
+  | { type: "logEntryReceived"; payload: { entry: LogEntry } }
+  | { type: "clearLogs" }
   | { type: "chatCleared" };

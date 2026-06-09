@@ -15,12 +15,14 @@ class InputEvent:
         event_type: str,
         *,
         thread_id: str | None = None,
+        turn_id: str | None = None,
     ):
         self.event_id = event_id
         self.content = content
         self.event_type = event_type
         # LangGraph checkpointer：同一会话复用同一 thread_id 以加载多轮对话；未设置时由 YardManager 回退为 event_id（如心跳隔离）。
         self.thread_id = thread_id
+        self.turn_id = turn_id
 
 
 

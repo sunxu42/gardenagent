@@ -9,7 +9,9 @@ import socket
 from typing import Any, Optional, Sequence, Tuple
 from urllib.parse import urlparse
 
-from loguru import logger
+from yard.observability.logging import LogModule, get_logger
+
+_log = get_logger(LogModule.SYSTEM)
 
 # 降低 OTEL HTTP 导出器在不可达时的刷屏（仍优先用 no-op 导出器避免重试）
 _OTEL_OTLP_LOGGER = "opentelemetry.exporter.otlp.proto.http.trace_exporter"
@@ -80,10 +82,8 @@ class _ResilientSpanExporter:
         if self._warned:
             return
         self._warned = True
-        logger.warning(
-            "Langfuse OTLP 导出失败（{}），已静默跳过，主流程不受影响: {!r}",
-            self._label,
-            exc,
+        _log.warning(
+            f"Langfuse OTLP 导出失败（{self._label}），已静默跳过，主流程不受影响: {exc!r}",
         )
 
     def export(self, spans: Sequence[Any]) -> Any:
@@ -149,10 +149,9 @@ def _pick_span_exporter(
     probe_timeout: float,
 ) -> Tuple[Any, str]:
     if _should_probe() and not _probe_tcp_reachable(base_url, probe_timeout):
-        logger.warning(
-            "Langfuse 服务不可达（{}），追踪导出已降级为 no-op；"
+        _log.warning(
+            f"Langfuse 服务不可达（{base_url}），追踪导出已降级为 no-op；"
             "启动 Langfuse 后重启本进程可恢复上报",
-            base_url,
         )
         return _NoOpSpanExporter(), "no-op"
 
@@ -197,10 +196,10 @@ def init_langfuse() -> Tuple[Optional[Any], Optional[Any]]:
             span_exporter=span_exporter,
         )
         handler = CallbackHandler()
-        logger.debug("Langfuse 已初始化（导出模式: {}）", mode)
+        _log.debug(f"Langfuse 已初始化（导出模式: {mode}）")
         return client, handler
     except Exception as exc:
-        logger.warning("Langfuse 初始化失败，已禁用追踪: {!r}", exc)
+        _log.warning(f"Langfuse 初始化失败，已禁用追踪: {exc!r}")
         return None, None
 
 
@@ -210,4 +209,4 @@ def safe_flush(client: Any | None) -> None:
     try:
         client.flush()
     except Exception as exc:
-        logger.debug("Langfuse flush 失败（已忽略）: {!r}", exc)
+        _log.debug(f"Langfuse flush 失败（已忽略）: {exc!r}")

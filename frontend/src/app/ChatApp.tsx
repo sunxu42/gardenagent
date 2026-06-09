@@ -299,6 +299,8 @@ export function ChatApp() {
             baselineVad={state.baselineVad ?? null}
             emotionProfile={state.emotionProfile ?? null}
             currentRelationship={state.currentRelationship ?? null}
+            logEntries={state.logEntries}
+            onClearLogs={() => dispatch({ type: "clearLogs" })}
           />
         ) : null}
       </div>

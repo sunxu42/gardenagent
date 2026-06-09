@@ -1,7 +1,9 @@
 import asyncio
 import uuid
 from typing import Any
-from loguru import logger
+from yard.observability.logging import LogModule, get_logger
+
+_log = get_logger(LogModule.SYSTEM)
 
 from yard.events import InputEvent, HEARTBEAT_INPUT_EVENT
 from yard.memory.runtime.cold_path import add_daily_journal_if_present
@@ -46,10 +48,10 @@ async def run_heartbeat_enqueue_loop(
             try:
                 consumed = await scheduler.consume_pending_wake()
             except Exception as e:
-                logger.error("consume pending wake failed: {}", e)
+                _log.error(f"consume pending wake failed: {e}")
                 consumed = False
             if consumed:
-                logger.info("consumed pending wake before heartbeat interval")
+                _log.info("consumed pending wake before heartbeat interval")
 
         try:
             await asyncio.wait_for(local_stop.wait(), timeout=interval_sec)
@@ -58,7 +60,7 @@ async def run_heartbeat_enqueue_loop(
             pass
 
         while not local_stop.is_set() and _busy():
-            logger.debug("heartbeat deferred: input queue or worker busy, retry in %ss", retry_delay_sec)
+            _log.debug(f"heartbeat deferred: input queue or worker busy, retry in {retry_delay_sec}s")
             try:
                 await asyncio.wait_for(local_stop.wait(), timeout=retry_delay_sec)
                 return
@@ -87,7 +89,7 @@ async def run_heartbeat_enqueue_loop(
                     debug_log_max_chars=debug_log_max_chars,
                 )
             except Exception as e:
-                logger.warning("memory journal heartbeat failed: {}", e)
+                _log.warning(f"memory journal heartbeat failed: {e}")
 
         try:
             heartbeat_thread_id = getattr(agent, "_last_user_thread_id", None)
@@ -95,6 +97,6 @@ async def run_heartbeat_enqueue_loop(
                 cfg_tid = getattr(getattr(agent, "config", None), "mem0_user_id", None)
                 heartbeat_thread_id = cfg_tid if isinstance(cfg_tid, str) and cfg_tid.strip() else "default"
             await q.put(build_heartbeat_input_event(prompt, thread_id=heartbeat_thread_id))
-            logger.info("heartbeat enqueued on agent input queue")
+            _log.info("heartbeat enqueued on agent input queue")
         except Exception as e:
-            logger.error("heartbeat enqueue failed: {}", e)
+            _log.error(f"heartbeat enqueue failed: {e}")

@@ -41,7 +41,9 @@ from yard.memory.bootstrap import (
 from yard.emotion.bootstrap import setup_emotion_subsystem
 from yard.timer import LocalSchedulerService, create_cron_tool
 from yard.system_tools import create_session_status_tool
-from loguru import logger
+from yard.observability.logging import LogModule, bind_session, get_logger, set_turn_id
+
+_log = get_logger(LogModule.AGENT)
 
 from yard.observability.langfuse_safe import init_langfuse, safe_flush
 
@@ -197,7 +199,7 @@ class YardManager:
             if voice and str(voice).strip():
                 return str(voice).strip()
         except Exception as e:
-            logger.debug(f"解析 TTS 音色失败，使用缓存: {e}")
+            _log.debug(f"解析 TTS 音色失败，使用缓存: {e}")
         return getattr(self, "tts_voice_type", None)
 
     def current_tts_emotion(self):
@@ -423,14 +425,17 @@ class YardManager:
             )
             if trigger_by != HEARTBEAT_INPUT_EVENT:
                 self._last_user_thread_id = thread_id
-            async for chunk in self.achat(event.content, thread_id=thread_id):
-                self.agent_output_queue.put_nowait(
-                    OutputEvent(data=chunk, trigger_by=trigger_by, event_id=event_id, phase="middle")
-                )
+            turn_id = getattr(event, "turn_id", None)
+            turn = turn_id.strip() if isinstance(turn_id, str) and turn_id.strip() else None
+            with bind_session(thread_id, turn_id=turn):
+                async for chunk in self.achat(event.content, thread_id=thread_id):
+                    self.agent_output_queue.put_nowait(
+                        OutputEvent(data=chunk, trigger_by=trigger_by, event_id=event_id, phase="middle")
+                    )
 
-            self.agent_output_queue.put_nowait(
-                OutputEvent(data={}, trigger_by=trigger_by, event_id=event_id, phase="end")
-            )
+                self.agent_output_queue.put_nowait(
+                    OutputEvent(data={}, trigger_by=trigger_by, event_id=event_id, phase="end")
+                )
 
             if trigger_by != HEARTBEAT_INPUT_EVENT and self.mem0_service is not None:
                 mark_conversation_turn_finished(self)

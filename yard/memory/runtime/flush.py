@@ -6,7 +6,9 @@ import asyncio
 import time
 from typing import Any
 
-from loguru import logger
+from yard.observability.logging import LogModule, get_logger
+
+_log = get_logger(LogModule.SYSTEM)
 
 from yard.memory.runtime.cold_path import run_memory_cold_path
 
@@ -115,10 +117,7 @@ async def run_memory_idle_flush_loop(
             return
 
         try:
-            logger.info(
-                "Mem0 idle flush triggered ({:.0f}s since last turn)",
-                idle_elapsed,
-            )
+            _log.info(f"Mem0 idle flush triggered ({idle_elapsed:.0f}s since last turn)")
             await flush_agent_session_memory(agent, flush_reason="idle")
         except Exception as e:
-            logger.warning("memory idle flush failed: {}", e)
+            _log.warning(f"memory idle flush failed: {e}")

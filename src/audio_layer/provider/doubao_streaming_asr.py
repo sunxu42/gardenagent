@@ -5,10 +5,10 @@ import asyncio
 import time
 import websockets
 from typing import Dict, Any, Optional, Callable
-from loguru import logger
+from yard.observability.logging import LogModule, get_logger
 from .base import BaseASR
 
-logger.disable(__name__)
+_log = get_logger(LogModule.ASR)
 
 class DoubaoStreamingASR(BaseASR):
     # 固定配置参数
@@ -43,7 +43,7 @@ class DoubaoStreamingASR(BaseASR):
         self.access_token = self.config.get("doubao_DOUBAO_STREAMING_ASR_ACCESS_TOKEN", "")
         
         if not self.appid or not self.access_token:
-            logger.error("缺少必要的ASR配置参数: appid 和 access_token")
+            _log.error("缺少必要的ASR配置参数: appid 和 access_token")
             raise ValueError("ASR配置参数不完整")
         
         # 使用固定参数
@@ -66,7 +66,7 @@ class DoubaoStreamingASR(BaseASR):
     
     async def start_session(self, audio_data: bytes=None) -> bool:
         if self.is_processing:
-            logger.warning("ASR服务正在处理中")
+            _log.warning("ASR服务正在处理中")
             return False
         
         try:
@@ -102,7 +102,7 @@ class DoubaoStreamingASR(BaseASR):
                     **connect_kwargs
                 )
             
-            logger.info("ASR WebSocket连接建立完成")
+            _log.info("ASR WebSocket连接建立完成")
             
             request_params = self.construct_request(str(uuid.uuid4()))
             payload_bytes = str.encode(json.dumps(request_params))
@@ -111,16 +111,16 @@ class DoubaoStreamingASR(BaseASR):
             full_client_request.extend((len(payload_bytes)).to_bytes(4, "big"))
             full_client_request.extend(payload_bytes)
             
-            logger.info(f"发送初始化请求: {request_params}")
+            _log.info(f"发送初始化请求: {request_params}")
             await self.asr_ws.send(full_client_request)
             
             init_res = await self.asr_ws.recv()
             result = self.parse_response(init_res)
-            logger.info(f"收到初始化响应: {result}")
+            _log.info(f"收到初始化响应: {result}")
             
             if "code" in result and result["code"] != 1000:
                 error_msg = f"ASR服务初始化失败: {result.get('payload_msg', {}).get('error', '未知错误')}"
-                logger.error(error_msg)
+                _log.error(error_msg)
                 raise Exception(error_msg)
             self.forward_task = asyncio.create_task(self._forward_asr_results())
             
@@ -130,7 +130,7 @@ class DoubaoStreamingASR(BaseASR):
             return True
             
         except Exception as e:
-            logger.error(f"建立ASR连接失败: {str(e)}")
+            _log.error(f"建立ASR连接失败: {str(e)}")
             await self.cleanup()
             return False
     
@@ -149,7 +149,7 @@ class DoubaoStreamingASR(BaseASR):
             audio_request.extend(payload)
             await self.asr_ws.send(audio_request)
         except Exception as e:
-            logger.error(f"发送音频数据失败: {e}")
+            _log.error(f"发送音频数据失败: {e}")
     
     async def _forward_asr_results(self):
         try:
@@ -157,7 +157,7 @@ class DoubaoStreamingASR(BaseASR):
                 response = await self.asr_ws.recv()
                 result = self.parse_response(response)
                 # if "payload_msg" in result and "result" in result["payload_msg"] and result["payload_msg"]["result"]["text"]:
-                    # logger.debug(f"收到ASR结果: {result}")
+                    # _log.debug(f"收到ASR结果: {result}")
               
                 
                 if "payload_msg" in result:
@@ -174,7 +174,7 @@ class DoubaoStreamingASR(BaseASR):
                             and not utterances
                             and not payload["result"].get("text")
                         ):
-                            logger.error("识别文本：空")
+                            _log.error("识别文本：空")
                             self.text = ""
                             break
                         
@@ -196,13 +196,13 @@ class DoubaoStreamingASR(BaseASR):
                     
                     elif "error" in payload:
                         error_msg = payload.get("error", "未知错误")
-                        logger.error(f"ASR服务返回错误: {error_msg}")
+                        _log.error(f"ASR服务返回错误: {error_msg}")
                         break
             
         except websockets.ConnectionClosed:
-            logger.info("ASR服务连接已关闭")
+            _log.info("ASR服务连接已关闭")
         except Exception as e:
-            logger.error(f"处理ASR结果时发生错误: {str(e)}")
+            _log.error(f"处理ASR结果时发生错误: {str(e)}")
         finally:
             await self.cleanup()
     
@@ -211,7 +211,7 @@ class DoubaoStreamingASR(BaseASR):
             try:
                 await self.asr_ws.close()
             except Exception as e:
-                logger.warning(f"关闭WebSocket连接时出错: {e}")
+                _log.warning(f"关闭WebSocket连接时出错: {e}")
             self.asr_ws = None
         
         if self.forward_task:
@@ -322,8 +322,8 @@ class DoubaoStreamingASR(BaseASR):
         try:
             json_data = res[12:].decode("utf-8")
             result = json.loads(json_data)
-            logger.debug(f"成功解析JSON响应: {result}")
+            _log.debug(f"成功解析JSON响应: {result}")
             return {"payload_msg": result}
         except (UnicodeDecodeError, json.JSONDecodeError) as e:
-            logger.error(f"解析响应失败: {e}")
+            _log.error(f"解析响应失败: {e}")
             return {"error": f"解析响应失败: {str(e)}"}

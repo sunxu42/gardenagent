@@ -9,11 +9,16 @@
 # agent_type: "yard_manager"
 
 # logging:
-#   log_level: "INFO"
-#   log_file: "logs/websocket_server.log"
-#   log_rotation: "1 day"
-#   log_retention: "7 days"
-#   disable_modules: ["src.agent_layer"]
+#   level: INFO
+#   file_level: DEBUG
+#   dir: logs
+#   file: garden.jsonl
+#   rotation: 1 day
+#   retention: 7 days
+#   console: true
+#   websocket: true
+#   file_enabled: true
+#   ui_buffer_size: 500
 
 # audio:
 #   sample_rate: 16000
@@ -39,6 +44,9 @@
 
 # === Mem0 OSS 长期记忆（yard） ===
 # memory_enabled: true
+# 启用 Mem0 后需安装 NLP 依赖并下载 spaCy 模型（见 README §4）：
+#   pip install "mem0ai[nlp]"
+#   python -m spacy download en_core_web_sm
 # mem0_embedding_model: "embedding-3"
 # mem0_embedding_dims: 1536
 # mem0_top_k: 6

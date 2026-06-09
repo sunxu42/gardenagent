@@ -6,7 +6,9 @@ import asyncio
 from typing import Any
 from weakref import WeakSet
 
-from loguru import logger
+from yard.observability.logging import LogModule, get_logger
+
+_log = get_logger(LogModule.SYSTEM)
 
 from yard.memory.core.user_id import normalize_user_id
 
@@ -41,7 +43,7 @@ async def _clear_checkpoints(user_id: str) -> int:
                 await asyncio.to_thread(cp.delete_thread, config)
             count += 1
         except Exception as e:
-            logger.warning("delete_thread failed for {}: {!r}", user_id, e)
+            _log.warning(f"delete_thread failed for {user_id}: {e!r}")
     return count
 
 
@@ -64,7 +66,7 @@ async def clear_user_data(user_id: str) -> dict[str, Any]:
     try:
         result["mem0"] = await asyncio.to_thread(_clear_mem0, uid)
     except Exception as e:
-        logger.warning("Mem0 clear failed: {!r}", e)
+        _log.warning(f"Mem0 clear failed: {e!r}")
         result["mem0"] = {"cleared": False, "error": str(e)}
 
     result["session_buffers"] = _clear_session_buffers(uid)

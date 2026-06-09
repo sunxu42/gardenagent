@@ -9,10 +9,11 @@ import { useEffect, useState } from "react";
 import type { AffectDebugPanelProps } from "@/features/chat/components/AffectDebugPanel";
 import {
   LazyAffectPanel,
+  LazyLogsPanel,
   LazyPromptPanel,
-  LogsPanel,
   MemoryPanel,
 } from "./panels/LazyStrategyPanels";
+import type { LogEntry } from "@/features/logs/logTypes";
 import {
   STRATEGY_TAB_LABELS,
   type StrategyPanelTab,
@@ -35,11 +36,15 @@ const TABS: TabConfig[] = [
 export interface StrategyPanelProps extends AffectDebugPanelProps {
   activeTab: StrategyPanelTab;
   onTabChange: (tab: StrategyPanelTab) => void;
+  logEntries?: LogEntry[];
+  onClearLogs?: () => void;
 }
 
 export function StrategyPanel({
   activeTab,
   onTabChange,
+  logEntries = [],
+  onClearLogs,
   ...affectProps
 }: StrategyPanelProps) {
   const [visitedTabs, setVisitedTabs] = useState<Set<StrategyPanelTab>>(() => new Set([activeTab]));
@@ -103,7 +108,7 @@ export function StrategyPanel({
             className={`strategy-rail-pane h-full min-h-0${activeTab === "logs" ? "" : " strategy-rail-pane--hidden"}`}
             aria-hidden={activeTab !== "logs"}
           >
-            <LogsPanel />
+            <LazyLogsPanel entries={logEntries} onClear={() => onClearLogs?.()} />
           </div>
         ) : null}
         {visitedTabs.has("memory") ? (

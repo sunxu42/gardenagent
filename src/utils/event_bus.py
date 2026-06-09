@@ -1,7 +1,9 @@
 import time
 from typing import Any, Dict, Optional
 
-from loguru import logger
+from yard.observability.logging import LogModule, get_logger
+
+_log = get_logger(LogModule.SYSTEM)
 
 from src.utils.async_zmq_utils_native import (
     create_async_pub_native,
@@ -46,7 +48,7 @@ class EventBus:
             cls.CONTROL_ADDRESS,
             bind=True,
         )
-        logger.debug(f"EventBus Publisher started at {cls.CONTROL_ADDRESS}")
+        _log.debug(f"EventBus Publisher started at {cls.CONTROL_ADDRESS}")
         return publisher
 
     @classmethod
@@ -57,6 +59,6 @@ class EventBus:
             recv_timeout_ms=1000,
             wait_ipc=True,
         )
-        logger.debug(f"EventBus Subscriber connected to {cls.CONTROL_ADDRESS}")
+        _log.debug(f"EventBus Subscriber connected to {cls.CONTROL_ADDRESS}")
         return subscriber
 

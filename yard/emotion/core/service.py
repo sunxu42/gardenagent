@@ -6,7 +6,9 @@ import time
 from collections import OrderedDict
 from typing import Callable
 
-from loguru import logger
+from yard.observability.logging import LogModule, get_logger
+
+_log = get_logger(LogModule.EMOTION)
 
 from yard.emotion.core.appraisal_utils import sanitize_relationship_deltas, smooth_user_vad
 from yard.emotion.core.policy import ResponsePolicy, TurnAppraisalV2
@@ -123,7 +125,7 @@ class EmotionService:
                 relationship=self._relationship,
             )
         except Exception as e:
-            logger.warning("EmotionService 持久化失败: {!r}", e)
+            _log.warning(f"EmotionService 持久化失败: {e!r}")
 
     def _store_snapshot(self, key: str, snap: dict) -> None:
         self._appraisal_snapshots[key] = snap
@@ -168,7 +170,7 @@ class EmotionService:
         )
         self._updated_at = self._clock()
         self._persist()
-        logger.debug("emotion.apply source={} -> {}", source, self._vad.as_dict())
+        _log.debug(f"emotion.apply source={source} -> {self._vad.as_dict()}")
         return self._vad
 
     def apply_v2_turn(self, appraisal: TurnAppraisalV2, synthesis: SynthesisResult) -> VAD:
@@ -210,7 +212,7 @@ class EmotionService:
         try:
             self._appraisal_snapshot_listener(key)
         except Exception as e:
-            logger.warning("EmotionService appraisal snapshot listener failed: {!r}", e)
+            _log.warning(f"EmotionService appraisal snapshot listener failed: {e!r}")
 
     def record_appraisal_snapshot(
         self,

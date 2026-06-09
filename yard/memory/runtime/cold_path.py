@@ -6,7 +6,10 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from loguru import logger
+from yard.observability.logging import LogModule, get_logger
+from yard.observability.logging.turn_log import log_memory_event
+
+_log = get_logger(LogModule.SYSTEM)
 
 from yard.memory.mem0.service import Mem0Service
 from yard.memory.core.filters import has_memory_value
@@ -42,10 +45,8 @@ async def flush_session_buffer_to_mem0(
         if not messages:
             continue
         if not has_memory_value(messages):
-            logger.debug(
-                "Mem0 session_flush skipped (no memory value) thread={} messages={}",
-                tid,
-                len(messages),
+            _log.debug(
+                f"Mem0 session_flush skipped (no memory value) thread={tid} messages={len(messages)}",
             )
             continue
         try:
@@ -53,11 +54,9 @@ async def flush_session_buffer_to_mem0(
                 joined = "\n".join(
                     f"{m.get('role')}: {m.get('content', '')}" for m in messages if isinstance(m, dict)
                 )
-                logger.info(
-                    "[mem0:add:session_flush] reason={} thread={} embedding_input(messages): {}",
-                    flush_reason,
-                    tid,
-                    _truncate(joined, debug_log_max_chars),
+                _log.info(
+                    f"[mem0:add:session_flush] reason={flush_reason} thread={tid} "
+                    f"embedding_input(messages): {_truncate(joined, debug_log_max_chars)}",
                 )
             await service.aadd(
                 messages,
@@ -66,14 +65,15 @@ async def flush_session_buffer_to_mem0(
                 infer=True,
             )
             count += 1
-            logger.info(
-                "Mem0 session_flush ({}, thread={}): {} messages",
-                flush_reason,
-                tid,
-                len(messages),
+            log_memory_event(
+                f"memory flush · {flush_reason} · {len(messages)} messages",
+                action="flush",
+                flush_reason=flush_reason,
+                thread_id=tid,
+                message_count=len(messages),
             )
         except Exception as e:
-            logger.warning("Mem0 session_flush failed (thread={}): {}", tid, e)
+            _log.warning(f"Mem0 session_flush failed (thread={tid}): {e}")
     return count
 
 
@@ -97,9 +97,8 @@ async def add_daily_journal_if_present(
         if not content:
             return False
         if debug_log_enabled:
-            logger.info(
-                "[mem0:add:daily_journal] embedding_input(user): {}",
-                _truncate(content, debug_log_max_chars),
+            _log.info(
+                f"[mem0:add:daily_journal] embedding_input(user): {_truncate(content, debug_log_max_chars)}",
             )
         await service.aadd(
             [{"role": "user", "content": content}],
@@ -107,10 +106,10 @@ async def add_daily_journal_if_present(
             metadata={"source": "heartbeat", "category": "episodic"},
             infer=True,
         )
-        logger.debug("Mem0 heartbeat journal add: {}", journal.name)
+        _log.debug(f"Mem0 heartbeat journal add: {journal.name}")
         return True
     except Exception as e:
-        logger.warning("Mem0 journal add failed: {}", e)
+        _log.warning(f"Mem0 journal add failed: {e}")
         return False
 
 

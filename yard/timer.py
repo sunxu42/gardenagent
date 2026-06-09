@@ -11,7 +11,9 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 from langchain_core.tools import StructuredTool
-from loguru import logger
+from yard.observability.logging import LogModule, get_logger
+
+_log = get_logger(LogModule.SYSTEM)
 
 from yard.events import InputEvent, USER_INPUT_EVENT
 
@@ -53,14 +55,14 @@ class LocalSchedulerService:
             return
         self.scheduler.start()
         self._started = True
-        logger.info("local scheduler started, timezone={}", self.timezone_name)
+        _log.info(f"local scheduler started, timezone={self.timezone_name}")
 
     async def shutdown(self) -> None:
         if not self._started:
             return
         self.scheduler.shutdown(wait=False)
         self._started = False
-        logger.info("local scheduler stopped")
+        _log.info("local scheduler stopped")
 
     async def request_wake(self, text: str, mode: str = DEFAULT_WAKE_MODE) -> dict[str, Any]:
         if mode == "now":
@@ -217,7 +219,7 @@ class LocalSchedulerService:
                     "error": str(e),
                 }
             )
-            logger.error("scheduled job failed, job_id={}, error={}", job_id, e)
+            _log.error(f"scheduled job failed, job_id={job_id}, error={e}")
 
     async def _enqueue_event(self, text: str) -> None:
         event = InputEvent(content=text, event_id=uuid.uuid4().hex, event_type=USER_INPUT_EVENT)
@@ -306,7 +308,7 @@ def create_cron_tool(service: LocalSchedulerService) -> StructuredTool:
                 return await service.request_wake(text=text, mode=mode)
             raise ValueError(f"unsupported action: {action}")
         except Exception as e:
-            logger.error("cron action failed, action={}, error={}", action, e)
+            _log.error(f"cron action failed, action={action}, error={e}")
             return {"ok": False, "action": action, "error": str(e)}
 
     return StructuredTool.from_function(

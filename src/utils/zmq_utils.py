@@ -1,6 +1,5 @@
 import zmq
 import asyncio
-from loguru import logger
 
 async def create_sub(address: str, subscribe: bytes = b"", recv_timeout_ms: int = 1000, wait_ipc: bool = False):
     context = zmq.Context()

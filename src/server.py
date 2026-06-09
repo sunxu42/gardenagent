@@ -9,16 +9,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import uvicorn
 
 from src.config import load_config
-from src.log import setup_logger
+from yard.observability.logging import configure_logging
 
 
 def main() -> None:
     cfg = load_config()
-    setup_logger(
-        log_file=cfg.logging.log_file,
-        log_level=cfg.logging.log_level,
-        disable_modules=cfg.logging.disable_modules,
-    )
+    configure_logging(cfg.logging)
     uvicorn.run(
         "src.app:app",
         host=cfg.host,

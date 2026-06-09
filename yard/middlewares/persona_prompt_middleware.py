@@ -12,7 +12,9 @@ import yaml
 from langchain.agents.middleware.types import AgentMiddleware, AgentState, ModelRequest
 from langchain_core.messages import SystemMessage
 from deepagents.middleware._utils import append_to_system_message
-from loguru import logger
+from yard.observability.logging import LogModule, get_logger
+
+_log = get_logger(LogModule.AGENT)
 
 from yard.prompt.soul import flatten_system_text
 
@@ -131,12 +133,12 @@ class _SoulYamlComposer:
 
     def build(self, persona_id: Optional[str] = None) -> str:
         if persona_id:
-            logger.debug("persona_id=%r ignored; using soul.yaml", persona_id)
+            _log.debug(f"persona_id={persona_id!r} ignored; using soul.yaml")
         return render_system_prompt_generic(self.load_soul())
 
     def resolve_profile(self, persona_id: Optional[str] = None) -> dict[str, Any]:
         if persona_id:
-            logger.debug("persona_id=%r ignored; using soul.yaml", persona_id)
+            _log.debug(f"persona_id={persona_id!r} ignored; using soul.yaml")
         data = self.load_soul()
         meta = data.get("meta") or {}
         role_name = str(meta.get("role_name") or "").strip()

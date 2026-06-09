@@ -7,7 +7,10 @@ from typing import Any
 
 from langchain.agents.middleware.types import AgentMiddleware, ModelRequest, ModelResponse
 from langgraph.config import get_config
-from loguru import logger
+from yard.observability.logging import LogModule, get_logger
+from yard.observability.logging.turn_log import log_memory_event
+
+_log = get_logger(LogModule.AGENT)
 
 try:
     from langchain.agents.middleware.types import ExtendedModelResponse
@@ -75,7 +78,12 @@ class Mem0SummarizationFlushMiddleware(AgentMiddleware):
         response = await handler(request)
         if self._should_flush() and self._summarization_occurred(response):
             try:
+                log_memory_event(
+                    "memory flush · summarization triggered",
+                    action="flush",
+                    flush_reason="summarization",
+                )
                 await self._flush_after_summarization()
             except Exception as e:
-                logger.warning("memory summarization flush failed: {}", e)
+                _log.warning(f"memory summarization flush failed: {e}")
         return response

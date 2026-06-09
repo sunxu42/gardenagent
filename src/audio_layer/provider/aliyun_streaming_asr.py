@@ -11,10 +11,10 @@ import random
 from typing import Dict, Any, Optional
 from urllib import parse
 from datetime import datetime
-from loguru import logger
+from yard.observability.logging import LogModule, get_logger
 from .base import BaseASR
 
-logger.disable(__name__)
+_log = get_logger(LogModule.ASR)
 
 class AccessToken:
     @staticmethod
@@ -109,7 +109,7 @@ class AliyunStreamingASR(BaseASR):
                 expire_time = datetime.strptime(expire_str, "%Y-%m-%dT%H:%M:%SZ")
             self.expire_time = expire_time.timestamp() - 60
         except Exception as e:
-            logger.warning(f"解析 token 过期时间失败: {e}")
+            _log.warning(f"解析 token 过期时间失败: {e}")
             self.expire_time = None
     
     def _is_token_expired(self):
@@ -117,7 +117,7 @@ class AliyunStreamingASR(BaseASR):
     
     async def start_session(self, audio_data: bytes = None) -> bool:
         if self.is_processing:
-            logger.warning("ASR服务正在处理中")
+            _log.warning("ASR服务正在处理中")
             return False
         
         try:
@@ -149,7 +149,7 @@ class AliyunStreamingASR(BaseASR):
                     **connect_kwargs
                 )
             
-            logger.info("ASR WebSocket连接建立完成")
+            _log.info("ASR WebSocket连接建立完成")
             
             self.is_processing = True
             self.server_ready = False
@@ -179,7 +179,7 @@ class AliyunStreamingASR(BaseASR):
                 }
             }
             await self.asr_ws.send(json.dumps(start_request, ensure_ascii=False))
-            logger.info("已发送开始请求，等待服务器准备...")
+            _log.info("已发送开始请求，等待服务器准备...")
             
             # 如果有初始音频数据，缓存它
             if audio_data:
@@ -188,7 +188,7 @@ class AliyunStreamingASR(BaseASR):
             return True
             
         except Exception as e:
-            logger.error(f"建立ASR连接失败: {str(e)}")
+            _log.error(f"建立ASR连接失败: {str(e)}")
             await self.cleanup()
             return False
     
@@ -207,7 +207,7 @@ class AliyunStreamingASR(BaseASR):
         try:
             await self.asr_ws.send(audio_data)
         except Exception as e:
-            logger.error(f"发送音频数据失败: {e}")
+            _log.error(f"发送音频数据失败: {e}")
             await self.cleanup()
     
     async def _forward_asr_results(self):
@@ -224,26 +224,26 @@ class AliyunStreamingASR(BaseASR):
                     
                     if status != 20000000:
                         if status in [40000004, 40010004]:  # 连接超时或客户端断开
-                            logger.warning(f"连接问题，状态码: {status}")
+                            _log.warning(f"连接问题，状态码: {status}")
                             break
                         elif status in [40270002, 40270003]:  # 音频问题
-                            logger.warning(f"音频处理问题，状态码: {status}")
+                            _log.warning(f"音频处理问题，状态码: {status}")
                             continue
                         else:
-                            logger.error(f"识别错误，状态码: {status}, 消息: {header.get('status_text', '')}")
+                            _log.error(f"识别错误，状态码: {status}, 消息: {header.get('status_text', '')}")
                             continue
                     
                     # 收到TranscriptionStarted表示服务器准备好接收音频数据
                     if message_name == "TranscriptionStarted":
                         self.server_ready = True
-                        logger.info("服务器已准备，开始发送缓存音频...")
+                        _log.info("服务器已准备，开始发送缓存音频...")
                         
                         # 发送缓存音频
                         for cached_audio in self.audio_buffer:
                             try:
                                 await self.asr_ws.send(cached_audio)
                             except Exception as e:
-                                logger.warning(f"发送缓存音频失败: {e}")
+                                _log.warning(f"发送缓存音频失败: {e}")
                                 break
                         
                         self.audio_buffer.clear()
@@ -278,21 +278,21 @@ class AliyunStreamingASR(BaseASR):
                     
                     elif message_name == "TranscriptionCompleted":
                         # 识别完成
-                        logger.info("识别完成")
+                        _log.info("识别完成")
                         self.stop_processing()
                         break
                         
                 except asyncio.TimeoutError:
                     continue
                 except websockets.exceptions.ConnectionClosed:
-                    logger.info("ASR服务连接已关闭")
+                    _log.info("ASR服务连接已关闭")
                     break
                 except Exception as e:
-                    logger.error(f"处理结果失败: {str(e)}")
+                    _log.error(f"处理结果失败: {str(e)}")
                     break
                     
         except Exception as e:
-            logger.error(f"结果转发失败: {str(e)}")
+            _log.error(f"结果转发失败: {str(e)}")
         finally:
             await self.cleanup()
     
@@ -316,25 +316,25 @@ class AliyunStreamingASR(BaseASR):
                     "appkey": self.appkey
                 }
             }
-            logger.info("正在发送ASR终止请求")
+            _log.info("正在发送ASR终止请求")
             await self.asr_ws.send(json.dumps(stop_msg, ensure_ascii=False))
             await asyncio.sleep(0.1)
-            logger.info("ASR终止请求已发送")
+            _log.info("ASR终止请求已发送")
         except Exception as e:
-            logger.error(f"ASR终止请求发送失败: {e}")
+            _log.error(f"ASR终止请求发送失败: {e}")
     
     def is_connected(self) -> bool:
         return self.asr_ws is not None and not self.asr_ws.closed
     
     async def cleanup(self):
-        logger.info(f"开始ASR会话清理 | 当前状态: processing={self.is_processing}, server_ready={self.server_ready}")
+        _log.info(f"开始ASR会话清理 | 当前状态: processing={self.is_processing}, server_ready={self.server_ready}")
         
         if self.asr_ws and (self.is_processing or self.server_ready):
             await self._send_stop_request()
         
         self.is_processing = False
         self.server_ready = False
-        logger.info("ASR状态已重置")
+        _log.info("ASR状态已重置")
         
         if self.forward_task and not self.forward_task.done():
             self.forward_task.cancel()
@@ -347,17 +347,17 @@ class AliyunStreamingASR(BaseASR):
         
         if self.asr_ws:
             try:
-                logger.debug("正在关闭WebSocket连接")
+                _log.debug("正在关闭WebSocket连接")
                 await asyncio.wait_for(self.asr_ws.close(), timeout=2.0)
-                logger.debug("WebSocket连接已关闭")
+                _log.debug("WebSocket连接已关闭")
             except Exception as e:
-                logger.error(f"关闭WebSocket连接失败: {e}")
+                _log.error(f"关闭WebSocket连接失败: {e}")
             finally:
                 self.asr_ws = None
         
         self.audio_buffer.clear()
         self.text = ""
         
-        logger.info("ASR会话清理完成")
+        _log.info("ASR会话清理完成")
         
         await super().cleanup()

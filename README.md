@@ -60,6 +60,15 @@ mem0_embedding_dims: 1536
 
 也可在 `.env` 中设置 `MEM0_EMBEDDING_MODEL`。向量索引落在 `yard/workspace/memory/faiss/`。可通过统一服务端的 `/api/prompt-editor/memory-yaml/refresh` 导出只读 `yard/prompts/memory/memory.yaml`（已 gitignore，不参与对话注入）。
 
+Mem0 的记忆抽取依赖 spaCy（已包含在 `mem0ai[nlp]` 可选依赖中）。首次启用长期记忆时，还需下载英文语言模型：
+
+```bash
+pip install "mem0ai[nlp]"
+python -m spacy download en_core_web_sm
+```
+
+若使用 `uv pip install -e .`，`pyproject.toml` 已声明 `mem0ai[nlp]`，安装项目后只需执行 `python -m spacy download en_core_web_sm`。
+
 **Session 对话写入 Mem0**（动态策略，与 30 分钟 heartbeat 解耦，默认）：
 
 | 时机 | 默认 |

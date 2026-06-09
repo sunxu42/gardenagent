@@ -15,7 +15,9 @@
 import asyncio
 import signal
 from typing import Callable, Dict, Any
-from loguru import logger
+from yard.observability.logging import LogModule, get_logger
+
+_log = get_logger(LogModule.ASR)
 from src.config import AudioConfig
 from src.audio_layer.provider.factory import ASRFactory
 
@@ -40,17 +42,17 @@ class AudioService:
             # 启动音频处理任务
             self.audio_processor_task = asyncio.create_task(self.audio_processor_loop())
             
-            logger.info(
+            _log.info(
                 f"音频服务已启动,"
                 f"ASR提供商: {self.config.asr_provider_name}"
             )
         except Exception as e:
-            logger.error(f"启动服务失败: {e}")
+            _log.error(f"启动服务失败: {e}")
             await self.stop()
             raise
     
     async def stop(self):
-        logger.info("正在停止音频处理服务...")
+        _log.info("正在停止音频处理服务...")
         self.is_running = False
         
         # 取消任务
@@ -61,7 +63,7 @@ class AudioService:
             except asyncio.CancelledError:
                 pass
         
-        logger.info("音频处理服务已停止")
+        _log.info("音频处理服务已停止")
     
     async def audio_processor_loop(self):
         
@@ -69,13 +71,13 @@ class AudioService:
             try:
                 audio_data = await self.audio_queue.get()
             except Exception as e:
-                logger.error(f"获取音频数据出错: {e}")
+                _log.error(f"获取音频数据出错: {e}")
                 break
             if audio_data:
                 try:
                     await self.asr_service.send_audio_data(audio_data)
                 except Exception as e:
-                    logger.error(f"发送音频数据出错: {e}")
+                    _log.error(f"发送音频数据出错: {e}")
                     
 
     async def _handle_asr_result(self, result: Dict[str, Any]):
@@ -83,7 +85,7 @@ class AudioService:
             await self.result_callback(result)
 
         except Exception as e:
-            logger.error(f"调用 ASR 结果回调失败: {e}")
+            _log.error(f"调用 ASR 结果回调失败: {e}")
 
     def set_result_callback(self, callback: Callable[[Dict[str, Any]], None]):
         self.result_callback = callback
@@ -94,7 +96,7 @@ async def main():
     
     # 设置信号处理
     def signal_handler(signum, frame):
-        logger.info(f"接收到信号 {signum}，正在关闭服务...")
+        _log.info(f"接收到信号 {signum}，正在关闭服务...")
         asyncio.create_task(service.stop())
     
     signal.signal(signal.SIGINT, signal_handler)
@@ -105,9 +107,9 @@ async def main():
         # 等待后台任务运行
         await service.audio_processor_task
     except KeyboardInterrupt:
-        logger.info("接收到中断信号")
+        _log.info("接收到中断信号")
     except Exception as e:
-        logger.error(f"服务运行出错: {e}")
+        _log.error(f"服务运行出错: {e}")
     finally:
         await service.stop()
 

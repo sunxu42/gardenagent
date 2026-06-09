@@ -7,7 +7,9 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from loguru import logger
+from yard.observability.logging import LogModule, get_logger
+
+_log = get_logger(LogModule.SYSTEM)
 
 from yard.memory.mem0.service import Mem0Service, _memory_text
 
@@ -67,5 +69,5 @@ async def export_memory_yaml(
     out_path = out_dir / "memory.yaml"
     text = format_memory_yaml(memories, user_id=uid)
     out_path.write_text(text, encoding="utf-8")
-    logger.info("Exported {} memories to {}", len(memories), out_path)
+    _log.info(f"Exported {len(memories)} memories to {out_path}")
     return out_path.resolve()

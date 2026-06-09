@@ -1,10 +1,12 @@
 import asyncio
-import os
 import uuid
 
 from typing import Any, Awaitable, Callable, Dict, Optional
 
-from src.log import setup_logger, logger
+from yard.observability.logging import bind_session, get_logger, set_turn_id
+from yard.observability.logging.modules import LogModule
+
+logger = get_logger(LogModule.AGENT)
 from src.agent_layer.agents.agent_factory import AgentFactory
 from yard.events import InputEvent, USER_INPUT_EVENT
 
@@ -271,13 +273,21 @@ class AgentService:
             else:
                 tid = None
 
-            input_event = InputEvent(
-                content=text,
-                event_id=uuid.uuid4().hex,
-                event_type=USER_INPUT_EVENT,
-                thread_id=tid,
-            )
-            await in_q.put(input_event)
+            turn_id = message.get("turn_id")
+            turn = turn_id.strip() if isinstance(turn_id, str) and turn_id.strip() else None
+
+            session = tid or "default"
+            with bind_session(session):
+                if turn:
+                    set_turn_id(turn)
+                input_event = InputEvent(
+                    content=text,
+                    event_id=uuid.uuid4().hex,
+                    event_type=USER_INPUT_EVENT,
+                    thread_id=tid,
+                    turn_id=turn,
+                )
+                await in_q.put(input_event)
     
 
 
@@ -285,9 +295,6 @@ class AgentService:
 
 if __name__ == "__main__":
     async def main():
-        # 配置统一日志
-        setup_logger(log_file=os.getenv('AGENT_SERVICE_LOG', 'logs/agent_service.log'), enable_console=True)
-        
         robot =  AgentService()
         try:
             # 启动服务
