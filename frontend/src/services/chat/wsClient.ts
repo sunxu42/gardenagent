@@ -1,4 +1,10 @@
-import type { ChatAction } from "../../features/chat/types";
+import type {
+  ChatAction,
+  EmotionProfile,
+  RelationshipSnapshot,
+  ResponsePolicySnapshot,
+} from "../../features/chat/types";
+import { parseEmotionProfile } from "../../features/chat/lib/emotionProfile";
 
 export interface AssistantServerMessage {
   role?: string;
@@ -15,7 +21,18 @@ export interface AssistantServerMessage {
   turn_id?: string;
   user_text?: string;
   utterance_vad?: unknown;
+  user_affect_vad?: unknown;
+  relationship?: unknown;
+  agent_vad_target?: unknown;
   agent_vad_after?: unknown;
+  user_weight?: unknown;
+  interpersonal_cue?: unknown;
+  response_policy?: unknown;
+  actuation_weight?: unknown;
+  synthesis_rule?: unknown;
+  agent_emotion?: unknown;
+  emotion_scale?: unknown;
+  schema_version?: unknown;
   timestamp?: unknown;
   emotion?: unknown;
 }
@@ -73,6 +90,30 @@ export type WsMappedEvent =
       currentVoice?: string;
       baselineVad?: { v: number; a: number; d: number } | null;
       currentVad?: { v: number; a: number; d: number } | null;
+      relationship?: RelationshipSnapshot | null;
+      emotionProfile?: EmotionProfile | null;
+    }
+  | {
+      type: "AFFECT_TURN_APPRAISED";
+      turnId: string;
+      userText: string;
+      timestamp: number;
+      userAffectVad: { v: number; a: number; d: number };
+      userWeight?: number;
+      relationship?: RelationshipSnapshot;
+      interpersonalCue?: string;
+      responsePolicy?: ResponsePolicySnapshot;
+      agentVadTarget?: { v: number; a: number; d: number } | null;
+      actuationWeight?: number;
+      synthesisRule?: string;
+    }
+  | {
+      type: "AFFECT_TURN_SETTLED";
+      turnId: string;
+      timestamp: number;
+      agentVadAfter: { v: number; a: number; d: number };
+      agentEmotion: string;
+      emotionScale: number;
     }
   | {
       type: "VAD_TURN_EVALUATED";
@@ -83,6 +124,44 @@ export type WsMappedEvent =
       timestamp: number;
     }
   | { type: "IGNORE" };
+
+function readOptionalNumber(raw: unknown): number | undefined {
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+function readRelationship(raw: unknown): RelationshipSnapshot | undefined {
+  if (!raw || typeof raw !== "object") {
+    return undefined;
+  }
+  const rel = raw as Record<string, unknown>;
+  const trust = Number(rel.trust);
+  const warmth = Number(rel.warmth);
+  if (!Number.isFinite(trust) || !Number.isFinite(warmth)) {
+    return undefined;
+  }
+  return {
+    trust,
+    warmth,
+    stage: typeof rel.stage === "string" ? rel.stage : "unknown",
+    trustDelta: readOptionalNumber(rel.trust_delta),
+    warmthDelta: readOptionalNumber(rel.warmth_delta),
+    relWeight: readOptionalNumber(rel.rel_weight),
+  };
+}
+
+function readResponsePolicy(raw: unknown): ResponsePolicySnapshot | undefined {
+  if (!raw || typeof raw !== "object") {
+    return undefined;
+  }
+  const policy = raw as Record<string, unknown>;
+  return {
+    empathyMode: typeof policy.empathy_mode === "string" ? policy.empathy_mode : "neutral",
+    stance: typeof policy.stance === "string" ? policy.stance : "balanced",
+    repairAction: typeof policy.repair_action === "string" ? policy.repair_action : "none",
+    directiveness: readOptionalNumber(policy.directiveness) ?? 0.5,
+  };
+}
 
 function readVadPoint(raw: unknown): { v: number; a: number; d: number } | null {
   if (!raw || typeof raw !== "object") {
@@ -141,10 +220,54 @@ function readAgentName(...sources: unknown[]): string | undefined {
 }
 
 export function mapServerMessage(msg: AssistantServerMessage): WsMappedEvent {
+  if (msg?.type === "affect_turn_appraised") {
+    const turnId = typeof msg.turn_id === "string" ? msg.turn_id.trim() : "";
+    const userText = typeof msg.user_text === "string" ? msg.user_text : "";
+    const userAffectVad = readVadPoint(msg.user_affect_vad);
+    const timestampRaw = Number(msg.timestamp);
+    const timestamp = Number.isFinite(timestampRaw) ? timestampRaw : Date.now();
+    const relationship = readRelationship(msg.relationship);
+    if (!turnId || !userAffectVad || !relationship) {
+      return { type: "IGNORE" };
+    }
+    return {
+      type: "AFFECT_TURN_APPRAISED",
+      turnId,
+      userText,
+      timestamp,
+      userAffectVad,
+      userWeight: readOptionalNumber(msg.user_weight),
+      relationship,
+      interpersonalCue: typeof msg.interpersonal_cue === "string" ? msg.interpersonal_cue : undefined,
+      responsePolicy: readResponsePolicy(msg.response_policy),
+      agentVadTarget: readVadPoint(msg.agent_vad_target),
+      actuationWeight: readOptionalNumber(msg.actuation_weight),
+      synthesisRule: typeof msg.synthesis_rule === "string" ? msg.synthesis_rule : undefined,
+    };
+  }
+
+  if (msg?.type === "affect_turn_settled") {
+    const turnId = typeof msg.turn_id === "string" ? msg.turn_id.trim() : "";
+    const agentVadAfter = readVadPoint(msg.agent_vad_after);
+    const timestampRaw = Number(msg.timestamp);
+    const timestamp = Number.isFinite(timestampRaw) ? timestampRaw : Date.now();
+    if (!turnId || !agentVadAfter) {
+      return { type: "IGNORE" };
+    }
+    return {
+      type: "AFFECT_TURN_SETTLED",
+      turnId,
+      timestamp,
+      agentVadAfter,
+      agentEmotion: typeof msg.agent_emotion === "string" ? msg.agent_emotion : "neutral",
+      emotionScale: readOptionalNumber(msg.emotion_scale) ?? 4,
+    };
+  }
+
   if (msg?.type === "vad_turn_evaluated") {
     const turnId = typeof msg.turn_id === "string" ? msg.turn_id.trim() : "";
     const userText = typeof msg.user_text === "string" ? msg.user_text : "";
-    const utteranceVad = readVadPoint(msg.utterance_vad);
+    const utteranceVad = readVadPoint(msg.user_affect_vad ?? msg.utterance_vad);
     const agentVadAfter = readVadPoint(msg.agent_vad_after);
     const timestampRaw = Number(msg.timestamp);
     const timestamp = Number.isFinite(timestampRaw) ? timestampRaw : Date.now();
@@ -201,6 +324,8 @@ export function mapServerMessage(msg: AssistantServerMessage): WsMappedEvent {
     const emotion = msg.emotion && typeof msg.emotion === "object" ? (msg.emotion as Record<string, unknown>) : null;
     const baselineVad = readVadPoint(emotion?.baseline_vad ?? null);
     const currentVad = readVadPoint(emotion?.current_vad ?? null);
+    const relationship = readRelationship(emotion?.relationship) ?? null;
+    const emotionProfile = parseEmotionProfile(emotion?.profile) ?? null;
     return {
       type: "HELLO",
       sessionId: msg.session_id,
@@ -209,6 +334,8 @@ export function mapServerMessage(msg: AssistantServerMessage): WsMappedEvent {
       currentVoice,
       baselineVad,
       currentVad,
+      relationship,
+      emotionProfile,
     };
   }
 
@@ -265,6 +392,38 @@ export function mapEventToAction(
       payload: {
         voices: event.supportedVoices ?? [],
         currentVoice: event.currentVoice,
+      },
+    };
+  }
+
+  if (event.type === "AFFECT_TURN_APPRAISED") {
+    return {
+      type: "affectTurnAppraised",
+      payload: {
+        turnId: event.turnId,
+        userText: event.userText,
+        timestamp: event.timestamp,
+        userAffectVad: event.userAffectVad,
+        userWeight: event.userWeight,
+        relationship: event.relationship,
+        interpersonalCue: event.interpersonalCue,
+        responsePolicy: event.responsePolicy,
+        agentVadTarget: event.agentVadTarget,
+        actuationWeight: event.actuationWeight,
+        synthesisRule: event.synthesisRule,
+      },
+    };
+  }
+
+  if (event.type === "AFFECT_TURN_SETTLED") {
+    return {
+      type: "affectTurnSettled",
+      payload: {
+        turnId: event.turnId,
+        timestamp: event.timestamp,
+        agentVadAfter: event.agentVadAfter,
+        agentEmotion: event.agentEmotion,
+        emotionScale: event.emotionScale,
       },
     };
   }
