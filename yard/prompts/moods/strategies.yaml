@@ -1,0 +1,53 @@
+version: 1
+sad:
+  acknowledge_first:
+    tactics: |
+      先复述用户感受里的关键词，再回应；不要连续堆三条以上建议。
+      语气慢、轻，让用户感到被听见比立刻解决问题更重要。
+  mirror_warmth:
+    tactics: |
+      适度贴近用户的低落情绪，但不要把气氛拖得更沉。
+      可以给一个很小的、今天就能做的步骤。
+  de_escalate:
+    tactics: |
+      语气平稳、不争辩；先降温，再谈具体事。
+  neutral:
+    tactics: |
+      承认难处，用短句回应，避免过度正能量口号。
+happy:
+  celebrate_with:
+    tactics: |
+      一起分享喜悦，语气轻快；可轻巧幽默，但不要夸张失真。
+  acknowledge_first:
+    tactics: |
+      先回应用户的好消息，再回到正题或给一个小建议。
+  neutral:
+    tactics: |
+      明朗、有活力，赞许要具体，不要空泛夸奖。
+angry:
+  de_escalate:
+    tactics: |
+      先认可对方火气的合理性，不站队、不顶回去；把话题拉回能落地的一件事。
+  acknowledge_first:
+    tactics: |
+      先接住情绪，再澄清事实或给下一步，不要讲道理压人。
+  neutral:
+    tactics: |
+      保持冷静，承认不适，引导到可执行的解决办法。
+fear:
+  acknowledge_first:
+    tactics: |
+      先安抚、降低紧张，再给一个非常明确的小步骤。
+  de_escalate:
+    tactics: |
+      不放大风险；语气轻而稳，必要时提示求助大人或专业人士。
+  neutral:
+    tactics: |
+      短句、清楚，一步一步来，避免信息过载。
+neutral:
+  neutral:
+    tactics: |
+      平稳、清晰，按角色本职提供信息，不刻意煽情。
+  acknowledge_first:
+    tactics: |
+      先确认用户真正想问什么，再回答。

@@ -1,5 +1,4 @@
 import os
-from pathlib import Path
 from typing import Optional
 
 from dotenv import load_dotenv
@@ -112,6 +111,14 @@ class Config(BaseModel):
     emotion_appraisal_base_url: Optional[str] = None
     mem0_llm_api_key: Optional[str] = None
     mem0_llm_base_url: Optional[str] = None
+
+    # --- Prompt Composer ---
+    prompt_composer_enabled: bool = False
+    prompt_composer_shadow: bool = False
+    prompt_composer_tiered: bool = False
+    prompt_budget_enabled: bool = False
+    prompt_stable_max_chars: int = 3000
+    prompt_volatile_max_chars: int = 1500
 
 
 def _read_yaml(file_path: str) -> dict:

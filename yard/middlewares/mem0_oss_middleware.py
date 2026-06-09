@@ -228,6 +228,8 @@ class Mem0OssMiddleware(AgentMiddleware[Mem0OssState, Any]):
         )
 
     def modify_request(self, request: ModelRequest) -> ModelRequest:
+        if getattr(self.config, "prompt_composer_enabled", False):
+            return request
         memories = request.state.get("mem0_memories") or []
         bullets = Mem0Service.format_bullets(
             memories,

@@ -1,0 +1,24 @@
+version: 1
+defaults:
+  locale: zh
+modules:
+  - id: persona.full
+    tier: stable
+    priority: 10
+    renderer: persona.generic
+    always: true
+  - id: affective.full
+    tier: volatile
+    priority: 70
+    renderer: affective.full
+    when: ctx.affective_v2_enabled
+  - id: mood.full
+    tier: volatile
+    priority: 80
+    renderer: mood.bundle
+    when: ctx.agent_emotion
+  - id: memory.long_term
+    tier: volatile
+    priority: 95
+    renderer: mem0.bullets
+    when: ctx.has_memories

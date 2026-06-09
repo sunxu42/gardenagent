@@ -25,7 +25,6 @@ TTS 服务模块
 使用队列机制接收 Agent 文本，通过回调函数返回 TTS 音频数据
 """
 import asyncio
-import time
 import uuid
 from typing import Callable, Dict, Any
 from loguru import logger
@@ -46,30 +45,30 @@ def clean_markdown(text: str) -> str:
 
 
 class TTSService:
-    
+
     def __init__(self, config):
         self.config = config
         self.tts_backend = TTSFactory.create(
             provider_name=config.tts_provider_name,
             config=config
         )
-        
+
         self.is_running = False
         self.queue = asyncio.Queue(maxsize=1000)
         self.result_callback = None
         self.text_receiver_task = None
         self.current_session_id = None  # 当前TTS会话ID
-    
+
     def set_result_callback(self, callback: Callable[[Dict[str, Any]], None]):
         """设置 TTS 音频结果回调函数"""
         self.result_callback = callback
-        
+
     async def start(self):
         try:
             self.is_running = True
             self.tts_backend.set_audio_callback(self._handle_audio_data)
             self.text_receiver_task = asyncio.create_task(self.text_receiver_loop())
-            
+
             logger.info(
                 f"TTS服务已启动,"
                 f"TTS提供商: {self.config.tts_provider_name}"
@@ -79,27 +78,27 @@ class TTSService:
             logger.error(f"启动TTS服务失败: {e}")
             await self.stop()
             raise
-    
+
     async def stop(self):
         logger.info("正在停止TTS服务...")
         self.is_running = False
-        
+
         if self.text_receiver_task:
             self.text_receiver_task.cancel()
             try:
                 await self.text_receiver_task
             except asyncio.CancelledError:
                 pass
-        
+
         if self.tts_backend:
             try:
                 await self.tts_backend.cleanup()
             except Exception:
                 pass
-        
+
         logger.info("TTS服务已停止")
-    
-    
+
+
     async def text_receiver_loop(self):
         while self.is_running:
             try:
@@ -111,8 +110,8 @@ class TTSService:
                 break
             except Exception as e:
                 logger.error(f"文本接收循环出错: {e}")
-    
-    
+
+
     async def end_session(self):
         """立即结束当前TTS会话（用于打断）"""
         try:
@@ -120,42 +119,46 @@ class TTSService:
                 # 如果TTS backend支持cancel_session，优先使用（更快速）
                 if hasattr(self.tts_backend, 'cancel_session'):
                     await self.tts_backend.cancel_session(self.current_session_id)
-                    logger.info(f"已取消TTS会话: {self.current_session_id}")
                 else:
-                    # 否则使用finish_session
                     await self.tts_backend.finish_session(self.current_session_id)
-                    logger.info(f"已结束TTS会话: {self.current_session_id}")
                 self.current_session_id = None
         except Exception as e:
             logger.error(f"结束TTS会话失败: {e}")
-    
+
     async def process_text_message(self, message):
         try:
             text = message.get('text', '')
             if clean_markdown(text):
                 # logger.debug(f"收到文本消息: {text}")
                 if  text == "SENTENCE_START":
-                    
+                    voice = message.get('voice_type')
+                    emotion = message.get('emotion')
+                    scale = message.get('emotion_scale', 4)
+                    if voice and hasattr(self.tts_backend, 'set_voice'):
+                        self.tts_backend.set_voice(voice)
+                    if hasattr(self.tts_backend, 'set_emotion'):
+                        self.tts_backend.set_emotion(emotion, scale)
+                    speech_rate = message.get('speech_rate', 0)
+                    pitch = message.get('pitch', 0)
+                    if hasattr(self.tts_backend, 'set_prosody'):
+                        self.tts_backend.set_prosody(speech_rate, pitch)
+
                     while True:
-                        st = time.time()
                         self.current_session_id = str(uuid.uuid4().hex)
                         success = await self.tts_backend.start_session(self.current_session_id)
 
                         if success:
-                            et = time.time()
-                            logger.info(f"开始新的流式TTS会话, 耗时: {et - st:.4f}秒")
                             break
 
                 elif text == "SENTENCE_END":
                     await self.tts_backend.finish_session(self.current_session_id)
-                    logger.info(f"结束流式TTS会话")
                 else:
                     await self.tts_backend.send_text(text)
 
         except Exception as e:
             logger.error(f"处理流式TTS失败: {e}")
-      
-      
+
+
     async def _handle_audio_data(self, audio_data, end_of_stream):
 
         message = {
@@ -163,7 +166,7 @@ class TTSService:
             'end_of_stream': end_of_stream
             }
         await self.result_callback(message)
-    
+
 
 
 async def main():

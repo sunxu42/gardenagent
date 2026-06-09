@@ -26,6 +26,70 @@ class AgentService:
     def set_result_callback(self, callback: Callable[[Dict[str, Any]], Any]):
         self.result_callback = callback
 
+    def current_tts_voice(self):
+        agent = getattr(self, "agent", None)
+        if agent is not None and hasattr(agent, "current_tts_voice"):
+            return agent.current_tts_voice()
+        return None
+
+    def current_tts_emotion(self):
+        agent = getattr(self, "agent", None)
+        if agent is not None and hasattr(agent, "current_tts_emotion"):
+            return agent.current_tts_emotion()
+        return None, 4
+
+    def current_vad_metrics(self):
+        agent = getattr(self, "agent", None)
+        if agent is not None and hasattr(agent, "current_vad_metrics"):
+            return agent.current_vad_metrics()
+        return None
+
+    def baseline_vad(self):
+        agent = getattr(self, "agent", None)
+        if agent is not None and hasattr(agent, "baseline_vad"):
+            return agent.baseline_vad()
+        return None
+
+    def emotion_ui_profile(self):
+        agent = getattr(self, "agent", None)
+        if agent is not None and hasattr(agent, "emotion_ui_profile"):
+            return agent.emotion_ui_profile()
+        return None
+
+    def current_relationship_snapshot(self):
+        agent = getattr(self, "agent", None)
+        if agent is not None and hasattr(agent, "current_relationship_snapshot"):
+            return agent.current_relationship_snapshot()
+        return None
+
+    def vad_snapshot_for_digest(self, digest: str):
+        agent = getattr(self, "agent", None)
+        if agent is not None and hasattr(agent, "vad_snapshot_for_digest"):
+            return agent.vad_snapshot_for_digest(digest)
+        return None
+
+    def end_emotion_turn(self) -> None:
+        agent = getattr(self, "agent", None)
+        if agent is not None and hasattr(agent, "end_emotion_turn"):
+            agent.end_emotion_turn()
+
+    def affect_settled_metrics(self):
+        agent = getattr(self, "agent", None)
+        if agent is not None and hasattr(agent, "affect_settled_metrics"):
+            return agent.affect_settled_metrics()
+        return None
+
+    def current_tts_prosody(self):
+        agent = getattr(self, "agent", None)
+        if agent is not None and hasattr(agent, "current_tts_prosody"):
+            return agent.current_tts_prosody()
+        return 0, 0
+
+    def set_appraisal_snapshot_listener(self, listener) -> None:
+        agent = getattr(self, "agent", None)
+        if agent is not None and hasattr(agent, "set_appraisal_snapshot_listener"):
+            agent.set_appraisal_snapshot_listener(listener)
+
     def _validate_agent(self) -> None:
         if not hasattr(self.agent, "agent_output_queue"):
             raise RuntimeError("agent_output_queue not found on agent")
@@ -108,12 +172,8 @@ class AgentService:
                     phase = getattr(evt, "phase", None) or "middle"
                     data = getattr(evt, "data", None)
 
-                    # By default: do not forward heartbeat to front-end.
-                    if (
-                        trigger_by == "heartbeat"
-                        and isinstance(data, dict)
-                        and data.get("content", "").strip() == "HEARTBEAT_OK"
-                    ):
+                    # Heartbeat is background maintenance; do not forward to UI/TTS clients.
+                    if trigger_by == "heartbeat":
                         continue
 
                     if phase == "start":
