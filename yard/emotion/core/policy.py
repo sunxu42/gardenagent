@@ -30,10 +30,6 @@ class ActuationPlan(BaseModel):
     speech_rate: int = 0
     pitch: int = 0
 
-    @classmethod
-    def from_vad(cls, vad: VAD, *, weight: float) -> ActuationPlan:
-        return cls(vad_target=vad.clamp(), weight=max(0.0, min(1.0, weight)))
-
 
 class TurnAppraisalV2(BaseModel):
     user_v: float = Field(ge=-1.0, le=1.0)

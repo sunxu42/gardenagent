@@ -43,7 +43,6 @@ def synthesize_response(
     appraisal: TurnAppraisalV2,
     relationship: RelationshipState,
     persona_baseline: VAD,
-    current_agent_vad: VAD,
     *,
     empathy_gain: float = 0.6,
 ) -> SynthesisResult:
@@ -72,7 +71,7 @@ def synthesize_response(
             directiveness=0.55 if relationship.trust >= 0.6 else 0.4,
         )
         mirror = empathy_gain * max(0.3, relationship.warmth)
-        if stage == "close":
+        if stage == "bonded":
             mirror = min(0.95, mirror + 0.1)
         target = VAD(
             _lerp(persona_baseline.v, user_vad.v, mirror),
@@ -114,14 +113,14 @@ def synthesize_response(
         )
         target = persona_baseline
 
-    if stage == "guarded" and rule_id != "hostile_de_escalate":
-        rule_id = f"{rule_id}_stage_guarded"
+    if stage == "stranger" and rule_id != "hostile_de_escalate":
+        rule_id = f"{rule_id}_stage_stranger"
         policy.stance = "guarded_formal"
         policy.repair_action = policy.repair_action if policy.repair_action != "none" else "clarify_before_advise"
         target = VAD(target.v, min(target.a, 0.45), target.d)
         policy.directiveness = min(policy.directiveness, 0.4)
-    elif stage == "close" and rule_id not in ("hostile_de_escalate",):
-        rule_id = f"{rule_id}_stage_close"
+    elif stage == "bonded" and rule_id not in ("hostile_de_escalate",):
+        rule_id = f"{rule_id}_stage_bonded"
         policy.directiveness = max(policy.directiveness, 0.55)
         if policy.stance == "balanced":
             policy.stance = "warm_casual"

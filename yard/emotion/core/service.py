@@ -212,21 +212,7 @@ class EmotionService:
         except Exception as e:
             logger.warning("EmotionService appraisal snapshot listener failed: {!r}", e)
 
-    def record_appraisal_snapshot(self, digest: str) -> None:
-        """按用户句 digest 缓存本轮 LLM 评判结果，并通知 UI 侧下发 VAD 事件。"""
-        key = (digest or "").strip()
-        if not key:
-            return
-        target = self.last_appraisal_target.as_dict() if self.last_appraisal_target is not None else None
-        current = self.current().as_dict()
-        self._store_snapshot(key, {
-            "utterance_vad": target if target is not None else dict(current),
-            "agent_vad_after": current,
-            "weight": self.last_appraisal_weight,
-        })
-        self._notify_appraisal_snapshot(key)
-
-    def record_appraisal_snapshot_v2(
+    def record_appraisal_snapshot(
         self,
         digest: str,
         appraisal: TurnAppraisalV2,
@@ -306,7 +292,7 @@ class EmotionService:
             else dict(current)
         )
         return {
-            "schema_version": 2 if syn is not None else 1,
+            "schema_version": 2,
             "utterance_vad": target,
             "agent_vad_after": current,
             "agent_emotion": emotion,
@@ -316,12 +302,7 @@ class EmotionService:
 
     def synthesize_and_apply_v2(self, appraisal: TurnAppraisalV2) -> VAD | None:
         rel = self.relationship()
-        synthesis = synthesize_response(
-            appraisal,
-            rel,
-            self._baseline,
-            self.current(),
-        )
+        synthesis = synthesize_response(appraisal, rel, self._baseline)
         return self.apply_v2_turn(appraisal, synthesis)
 
     def last_synthesis(self) -> SynthesisResult | None:

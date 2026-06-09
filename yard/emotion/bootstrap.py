@@ -71,18 +71,17 @@ def build_emotion_service(config, persona_id=None) -> tuple[EmotionService, str]
 
 
 def setup_emotion_subsystem(config) -> EmotionSubsystem:
-    """构建情绪服务与 middleware（始终启用 v2 + appraisal）。"""
+    """构建情绪服务与 appraisal middleware。"""
     try:
         emotion_service, voice_type = build_emotion_service(config)
         taxonomy = load_taxonomy(f"{config.prompts_dir}/moods/levels.yaml")
         appraisal_llm = create_emotion_appraisal_model(config)
         appraiser = EmotionAppraiser(
             appraisal_llm,
-            emotion_service,
             max_user_chars=EMOTION_APPRAISAL_MAX_USER_CHARS,
         )
         appraisal_middleware = [
-            EmotionAppraisalMiddleware(emotion_service, appraiser, use_v2=True),
+            EmotionAppraisalMiddleware(emotion_service, appraiser),
         ]
         prompt_middleware: list[Any] = [
             AffectiveContextMiddleware(
