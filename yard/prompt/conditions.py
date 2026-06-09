@@ -1,4 +1,4 @@
-"""manifest `when` 条件表达式求值（安全子集）。"""
+"""Evaluate manifest `when` expressions with a safe subset."""
 
 from __future__ import annotations
 

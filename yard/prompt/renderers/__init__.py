@@ -1,4 +1,4 @@
-"""Renderer 注册表。"""
+"""Renderer registry."""
 
 from __future__ import annotations
 
@@ -16,9 +16,9 @@ _REGISTRY: dict[str, RendererFn] = {}
 @dataclass
 class RendererDeps:
     prompts_dir: str
+    affective_path: str
+    agent_mood_path: str
     mood_taxonomy: dict[str, dict[str, Any]]
-    user_states_path: str
-    relationship_stages_path: str
 
 
 def register(name: str):
@@ -44,6 +44,6 @@ def validate_manifest_renderers(renderer_names: list[str]) -> None:
 def _ensure_registered() -> None:
     if _REGISTRY:
         return
-    from yard.prompt.renderers import affective, mem0, mood, persona  # noqa: F401
+    from yard.prompt.renderers import affective, mem0, reply_plan  # noqa: F401
 
 _ensure_registered()

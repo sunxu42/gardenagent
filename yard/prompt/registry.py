@@ -1,4 +1,4 @@
-"""PromptRegistry：条件筛选、渲染、拼接、预算裁剪。"""
+"""PromptRegistry: condition filtering, rendering, composition, and budget trimming."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""YAML source 加载与 slice 路径解析。"""
+"""Load YAML sources and resolve slice paths."""
 
 from __future__ import annotations
 

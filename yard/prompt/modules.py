@@ -1,4 +1,4 @@
-"""Prompt 模块定义与 manifest 加载。"""
+"""Prompt module definitions and manifest loading."""
 
 from __future__ import annotations
 
