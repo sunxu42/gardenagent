@@ -330,16 +330,8 @@ class AliyunStreamingTTS(BaseTTS):
                             event_name = header.get("name")
                             if event_name == "SynthesisStarted":
                                 self._server_ready = True
-                                logger.debug(f"会话开始, session_id: {self._session_id}")
-
-                            elif event_name == "SentenceBegin":
-                                logger.debug(f"句子生成开始")
-
-                            elif event_name == "SentenceEnd":
-                                logger.debug(f"句子生成结束")
 
                             elif event_name == "SynthesisCompleted":
-                                logger.debug(f"会话结束, session_id: {self._session_id}")
                                 session_finished = True
                                 break
 

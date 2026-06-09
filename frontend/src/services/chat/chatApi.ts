@@ -62,6 +62,8 @@ export function createChatApi(options: CreateChatApiOptions): ChatApi {
         payload: {
           baselineVad: wsEvent.baselineVad ?? null,
           currentVad: wsEvent.currentVad ?? null,
+          relationship: wsEvent.relationship ?? null,
+          emotionProfile: wsEvent.emotionProfile ?? null,
         },
       });
     }

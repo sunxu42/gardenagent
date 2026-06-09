@@ -5,7 +5,7 @@ import { MessageList } from "../features/chat/components/MessageList";
 import { RetryHint } from "../features/chat/components/RetryHint";
 import { SettingsDrawer } from "../features/chat/components/SettingsDrawer";
 import { ClearUserDataDialog } from "../features/chat/components/ClearUserDataDialog";
-import { VadHistoryPanel } from "../features/chat/components/VadHistoryPanel";
+import { AffectDebugPanel } from "../features/chat/components/AffectDebugPanel";
 import { chatReducer, initialChatState } from "../features/chat/store/chatReducer";
 import type { ChatSettings, ChatState, ThemeName } from "../features/chat/types";
 import { useChatHistoryPersistence } from "../features/chat/hooks/useChatHistoryPersistence";
@@ -191,6 +191,7 @@ export function ChatApp() {
       data-motion={state.settings.motion}
     >
       <div className="chat-app-layout">
+        <div className="chat-main-column">
         <div className="mobile-chat-page mobile-shell" data-theme={state.settings.theme}>
         <header role="banner">
           <HeaderBar
@@ -250,10 +251,13 @@ export function ChatApp() {
           onConfirm={() => void handleClearUserData()}
         />
         </div>
-        <VadHistoryPanel
-          history={state.vadHistory ?? []}
+        </div>
+        <AffectDebugPanel
+          history={state.affectHistory ?? []}
           currentAgentVad={state.currentAgentVad ?? null}
           baselineVad={state.baselineVad ?? null}
+          emotionProfile={state.emotionProfile ?? null}
+          currentRelationship={state.currentRelationship ?? null}
         />
       </div>
     </div>

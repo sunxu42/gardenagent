@@ -1,13 +1,10 @@
-"""Compose persona system prompts from `prompts/*.yaml` on each model call.
+"""Compose system prompts from ``yard/prompts/soul.yaml`` on each model call.
 
-YAML 合并与渲染逻辑原先在 `yard/persona/prompt_builder.py`，现并入本模块，
-由 `PersonaPromptMiddleware` 在每次 `modify_request` 时从磁盘重新读取，
-以便网页或编辑器修改 prompt 后立即生效（含 `manifests/personas.yaml`）。
+Reloads soul.yaml from disk each turn so edits from /config or prompt-editor apply immediately.
 """
 
 from __future__ import annotations
 
-import copy
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
@@ -15,10 +12,17 @@ import yaml
 from langchain.agents.middleware.types import AgentMiddleware, AgentState, ModelRequest
 from langchain_core.messages import SystemMessage
 from deepagents.middleware._utils import append_to_system_message
+from loguru import logger
+
+from yard.prompt.soul import flatten_system_text
 
 
 DEFAULT_PROMPTS_DIR = "yard/prompts"
-MANIFEST_RELPATH = Path("manifests") / "personas.yaml"
+SOUL_RELPATH = Path("soul.yaml")
+MOOD_LEVELS_RELPATH = Path("moods") / "levels.yaml"
+SKIP_RENDER_KEYS = frozenset({"meta", "voice", "baseline", "relationship_baseline"})
+DEFAULT_VOICE_TYPE = "zh_female_shuangkuaisisi_emo_v2_mars_bigtts"
+DEFAULT_BASELINE = {"v": 0.3, "a": 0.55, "d": 0.1}
 
 
 def _read_yaml(path: str | Path) -> dict:
@@ -29,45 +33,6 @@ def _read_yaml(path: str | Path) -> dict:
     return data
 
 
-def _resolve_ref(prompts_dir: Path, ref: str) -> Path:
-    if not ref:
-        raise ValueError("Empty reference")
-
-    p = Path(ref)
-    if p.is_absolute() and p.exists():
-        return p
-
-    repo_root = prompts_dir.parent
-    candidates: list[Path] = []
-    candidates.append(repo_root / p)
-    candidates.append(prompts_dir / p)
-    parts = p.parts
-    if parts and parts[0] == prompts_dir.name:
-        candidates.append(prompts_dir / Path(*parts[1:]))
-    candidates.append(Path.cwd() / p)
-
-    for cand in candidates:
-        if cand.exists():
-            return cand
-
-    raise FileNotFoundError(
-        f"Cannot resolve prompt ref {ref!r}. Tried: " + ", ".join(str(c) for c in candidates)
-    )
-
-
-def _deep_merge(base: Any, override: Any) -> Any:
-    if override is None:
-        return base
-    if base is None:
-        return override
-    if isinstance(base, dict) and isinstance(override, dict):
-        out: dict = dict(base)
-        for key, value in override.items():
-            out[key] = _deep_merge(out.get(key), value)
-        return out
-    return override
-
-
 def _is_blank_scalar(value: Any) -> bool:
     if value is None:
         return True
@@ -76,65 +41,6 @@ def _is_blank_scalar(value: Any) -> bool:
     if isinstance(value, Iterable) and not isinstance(value, (str, bytes, dict)):
         return len(list(value)) == 0
     return False
-
-
-def _merge_persona_supplement(base: dict, role: dict) -> dict:
-    """Merge role onto base: shared baseline + role additions (not wholesale replacement).
-
-    - ``system.identity`` / ``personality`` / ``style``: concatenate when both present.
-    - ``system.rules``, ``instructions.{must,should}``, ``constraints.{hard,soft}``: append lists.
-    - Other keys (``meta``, ``output``, ``tools``, ``capabilities``, ``skills``, …): keep
-      recursive deep-merge semantics (role refines or replaces non-list leaves as before).
-    """
-    temp = _deep_merge(copy.deepcopy(base), copy.deepcopy(role))
-
-    base_sys = base.get("system") or {}
-    role_sys = role.get("system") or {}
-    out_sys = dict(temp.get("system") or {})
-
-    sep = "\n\n---\n\n"
-    for field in ("identity", "personality", "style"):
-        b = base_sys.get(field)
-        r = role_sys.get(field)
-        if field in role_sys and _is_blank_scalar(r):
-            if not _is_blank_scalar(b):
-                out_sys[field] = b
-            continue
-        if _is_blank_scalar(r):
-            continue
-        if _is_blank_scalar(b):
-            out_sys[field] = r
-            continue
-        out_sys[field] = f"{str(b).rstrip()}{sep}{str(r).rstrip()}"
-
-    if role_sys.get("rules") is not None:
-        combined = _as_lines(base_sys.get("rules")) + _as_lines(role_sys.get("rules"))
-        if combined:
-            out_sys["rules"] = combined
-
-    temp["system"] = out_sys
-
-    base_i = base.get("instructions") or {}
-    role_i = role.get("instructions") or {}
-    ti = dict(temp.get("instructions") or {})
-    for key in ("must", "should"):
-        if role_i.get(key) is not None:
-            merged_lines = _as_lines(base_i.get(key)) + _as_lines(role_i.get(key))
-            if merged_lines:
-                ti[key] = merged_lines
-    temp["instructions"] = ti
-
-    base_c = base.get("constraints") or {}
-    role_c = role.get("constraints") or {}
-    tc = dict(temp.get("constraints") or {})
-    for key in ("hard", "soft"):
-        if role_c.get(key) is not None:
-            merged_lines = _as_lines(base_c.get(key)) + _as_lines(role_c.get(key))
-            if merged_lines:
-                tc[key] = merged_lines
-    temp["constraints"] = tc
-
-    return temp
 
 
 def _as_lines(value: Any) -> list[str]:
@@ -155,137 +61,119 @@ def _as_lines(value: Any) -> list[str]:
     return [str(value)]
 
 
-def _render_section(title: str, value: Any, *, bullet: bool = False) -> str:
-    lines = _as_lines(value)
-    if not lines:
-        return ""
-    if bullet or len(lines) > 1:
-        body = "\n".join(f"- {line}" for line in lines)
-    else:
-        body = lines[0]
-    return f"## {title}\n{body}"
+def _render_generic_value(title: str, value: Any, blocks: list[str]) -> None:
+    if _is_blank_scalar(value):
+        return
+    if isinstance(value, dict):
+        for key, child in value.items():
+            child_title = f"{title}.{key}" if title else str(key)
+            _render_generic_value(child_title, child, blocks)
+        return
+    if isinstance(value, list):
+        if value and isinstance(value[0], dict):
+            section_lines = [f"## {title}"]
+            for item in value:
+                if not isinstance(item, dict):
+                    continue
+                ex_id = str(item.get("id") or "").strip()
+                user = str(item.get("user") or "").strip()
+                assistant = str(item.get("assistant") or "").strip()
+                if not ex_id:
+                    continue
+                section_lines.append(f"### {ex_id}")
+                if user:
+                    section_lines.append(f"User: {user}")
+                if assistant:
+                    section_lines.append(f"Assistant: {assistant}")
+                section_lines.append("")
+            body = "\n".join(section_lines).strip()
+            if body:
+                blocks.append(body)
+            return
+        lines = _as_lines(value)
+        if lines:
+            blocks.append(f"## {title}\n" + "\n".join(f"- {line}" for line in lines))
+        return
+    text = str(value).strip()
+    if text:
+        blocks.append(f"## {title}\n{text}")
 
 
-def render_system_prompt(data: dict) -> str:
-    """Render a merged persona dict (base + role) into a single string."""
+def render_system_prompt_generic(data: dict) -> str:
     blocks: list[str] = []
-
-    capabilities = data.get("capabilities") or {}
-    preamble = capabilities.get("index_preamble")
-    if preamble:
-        blocks.append(_render_section("Capability index", preamble))
-
-    system = data.get("system") or {}
-    blocks.append(_render_section("Identity", system.get("identity")))
-    blocks.append(_render_section("Personality", system.get("personality")))
-    blocks.append(_render_section("Style", system.get("style")))
-    blocks.append(_render_section("Rules", system.get("rules"), bullet=True))
-
-    instructions = data.get("instructions") or {}
-    blocks.append(_render_section("You must", instructions.get("must"), bullet=True))
-    blocks.append(_render_section("You should", instructions.get("should"), bullet=True))
-
-    constraints = data.get("constraints") or {}
-    blocks.append(_render_section("Hard constraints", constraints.get("hard"), bullet=True))
-    blocks.append(_render_section("Soft constraints", constraints.get("soft"), bullet=True))
-
-    tools = data.get("tools") or {}
-    tool_lines: list[str] = []
-    policy = tools.get("policy") or {}
-    if policy:
-        policy_items = ", ".join(f"{k}={v}" for k, v in policy.items())
-        tool_lines.append(f"Policy: {policy_items}")
-    for key, label in (
-        ("call_conditions", "Call conditions"),
-        ("deny_conditions", "Deny conditions"),
-        ("failure_fallback", "Failure fallback"),
-    ):
-        for line in _as_lines(tools.get(key)):
-            tool_lines.append(f"- [{label}] {line}")
-    if tool_lines:
-        blocks.append("## Tool usage\n" + "\n".join(tool_lines))
-
-    output = data.get("output") or {}
-    if output:
-        out_lines: list[str] = []
-        fmt = output.get("format")
-        if fmt:
-            out_lines.append(f"Format: {fmt}")
-        schema = output.get("schema") or {}
-        sections = schema.get("sections")
-        if sections:
-            out_lines.append("Sections: " + ", ".join(_as_lines(sections)))
-        for line in _as_lines(output.get("constraints")):
-            out_lines.append(f"- {line}")
-        if out_lines:
-            blocks.append("## Output\n" + "\n".join(out_lines))
-
-    skills = data.get("skills")
-    skill_lines = _as_lines(skills)
-    if skill_lines:
-        blocks.append(_render_section("Skill sources", skill_lines, bullet=True))
-
-    return "\n\n".join(block for block in blocks if block).strip()
+    for key, value in data.items():
+        if key in SKIP_RENDER_KEYS:
+            continue
+        _render_generic_value(str(key), value, blocks)
+    return "\n\n".join(blocks).strip()
 
 
-class _PersonaYamlComposer:
-    """Resolve `prompts_dir` once; reload manifest and role YAML on each `build`."""
+class _SoulYamlComposer:
+    """Reload ``soul.yaml`` from disk on each ``build`` / ``resolve_profile``."""
 
     def __init__(self, prompts_dir: str | Path = DEFAULT_PROMPTS_DIR) -> None:
-        self.prompts_dir = Path(prompts_dir).resolve() if Path(prompts_dir).is_absolute() else Path(prompts_dir)
-        manifest_path = self.prompts_dir / MANIFEST_RELPATH
-        if not manifest_path.exists():
-            alt = Path.cwd() / self.prompts_dir / MANIFEST_RELPATH
-            if alt.exists():
-                self.prompts_dir = (Path.cwd() / self.prompts_dir).resolve()
-                manifest_path = self.prompts_dir / MANIFEST_RELPATH
-            else:
-                raise FileNotFoundError(f"Personas manifest not found: {manifest_path}")
-        self._manifest_path = manifest_path
+        self.prompts_dir = Path(prompts_dir)
+        self._soul_path = self._resolve_soul_path()
+
+    def _resolve_soul_path(self) -> Path:
+        candidates = [
+            self.prompts_dir / SOUL_RELPATH,
+            Path.cwd() / self.prompts_dir / SOUL_RELPATH,
+        ]
+        for path in candidates:
+            if path.exists():
+                return path.resolve()
+        tried = ", ".join(str(p) for p in candidates)
+        raise FileNotFoundError(f"soul.yaml not found. Tried: {tried}")
+
+    def load_soul(self) -> dict:
+        return _read_yaml(self._soul_path)
 
     def build(self, persona_id: Optional[str] = None) -> str:
-        manifest = _read_yaml(self._manifest_path)
-        default_persona_id: Optional[str] = manifest.get("default_persona_id")
-        personas: dict[str, dict] = {
-            p["id"]: p for p in manifest.get("personas", []) if "id" in p
+        if persona_id:
+            logger.debug("persona_id=%r ignored; using soul.yaml", persona_id)
+        return render_system_prompt_generic(self.load_soul())
+
+    def resolve_profile(self, persona_id: Optional[str] = None) -> dict[str, Any]:
+        if persona_id:
+            logger.debug("persona_id=%r ignored; using soul.yaml", persona_id)
+        data = self.load_soul()
+        meta = data.get("meta") or {}
+        role_name = str(meta.get("role_name") or "").strip()
+        display_name = str(meta.get("display_name") or "").strip()
+        assistant_label = role_name or display_name or "助手"
+
+        voice_block = data.get("voice") if isinstance(data.get("voice"), dict) else {}
+        baseline_block = data.get("baseline") if isinstance(data.get("baseline"), dict) else {}
+        voice_type = str(voice_block.get("type") or DEFAULT_VOICE_TYPE).strip()
+        bl = {**DEFAULT_BASELINE, **{k: baseline_block[k] for k in ("v", "a", "d") if k in baseline_block}}
+        rel_block = data.get("relationship_baseline") if isinstance(data.get("relationship_baseline"), dict) else {}
+        rel_trust = float(rel_block.get("trust", 0.5))
+        rel_warmth = float(rel_block.get("warmth", 0.4))
+
+        return {
+            "persona_id": "soul",
+            "display_name": display_name or assistant_label,
+            "role_name": role_name or None,
+            "assistant_label": assistant_label,
+            "voice_type": voice_type,
+            "baseline": {
+                "v": float(bl["v"]),
+                "a": float(bl["a"]),
+                "d": float(bl["d"]),
+            },
+            "relationship_baseline": {
+                "trust": rel_trust,
+                "warmth": rel_warmth,
+            },
         }
 
-        pid = persona_id or default_persona_id
-        if not pid:
-            raise ValueError("No persona id supplied and personas.yaml has no default_persona_id")
-        if pid not in personas:
-            raise ValueError(f"Unknown persona id: {pid!r}. Available: {list(personas)}")
-        persona = personas[pid]
-        if persona.get("enabled") is False:
-            raise ValueError(f"Persona {pid!r} is disabled in personas.yaml")
 
-        merged: dict = {}
-        base_ref = persona.get("base_ref")
-        role_ref = persona.get("role_ref")
-        if base_ref:
-            merged = _read_yaml(_resolve_ref(self.prompts_dir, base_ref))
-        if role_ref:
-            role_data = _read_yaml(_resolve_ref(self.prompts_dir, role_ref))
-            merged = _merge_persona_supplement(merged, role_data) if merged else role_data
-        meta = dict(merged.get("meta") or {})
-        meta.setdefault("persona_id", persona.get("id"))
-        merged["meta"] = meta
-        return render_system_prompt(merged)
-
-
-def _flatten_system_text(system_message: SystemMessage | None) -> str:
-    if system_message is None:
-        return ""
-    content = system_message.content
-    if isinstance(content, str):
-        return content
-    parts: list[str] = []
-    for block in system_message.content_blocks:
-        if isinstance(block, dict) and block.get("type") == "text":
-            t = block.get("text")
-            if t:
-                parts.append(str(t))
-    return "\n\n".join(parts)
+def resolve_soul_profile(
+    prompts_dir: str | Path = DEFAULT_PROMPTS_DIR,
+    persona_id: Optional[str] = None,
+) -> dict[str, Any]:
+    return _SoulYamlComposer(prompts_dir).resolve_profile(persona_id)
 
 
 class PersonaPromptState(AgentState):
@@ -293,7 +181,7 @@ class PersonaPromptState(AgentState):
 
 
 class PersonaPromptMiddleware(AgentMiddleware[PersonaPromptState, Any]):
-    """Prepend freshly built persona YAML prompt before the graph system message (e.g. BASE_AGENT_PROMPT)."""
+    """Compose system prompt: stable graph base first, then soul.yaml blocks."""
 
     state_schema = PersonaPromptState
 
@@ -303,17 +191,21 @@ class PersonaPromptMiddleware(AgentMiddleware[PersonaPromptState, Any]):
         *,
         persona_id: Optional[str] = None,
     ) -> None:
-        self._composer = _PersonaYamlComposer(prompts_dir)
+        self._composer = _SoulYamlComposer(prompts_dir)
         self._persona_id = persona_id
 
     def modify_request(self, request: ModelRequest) -> ModelRequest:
         persona_text = self._composer.build(self._persona_id).strip()
-        base_flat = _flatten_system_text(request.system_message)
-        if not persona_text:
+        base_flat = flatten_system_text(request.system_message)
+        if not persona_text and not base_flat:
             return request
+        if not persona_text:
+            return request.override(system_message=SystemMessage(content=base_flat))
+        if not base_flat:
+            return request.override(system_message=SystemMessage(content=persona_text))
         new_system_message = append_to_system_message(
-            SystemMessage(content=persona_text),
-            base_flat,
+            SystemMessage(content=base_flat),
+            persona_text,
         )
         return request.override(system_message=new_system_message)
 

@@ -33,13 +33,56 @@ export interface VadPoint {
   d: number;
 }
 
-export interface VadHistoryItem {
+export type AffectPhase = "appraised" | "settled";
+
+export interface RelationshipSnapshot {
+  trust: number;
+  warmth: number;
+  stage: string;
+  trustDelta?: number;
+  warmthDelta?: number;
+  relWeight?: number;
+}
+
+export interface RelationshipBaseline {
+  trust: number;
+  warmth: number;
+}
+
+export interface EmotionProfile {
+  userVadBaseline: VadPoint;
+  agentVadBaseline: VadPoint;
+  relationshipBaseline: RelationshipBaseline;
+  userAffect: { emaAlpha: number };
+  agentVad: { perTurnAlpha: number; perTurnBeta: number; timeTauSec: number };
+  relationship: { perTurnAlpha: number; timeTauSec: number };
+}
+
+export interface ResponsePolicySnapshot {
+  empathyMode: string;
+  stance: string;
+  repairAction: string;
+  directiveness: number;
+}
+
+export interface AffectTurnRecord {
   turnId: string;
   userText: string;
-  utteranceVad: VadPoint;
-  agentVadAfter: VadPoint;
-  delta: VadPoint;
   createdAt: number;
+  schemaVersion: 1 | 2;
+  phase: AffectPhase;
+  userAffectVad: VadPoint;
+  userWeight?: number;
+  relationship?: RelationshipSnapshot;
+  interpersonalCue?: string;
+  responsePolicy?: ResponsePolicySnapshot;
+  agentVadTarget?: VadPoint;
+  actuationWeight?: number;
+  agentVadAfter?: VadPoint;
+  delta?: VadPoint;
+  agentEmotion?: string;
+  emotionScale?: number;
+  synthesisRule?: string;
 }
 
 export interface ChatState {
@@ -53,9 +96,11 @@ export interface ChatState {
   voiceTranscript: string;
   voiceError: string | null;
   settings: ChatSettings;
-  vadHistory: VadHistoryItem[];
+  affectHistory: AffectTurnRecord[];
   currentAgentVad: VadPoint | null;
   baselineVad: VadPoint | null;
+  emotionProfile: EmotionProfile | null;
+  currentRelationship: RelationshipSnapshot | null;
 }
 
 export type ChatAction =
@@ -82,8 +127,42 @@ export type ChatAction =
   | { type: "voiceInterruptRequested" }
   | { type: "voiceErrorOccurred"; payload: { message: string } }
   | { type: "voiceCatalogUpdated"; payload: { voices: string[]; currentVoice?: string } }
-  | { type: "vadBaselineUpdated"; payload: { baselineVad: VadPoint | null; currentVad?: VadPoint | null } }
+  | {
+      type: "vadBaselineUpdated";
+      payload: {
+        baselineVad: VadPoint | null;
+        currentVad?: VadPoint | null;
+        relationship?: RelationshipSnapshot | null;
+        emotionProfile?: EmotionProfile | null;
+      };
+    }
   | { type: "settingsChanged"; payload: { settings: ChatSettings } }
+  | {
+      type: "affectTurnAppraised";
+      payload: {
+        turnId: string;
+        userText: string;
+        timestamp: number;
+        userAffectVad: VadPoint;
+        userWeight?: number;
+        relationship?: RelationshipSnapshot;
+        interpersonalCue?: string;
+        responsePolicy?: ResponsePolicySnapshot;
+        agentVadTarget?: VadPoint | null;
+        actuationWeight?: number;
+        synthesisRule?: string;
+      };
+    }
+  | {
+      type: "affectTurnSettled";
+      payload: {
+        turnId: string;
+        agentVadAfter: VadPoint;
+        agentEmotion: string;
+        emotionScale: number;
+        timestamp: number;
+      };
+    }
   | {
       type: "vadTurnEvaluated";
       payload: {

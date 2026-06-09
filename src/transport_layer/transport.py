@@ -11,6 +11,7 @@ WebSocket 传输层实现
 
 import asyncio
 from typing import Dict, Set, Optional, Callable, Any
+from urllib.parse import parse_qs, urlparse
 from loguru import logger
 import websockets
 from websockets.server import WebSocketServerProtocol
@@ -81,11 +82,18 @@ class WebSocketTransport(TransportBase):
             headers = websocket.request.headers
             # 尝试不同的 header 名称（大小写不敏感）
             client_id = headers.get('client-id') or headers.get('Client-Id') or headers.get('CLIENT-ID')
-            # 测试用，后续删除
-            client_id = "test_client_id"
             if client_id:
                 return client_id
-            
+
+            request_path = getattr(websocket.request, "path", "") or ""
+            if request_path:
+                query_string = urlparse(request_path).query
+                if query_string:
+                    params = parse_qs(query_string)
+                    client_id = (params.get("client-id") or params.get("client_id") or [None])[0]
+                    if client_id:
+                        return client_id
+
             # 如果没有找到，返回 None（业务层可以拒绝连接）
             return None
         except Exception as e:

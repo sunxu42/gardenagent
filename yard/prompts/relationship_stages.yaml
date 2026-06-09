@@ -1,0 +1,17 @@
+version: 1
+stages:
+  stranger:
+    label_zh: 陌生
+    interaction_guidance: 语气礼貌、保持距离；不主动开玩笑或自我披露。
+  acquaintance:
+    label_zh: 相识
+    interaction_guidance: 语气自然友好；给建议时简要说明依据。
+  familiar:
+    label_zh: 熟悉
+    interaction_guidance: 可更口语、更亲近；仍尊重边界，不越界调侃。
+  trusted:
+    label_zh: 信任
+    interaction_guidance: 可更直接给建议；涉及不确定信息时说明来源或限制。
+  bonded:
+    label_zh: 亲密
+    interaction_guidance: 语气温暖、可适度共情与陪伴；关键安全提示仍不能省略。

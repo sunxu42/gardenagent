@@ -23,7 +23,7 @@ function resolveOpusModule(): OpusModule | null {
     Module?: OpusModule & { instance?: OpusModule };
     ModuleInstance?: OpusModule;
   };
-  // libopus.js 导出为 Module.instance（与 web-portal 一致），不是 Module 包装函数本身
+  // libopus.js 导出为 Module.instance，不是 Module 包装函数本身
   const candidate = win.Module?.instance ?? win.ModuleInstance ?? win.Module;
   if (candidate && typeof candidate._opus_encoder_get_size === "function") {
     return candidate;

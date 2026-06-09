@@ -80,8 +80,6 @@ class AudioService:
 
     async def _handle_asr_result(self, result: Dict[str, Any]):
         try:
-            if result["is_final"]:
-                logger.info(f"ASR 最终结果: {result['text']}")
             await self.result_callback(result)
 
         except Exception as e:

@@ -15,7 +15,8 @@ def _apply_langchain_reviver_explicit_default() -> None:
 _apply_langchain_reviver_explicit_default()
 
 import asyncio
-import os
+from typing import Any
+
 import yaml
 
 from langchain_openai import ChatOpenAI
@@ -26,6 +27,7 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage, AIMess
 
 from yard.events import HEARTBEAT_INPUT_EVENT, InputEvent, OutputEvent
 from yard.middlewares import PersonaPromptMiddleware
+from yard.middlewares.persona_prompt_middleware import resolve_soul_profile
 from yard.graph import create_deep_agent
 from yard.configs.config import load_config
 from yard.init_workspace import init_workspace
@@ -36,10 +38,12 @@ from yard.memory.bootstrap import (
     start_memory_background_tasks,
     shutdown_memory_subsystem,
 )
+from yard.emotion.bootstrap import setup_emotion_subsystem
 from yard.timer import LocalSchedulerService, create_cron_tool
 from yard.system_tools import create_session_status_tool
-from langfuse import get_client
-from langfuse.langchain import CallbackHandler
+from loguru import logger
+
+from yard.observability.langfuse_safe import init_langfuse, safe_flush
 
 
 def create_glm_model(config):
@@ -101,7 +105,10 @@ def load_subagents(config_path) -> list:
     return subagents
 
 
-def _apply_memory_subsystem(yard_manager, memory) -> None:
+def _apply_subsystem(yard_manager, emotion, memory) -> None:
+    """将 emotion / memory 子系统装配结果挂到 YardManager 实例。"""
+    yard_manager.emotion_service = emotion.service
+    yard_manager.tts_voice_type = emotion.tts_voice_type
     yard_manager.mem0_service = memory.mem0_service
     yard_manager.session_buffer = memory.session_buffer
 
@@ -110,27 +117,7 @@ class YardManager:
 
     def __init__(self, config=None):
         self.config = load_config(config)
-        self.langfuse_client = self._init_langfuse_client()
-        self.langfuse_handler = self._init_langfuse_handler()
-
-    def _langfuse_enabled(self):
-        return bool(os.getenv("LANGFUSE_PUBLIC_KEY") and os.getenv("LANGFUSE_SECRET_KEY"))
-
-    def _init_langfuse_client(self):
-        if not self._langfuse_enabled():
-            return None
-        try:
-            return get_client()
-        except Exception:
-            return None
-
-    def _init_langfuse_handler(self):
-        if not self._langfuse_enabled():
-            return None
-        try:
-            return CallbackHandler()
-        except Exception:
-            return None
+        self.langfuse_client, self.langfuse_handler = init_langfuse()
 
     @classmethod
     async def create(cls, config=None):
@@ -148,11 +135,24 @@ class YardManager:
             virtual_mode=True,
         )
 
+        emotion = setup_emotion_subsystem(yard_manager.config)
         memory = setup_memory_subsystem(yard_manager.config, yard_manager)
-        _apply_memory_subsystem(yard_manager, memory)
+        _apply_subsystem(yard_manager, emotion, memory)
 
-        middleware = [PersonaPromptMiddleware(yard_manager.config.prompts_dir)]
+        from yard.prompt.bootstrap import setup_prompt_composer
+
+        cfg = yard_manager.config
+        composer = setup_prompt_composer(cfg, emotion_service=emotion.service)
+        composer_on = bool(getattr(cfg, "prompt_composer_enabled", False))
+
+        middleware: list[Any] = []
         middleware.extend(memory.middleware)
+        middleware.extend(emotion.appraisal_middleware)
+        if composer is not None:
+            middleware.append(composer)
+        if not composer_on:
+            middleware.append(PersonaPromptMiddleware(cfg.prompts_dir))
+            middleware.extend(emotion.prompt_middleware)
         yard_manager.tools.extend(memory.extra_tools)
 
         yard_manager._checkpointer = MemorySaver()
@@ -189,6 +189,161 @@ class YardManager:
         )
         start_memory_background_tasks(yard_manager)
         return yard_manager
+
+    def current_tts_voice(self):
+        """每次从 soul.yaml 读取 voice_type（与 prompt 热更新一致）。"""
+        try:
+            voice = resolve_soul_profile(self.config.prompts_dir).get("voice_type")
+            if voice and str(voice).strip():
+                return str(voice).strip()
+        except Exception as e:
+            logger.debug(f"解析 TTS 音色失败，使用缓存: {e}")
+        return getattr(self, "tts_voice_type", None)
+
+    def current_tts_emotion(self):
+        """返回 (emotion, emotion_scale)；无情绪子系统时返回 (None, 4)。"""
+        svc = getattr(self, "emotion_service", None)
+        if svc is None:
+            return None, 4
+        emotion, scale = svc.last_render
+        return emotion, scale
+
+    def current_vad_metrics(self):
+        """返回最近一轮 appraisal 结果与当前 agent VAD。"""
+        svc = getattr(self, "emotion_service", None)
+        if svc is None:
+            return None
+        try:
+            current = svc.current().as_dict()
+            target = (
+                svc.last_appraisal_target.as_dict()
+                if svc.last_appraisal_target is not None
+                else dict(current)
+            )
+            return {
+                "utterance_vad": target,
+                "agent_vad_after": current,
+                "weight": svc.last_appraisal_weight,
+            }
+        except Exception:
+            return None
+
+    def baseline_vad(self):
+        svc = getattr(self, "emotion_service", None)
+        if svc is None:
+            return None
+        try:
+            return svc.baseline().as_dict()
+        except Exception:
+            return None
+
+    def emotion_ui_profile(self):
+        """供前端说明栏展示：双端 baseline 与衰减参数。"""
+        try:
+            from yard.emotion.constants import (
+                EMOTION_ALPHA,
+                EMOTION_BETA,
+                EMOTION_REL_ALPHA,
+                EMOTION_REL_TAU_SEC,
+                EMOTION_TAU_SEC,
+                EMOTION_USER_AFFECT_EMA_ALPHA,
+                USER_AFFECT_NEUTRAL_A,
+                USER_AFFECT_NEUTRAL_D,
+                USER_AFFECT_NEUTRAL_V,
+            )
+            from yard.middlewares.persona_prompt_middleware import resolve_soul_profile
+
+            prof = resolve_soul_profile(self.config.prompts_dir)
+            soul_base = prof.get("baseline") or {}
+            rel_base = prof.get("relationship_baseline") or {}
+            svc = getattr(self, "emotion_service", None)
+            if svc is not None:
+                agent_vad = svc.baseline().as_dict()
+            else:
+                agent_vad = {
+                    "v": float(soul_base.get("v", 0.0)),
+                    "a": float(soul_base.get("a", 0.3)),
+                    "d": float(soul_base.get("d", 0.0)),
+                }
+            return {
+                "user_vad_baseline": {
+                    "v": USER_AFFECT_NEUTRAL_V,
+                    "a": USER_AFFECT_NEUTRAL_A,
+                    "d": USER_AFFECT_NEUTRAL_D,
+                },
+                "agent_vad_baseline": agent_vad,
+                "relationship_baseline": {
+                    "trust": float(rel_base.get("trust", 0.5)),
+                    "warmth": float(rel_base.get("warmth", 0.4)),
+                },
+                "user_affect": {
+                    "ema_alpha": EMOTION_USER_AFFECT_EMA_ALPHA,
+                },
+                "agent_vad": {
+                    "per_turn_alpha": EMOTION_ALPHA,
+                    "per_turn_beta": EMOTION_BETA,
+                    "time_tau_sec": EMOTION_TAU_SEC,
+                },
+                "relationship": {
+                    "per_turn_alpha": EMOTION_REL_ALPHA,
+                    "time_tau_sec": EMOTION_REL_TAU_SEC,
+                },
+            }
+        except Exception:
+            return None
+
+    def current_relationship_snapshot(self):
+        svc = getattr(self, "emotion_service", None)
+        if svc is None:
+            return None
+        try:
+            from yard.emotion.core.relationship import derive_stage
+
+            rel = svc.relationship()
+            return {
+                "trust": rel.trust,
+                "warmth": rel.warmth,
+                "stage": derive_stage(rel.trust, rel.warmth),
+            }
+        except Exception:
+            return None
+
+    def vad_snapshot_for_digest(self, digest: str):
+        svc = getattr(self, "emotion_service", None)
+        if svc is None:
+            return None
+        try:
+            return svc.get_appraisal_snapshot(digest)
+        except Exception:
+            return None
+
+    def end_emotion_turn(self) -> None:
+        svc = getattr(self, "emotion_service", None)
+        if svc is not None and hasattr(svc, "end_turn"):
+            svc.end_turn()
+
+    def affect_settled_metrics(self):
+        svc = getattr(self, "emotion_service", None)
+        if svc is None:
+            return None
+        try:
+            return svc.build_settled_metrics()
+        except Exception:
+            return None
+
+    def current_tts_prosody(self):
+        svc = getattr(self, "emotion_service", None)
+        if svc is None:
+            return 0, 0
+        syn = svc.last_synthesis()
+        if syn is None:
+            return 0, 0
+        return int(syn.actuation.speech_rate), int(syn.actuation.pitch)
+
+    def set_appraisal_snapshot_listener(self, listener) -> None:
+        svc = getattr(self, "emotion_service", None)
+        if svc is not None and hasattr(svc, "set_appraisal_snapshot_listener"):
+            svc.set_appraisal_snapshot_listener(listener)
 
     async def aclose(self) -> None:
         """Stop background worker and heartbeat task."""
@@ -266,6 +421,8 @@ class YardManager:
                 if isinstance(stable, str) and stable.strip()
                 else (str(event_id) if event_id else "yard-manager-demo")
             )
+            if trigger_by != HEARTBEAT_INPUT_EVENT:
+                self._last_user_thread_id = thread_id
             async for chunk in self.achat(event.content, thread_id=thread_id):
                 self.agent_output_queue.put_nowait(
                     OutputEvent(data=chunk, trigger_by=trigger_by, event_id=event_id, phase="middle")
@@ -278,11 +435,7 @@ class YardManager:
             if trigger_by != HEARTBEAT_INPUT_EVENT and self.mem0_service is not None:
                 mark_conversation_turn_finished(self)
         finally:
-            if self.langfuse_client is not None:
-                try:
-                    self.langfuse_client.flush()
-                except Exception:
-                    pass
+            safe_flush(self.langfuse_client)
 
     async def _agent_input_worker(self) -> None:
         while not self._worker_stop.is_set():

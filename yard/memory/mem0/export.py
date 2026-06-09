@@ -1,4 +1,4 @@
-"""从 Mem0 导出只读 memory.yaml（供 web-portal 查看，不参与对话注入）。"""
+"""从 Mem0 导出只读 memory.yaml（供 prompt-editor API / 前端查看，不参与对话注入）。"""
 
 from __future__ import annotations
 

@@ -7,20 +7,20 @@
 项目由三块组成：
 
 - **`src/`** — 基于 WebSocket 的多模态服务端，处理前端连接、ASR、TTS，并把消息转发给智能体。
-- **`frontend/`** — 独立移动优先聊天 UI（仅对话，不提供参数编辑/日志/控制入口）。
+- **`frontend/`** — 移动优先 Web UI（聊天、`/config` 提示词编辑）。
 - **`yard/`** — 智能体内核，基于 [`deepagents`](https://github.com/langchain-ai/deepagents) / LangGraph，负责对话、技能、记忆、心跳和定时任务。
 - **`mcp_servers/garden_system/`** — 用 [FastMCP](https://github.com/jlowin/fastmcp) 把设备控制能力暴露成工具，供智能体调用。
 
 ```mermaid
 flowchart LR
-    Web["前端 (web-portal/)"] <--> Src["src/ 多模态服务端<br/>WebSocket :8005"]
+    Web["前端 (frontend/)"] <--> Src["src/ 多模态服务端<br/>WebSocket :8005"]
     Src --> Yard["yard/ 智能体内核<br/>(deepagents)"]
     Yard -.MCP.-> MCP["mcp_servers/garden_system<br/>FastMCP :8000"]
     Yard <--> Workspace[("yard/workspace/<br/>记忆 / 配置 / 技能")]
     PromptEditor["prompt-editor :8010"] --> PromptsYaml["yard/prompts<br/>YAML 提示词"]
 ```
 
-旁路的 `src/prompt-editor-server.py` 是一个本地 HTTP 服务，用来在浏览器里查看和编辑 `yard/prompts/` 下的 YAML 提示词配置，跑不跑都不影响主流程。经 nginx 同源暴露时，建议使用路径前缀 **`/api/prompt-editor/`**（详见 `web-portal/nginx-lan-proxy.server.conf.example`）；直连 `:8010` 时仍可使用兼容路径 **`/api/prompts-yaml/`**。
+旁路的 `src/prompt-editor-server.py` 是一个本地 HTTP 服务，用来在浏览器里查看和编辑 `yard/prompts/` 下的 YAML 提示词配置，跑不跑都不影响主流程。`frontend` 开发服务器已将 **`/api/prompt-editor/`** 代理到 `:8010`；生产环境经 nginx 同源暴露时同样使用该路径前缀。直连 `:8010` 时仍可使用兼容路径 **`/api/prompts-yaml/`**。
 
 ## 配置
 
@@ -58,7 +58,7 @@ mem0_embedding_model: "embedding-3"   # 智谱等兼容 embedding 模型名
 mem0_embedding_dims: 1536
 ```
 
-也可在 `.env` 中设置 `MEM0_EMBEDDING_MODEL`。向量索引落在 `yard/workspace/memory/faiss/`。在 web-portal 的 YAML 面板点击「查看记忆」可导出只读 `yard/prompts/memory/memory.yaml`（已 gitignore，不参与对话注入）。
+也可在 `.env` 中设置 `MEM0_EMBEDDING_MODEL`。向量索引落在 `yard/workspace/memory/faiss/`。可通过 `prompt-editor-server` 的 `/api/prompt-editor/memory-yaml/refresh` 导出只读 `yard/prompts/memory/memory.yaml`（已 gitignore，不参与对话注入）。
 
 **Session 对话写入 Mem0**（动态策略，与 30 分钟 heartbeat 解耦，默认）：
 
@@ -87,19 +87,20 @@ mem0_embedding_dims: 1536
 # 庭院设备 MCP Server（要让智能体能控制设备就启动它）
 python mcp_servers/garden_system/mcp_server.py
 
-# 多模态服务端，前端用浏览器打开 web-portal/index.html 连这个
+# 多模态服务端
 python src/server.py
 
-# 新聊天前端（仅对话 UI）
+# 聊天前端（含 /config 提示词编辑）
 cd frontend && npm install && npm run dev
 
-# 提示词编辑后台（可选，用来在浏览器里编辑 yard/prompts/ 下的 yaml 文件）
+# 提示词编辑后台（可选；frontend 已代理 /api/prompt-editor）
 python src/prompt-editor-server.py
 ```
 
-## Frontend Chat
+## Frontend
 
-- `frontend` 承载聊天与 `soul.yaml` 提示词配置（`/config`）；其它参数与日志仍可由 `web-portal` 修改。
+- `frontend` 承载聊天与 `soul.yaml` 提示词配置（`/config`）。
+- 局域网 HTTPS 语音调试需自签名证书，见 `web-portal/ssl/README.txt`。
 - 推荐联调顺序：
   1. 启动服务端：`python src/server.py`
   2. 启动前端：`cd frontend && npm install && npm run dev`
