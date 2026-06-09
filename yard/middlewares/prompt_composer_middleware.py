@@ -49,12 +49,10 @@ class PromptComposerMiddleware(AgentMiddleware[PromptComposerState, Any]):
         builder: PromptContextBuilder,
         *,
         prompts_dir: str,
-        shadow: bool = False,
     ) -> None:
         self._registry = registry
         self._builder = builder
         self._prompts_dir = prompts_dir
-        self._shadow = shadow
 
     def modify_request(self, request: ModelRequest) -> ModelRequest:
         ctx = self._builder.build(request)
@@ -62,16 +60,12 @@ class PromptComposerMiddleware(AgentMiddleware[PromptComposerState, Any]):
         text = result.text.strip() or _fallback_core_text(self._prompts_dir)
 
         logger.debug(
-            "prompt.compose modules={} chars={} stable={} volatile={} shadow={}",
+            "prompt.compose modules={} chars={} stable={} volatile={}",
             result.module_ids,
             result.chars,
             result.stable_chars,
             result.volatile_chars,
-            self._shadow,
         )
-
-        if self._shadow:
-            return request
 
         base_flat = flatten_system_text(request.system_message)
         if base_flat:

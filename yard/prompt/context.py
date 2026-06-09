@@ -1,10 +1,14 @@
-"""当轮 Prompt 上下文。"""
+"""Prompt context for the current model turn."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from yard.emotion.core.policy import ResponsePolicy
+
+if TYPE_CHECKING:
+    from yard.prompt.reply_plan import ReplyPlan
 
 
 @dataclass
@@ -24,6 +28,7 @@ class PromptContext:
     locale: str = "zh"
     user_v: float = 0.0
     empathy_mode: str = "neutral"
+    reply_plan: ReplyPlan | None = None
 
     def get(self, name: str):
         return getattr(self, name, None)

@@ -2,21 +2,62 @@ version: 1
 defaults:
   locale: zh
 modules:
-  - id: persona.full
+  - id: persona.core
     tier: stable
     priority: 10
-    renderer: persona.generic
+    source: soul.yaml
+    slice:
+      - system.identity
+      - system.personality
+      - system.rules.safety
     always: true
-  - id: affective.full
+
+  - id: persona.style.core
+    tier: stable
+    priority: 20
+    source: soul.yaml
+    slice:
+      - system.style.language
+      - system.style.voice
+      - system.style.character_voice
+    always: true
+
+  - id: persona.instructions
+    tier: stable
+    priority: 25
+    source: soul.yaml
+    slice:
+      - instructions.must
+      - constraints.hard
+    always: true
+
+  - id: persona.play
+    tier: semi_stable
+    priority: 30
+    source: soul.yaml
+    slice:
+      - system.rules.play
+      - system.rules.dialogue
+    when: ctx.turn_type != 'crisis'
+
+  - id: affective.user_state
     tier: volatile
     priority: 70
-    renderer: affective.full
+    renderer: affective.user_state
     when: ctx.affective_v2_enabled
-  - id: mood.full
+
+  - id: affective.relationship
     tier: volatile
-    priority: 80
-    renderer: mood.bundle
-    when: ctx.agent_emotion
+    priority: 75
+    renderer: affective.relationship
+    when: ctx.affective_v2_enabled
+
+  - id: reply.plan
+    tier: volatile
+    priority: 76
+    renderer: reply_plan
+    when: ctx.affective_v2_enabled
+
   - id: memory.long_term
     tier: volatile
     priority: 95

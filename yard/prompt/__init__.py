@@ -1,4 +1,4 @@
-"""Prompt Composer：声明式模块注册与 system prompt 拼接。"""
+"""Prompt Composer: declarative module registration and system prompt composition."""
 
 from yard.prompt.context import PromptContext
 from yard.prompt.registry import PromptRegistry

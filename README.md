@@ -75,7 +75,7 @@ mem0_embedding_dims: 1536
 
 - **灵魂文件**：`yard/prompts/soul.yaml` 合并原 base + 角色正文；`PersonaPromptMiddleware` 按通用模板渲染为 system prompt，每轮从磁盘热加载。
 - **few-shot**：`speech_examples` 等块写在 `soul.yaml` 中，由渲染器格式化为 User/Assistant 示例。
-- **心情**：情绪 middleware 使用 `yard/prompts/moods/levels.yaml` 五档说明；VAD baseline / TTS 音色 v1 为代码默认值，后续可在 frontend `/config` 编辑（TODO）。
+- **心情**：情绪 middleware 使用 `yard/prompts/agent_mood.yaml`；用户侧回应策略在 `yard/prompts/affective.yaml`；VAD baseline / TTS 音色 v1 为代码默认值，后续可在 frontend `/config` 编辑（TODO）。
 - **编辑**：`python src/prompt-editor-server.py` + 聊天页笔形图标进入 `/config`（桌面三栏，仅 `soul.yaml` 可表单编辑）。
 - 从旧结构迁移：`python scripts/merge_soul_yaml.py`（需保留 `base/` 与 `roles/Lora.yaml` 备份时方可重跑）。
 

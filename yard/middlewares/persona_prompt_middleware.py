@@ -19,7 +19,7 @@ from yard.prompt.soul import flatten_system_text
 
 DEFAULT_PROMPTS_DIR = "yard/prompts"
 SOUL_RELPATH = Path("soul.yaml")
-MOOD_LEVELS_RELPATH = Path("moods") / "levels.yaml"
+AGENT_MOOD_RELPATH = Path("agent_mood.yaml")
 SKIP_RENDER_KEYS = frozenset({"meta", "voice", "baseline", "relationship_baseline"})
 DEFAULT_VOICE_TYPE = "zh_female_shuangkuaisisi_emo_v2_mars_bigtts"
 DEFAULT_BASELINE = {"v": 0.3, "a": 0.55, "d": 0.1}
@@ -141,7 +141,7 @@ class _SoulYamlComposer:
         meta = data.get("meta") or {}
         role_name = str(meta.get("role_name") or "").strip()
         display_name = str(meta.get("display_name") or "").strip()
-        assistant_label = role_name or display_name or "助手"
+        assistant_label = display_name or role_name or "助手"
 
         voice_block = data.get("voice") if isinstance(data.get("voice"), dict) else {}
         baseline_block = data.get("baseline") if isinstance(data.get("baseline"), dict) else {}

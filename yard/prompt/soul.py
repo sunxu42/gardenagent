@@ -1,4 +1,4 @@
-"""System message 文本展平（供 prompt composer / middleware 共用）。"""
+"""Flatten system message text for prompt composer and middleware."""
 
 from __future__ import annotations
 

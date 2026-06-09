@@ -1,4 +1,4 @@
-"""Prompt Composer 子系统装配。"""
+"""Prompt Composer subsystem assembly."""
 
 from __future__ import annotations
 
@@ -20,21 +20,20 @@ def setup_prompt_composer(
     emotion_service: EmotionService | None,
 ) -> PromptComposerMiddleware | None:
     enabled = bool(getattr(config, "prompt_composer_enabled", False))
-    shadow = bool(getattr(config, "prompt_composer_shadow", False))
-    if not enabled and not shadow:
+    if not enabled:
         return None
 
     prompts_dir = config.prompts_dir
-    mood_taxonomy = load_taxonomy(f"{prompts_dir}/moods/levels.yaml")
+    affective_path = f"{prompts_dir}/affective.yaml"
+    agent_mood_path = f"{prompts_dir}/agent_mood.yaml"
+    mood_taxonomy = load_taxonomy(agent_mood_path)
     deps = RendererDeps(
         prompts_dir=prompts_dir,
+        affective_path=affective_path,
+        agent_mood_path=agent_mood_path,
         mood_taxonomy=mood_taxonomy,
-        user_states_path=f"{prompts_dir}/user_states.yaml",
-        relationship_stages_path=f"{prompts_dir}/relationship_stages.yaml",
     )
-    use_tiered = bool(getattr(config, "prompt_composer_tiered", False))
-    manifest_file = "manifest.tiered.yaml" if use_tiered else "manifest.yaml"
-    modules = load_manifest(f"{prompts_dir}/{manifest_file}")
+    modules = load_manifest(f"{prompts_dir}/manifest.yaml")
     registry = PromptRegistry(
         modules,
         deps=deps,
@@ -58,5 +57,4 @@ def setup_prompt_composer(
         registry,
         builder,
         prompts_dir=prompts_dir,
-        shadow=shadow and not enabled,
     )

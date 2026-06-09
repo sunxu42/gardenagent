@@ -10,4 +10,4 @@ def render_mem0_bullets(module: PromptModule, ctx: PromptContext, *, deps: Rende
     bullets = (ctx.memory_bullets or "").strip()
     if not bullets:
         return ""
-    return "## 长期记忆\n\n" + bullets
+    return "## Long-term memory\n\n" + bullets

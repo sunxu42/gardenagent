@@ -1,4 +1,4 @@
-"""将 YAML slice 值格式化为 prompt 文本。"""
+"""Format YAML slice values into prompt text."""
 
 from __future__ import annotations
 

@@ -2,30 +2,35 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import yaml
 
-from yard.emotion.core.policy import ResponsePolicy
 from yard.emotion.core.relationship import derive_stage
 from yard.emotion.rendering.taxonomy import DEFAULT_EMOTION, load_taxonomy
 
+_DEFAULT_AFFECTIVE_FILENAME = "affective.yaml"
 
-def _load_stages(path: str) -> dict[str, dict[str, Any]]:
+
+def _default_affective_path(affective_path: str | None = None) -> str:
+    if affective_path:
+        return affective_path
+    return str(Path("yard/prompts") / _DEFAULT_AFFECTIVE_FILENAME)
+
+
+def _load_affective(path: str) -> dict[str, Any]:
     with open(path, "r", encoding="utf-8") as f:
         data = yaml.safe_load(f) or {}
-    stages = data.get("stages")
-    if not isinstance(stages, dict):
-        return {}
-    return {str(k): v for k, v in stages.items() if isinstance(v, dict)}
+    return data if isinstance(data, dict) else {}
 
 
 def render_user_state_section(
     *,
-    user_states_path: str,
+    affective_path: str,
     user_emotion_label: str,
 ) -> str:
-    user_states = load_taxonomy(user_states_path)
+    user_states = load_taxonomy(affective_path)
     user_entry = user_states.get(user_emotion_label) or user_states.get(DEFAULT_EMOTION) or {}
     user_label = str(user_entry.get("label_zh") or user_emotion_label).strip()
     empathy = str(user_entry.get("empathy_guidance") or "").strip()
@@ -37,13 +42,18 @@ def render_user_state_section(
 
 def render_relationship_section(
     *,
-    relationship_stages_path: str,
+    affective_path: str,
     trust: float,
     warmth: float,
     interpersonal_cue: str,
-    response_policy: ResponsePolicy | None,
 ) -> str:
-    stages = _load_stages(relationship_stages_path)
+    data = _load_affective(affective_path)
+    stages_raw = data.get("stages")
+    stages = (
+        {str(k): v for k, v in stages_raw.items() if isinstance(v, dict)}
+        if isinstance(stages_raw, dict)
+        else {}
+    )
     stage = derive_stage(trust, warmth)
     stage_entry = stages.get(stage) or {}
     stage_label = str(stage_entry.get("label_zh") or stage).strip()
@@ -54,34 +64,28 @@ def render_relationship_section(
         rel_lines.append(f"本轮态度：{cue}")
     if interaction:
         rel_lines.append(f"互动策略：{interaction}")
-    if response_policy is not None:
-        if response_policy.repair_action != "none":
-            rel_lines.append(f"修复策略：{response_policy.repair_action}")
-        rel_lines.append(f"表达直接度：{response_policy.directiveness:.2f}")
     return "## Relationship\n" + "\n".join(rel_lines).strip()
 
 
 def render_affective_sections(
     *,
-    user_states_path: str,
-    relationship_stages_path: str,
+    affective_path: str,
     user_emotion_label: str,
     trust: float,
     warmth: float,
     interpersonal_cue: str,
-    response_policy: ResponsePolicy | None,
 ) -> str:
+    path = _default_affective_path(affective_path)
     blocks = [
         render_user_state_section(
-            user_states_path=user_states_path,
+            affective_path=path,
             user_emotion_label=user_emotion_label,
         ),
         render_relationship_section(
-            relationship_stages_path=relationship_stages_path,
+            affective_path=path,
             trust=trust,
             warmth=warmth,
             interpersonal_cue=interpersonal_cue,
-            response_policy=response_policy,
         ),
     ]
-    return "\n\n".join(blocks).strip()
+    return "\n\n".join(b for b in blocks if b).strip()

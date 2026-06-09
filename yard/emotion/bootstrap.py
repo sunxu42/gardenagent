@@ -74,7 +74,7 @@ def setup_emotion_subsystem(config) -> EmotionSubsystem:
     """构建情绪服务与 appraisal middleware。"""
     try:
         emotion_service, voice_type = build_emotion_service(config)
-        taxonomy = load_taxonomy(f"{config.prompts_dir}/moods/levels.yaml")
+        taxonomy = load_taxonomy(f"{config.prompts_dir}/agent_mood.yaml")
         appraisal_llm = create_emotion_appraisal_model(config)
         appraiser = EmotionAppraiser(
             appraisal_llm,
@@ -86,8 +86,7 @@ def setup_emotion_subsystem(config) -> EmotionSubsystem:
         prompt_middleware: list[Any] = [
             AffectiveContextMiddleware(
                 emotion_service,
-                user_states_path=f"{config.prompts_dir}/user_states.yaml",
-                relationship_stages_path=f"{config.prompts_dir}/relationship_stages.yaml",
+                affective_path=f"{config.prompts_dir}/affective.yaml",
             ),
             EmotionMoodMiddleware(emotion_service, taxonomy),
         ]

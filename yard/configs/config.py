@@ -114,8 +114,6 @@ class Config(BaseModel):
 
     # --- Prompt Composer ---
     prompt_composer_enabled: bool = False
-    prompt_composer_shadow: bool = False
-    prompt_composer_tiered: bool = False
     prompt_budget_enabled: bool = False
     prompt_stable_max_chars: int = 3000
     prompt_volatile_max_chars: int = 1500

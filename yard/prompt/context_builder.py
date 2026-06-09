@@ -1,4 +1,4 @@
-"""从 ModelRequest 与 EmotionService 构建 PromptContext。"""
+"""Build PromptContext from ModelRequest and EmotionService."""
 
 from __future__ import annotations
 
@@ -9,11 +9,12 @@ from langchain.agents.middleware.types import ModelRequest
 from yard.emotion.core.relationship import derive_stage
 from yard.emotion.core.service import EmotionService
 from yard.prompt.context import PromptContext
+from yard.prompt.reply_plan import DanhuangReplyPlanner
 
 
 def infer_turn_type(ctx: PromptContext) -> str:
     cue = (ctx.interpersonal_cue or "").strip()
-    for kw in ("骂", "指责", "侮辱", "威胁"):
+    for kw in ("\u9a82", "\u6307\u8d23", "\u4fae\u8fb1", "\u5a01\u80c1"):
         if kw in cue:
             return "crisis"
     if ctx.emotion_scale >= 2 or abs(ctx.user_v) > 0.5:
@@ -32,6 +33,7 @@ class PromptContextBuilder:
         self._config = config
         self._emotion_service = emotion_service
         self._mem0_format = mem0_format_fn
+        self._reply_planner = DanhuangReplyPlanner()
 
     def build(self, request: ModelRequest) -> PromptContext:
         emotion, scale = "neutral", 4
@@ -70,4 +72,5 @@ class PromptContextBuilder:
             user_v=user_v,
         )
         ctx.turn_type = infer_turn_type(ctx)
+        ctx.reply_plan = self._reply_planner.build(ctx)
         return ctx

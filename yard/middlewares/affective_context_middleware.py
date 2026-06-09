@@ -24,24 +24,20 @@ class AffectiveContextMiddleware(AgentMiddleware[AffectiveContextState, Any]):
         self,
         service: EmotionService,
         *,
-        user_states_path: str,
-        relationship_stages_path: str,
+        affective_path: str,
     ) -> None:
         self._service = service
-        self._user_states_path = user_states_path
-        self._relationship_stages_path = relationship_stages_path
+        self._affective_path = affective_path
 
     def modify_request(self, request: ModelRequest) -> ModelRequest:
         rel = self._service.relationship()
         label = self._service.last_user_emotion_label or "neutral"
         section = render_affective_sections(
-            user_states_path=self._user_states_path,
-            relationship_stages_path=self._relationship_stages_path,
+            affective_path=self._affective_path,
             user_emotion_label=label,
             trust=rel.trust,
             warmth=rel.warmth,
             interpersonal_cue=self._service.last_interpersonal_cue or "",
-            response_policy=self._service.last_response_policy,
         ).strip()
         if not section:
             return request
