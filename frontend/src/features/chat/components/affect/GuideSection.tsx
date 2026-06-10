@@ -1,118 +1,40 @@
-import { ChevronDown } from "lucide-react";
 import type { ReactNode } from "react";
 
-interface GuideSectionProps {
+interface GuideAnchorSectionProps {
+  id: string;
   title: string;
-  description?: string;
   children: ReactNode;
-  className?: string;
+  accent?: "amber" | "slate" | "indigo" | "violet";
 }
 
-export function GuideSection({ title, description, children, className = "" }: GuideSectionProps) {
-  return (
-    <section className={className}>
-      <div className="mb-3 border-l-2 border-border pl-3">
-        <h4 className="text-sm font-medium leading-snug text-muted-foreground">{title}</h4>
-        {description ? (
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{description}</p>
-        ) : null}
-      </div>
-      {children}
-    </section>
-  );
-}
+const ACCENT_BAR: Record<NonNullable<GuideAnchorSectionProps["accent"]>, string> = {
+  amber: "border-l-amber-500/50",
+  slate: "border-l-slate-400/45",
+  indigo: "border-l-indigo-500/45",
+  violet: "border-l-violet-500/45",
+};
 
-interface GuidePrioritySectionProps {
-  priority: number;
-  title: string;
-  description?: string;
-  children: ReactNode;
-  variant?: "hero" | "default";
-}
+const ACCENT_BG: Record<NonNullable<GuideAnchorSectionProps["accent"]>, string> = {
+  amber: "bg-amber-500/[0.04]",
+  slate: "bg-muted/15",
+  indigo: "bg-indigo-500/[0.04]",
+  violet: "bg-violet-500/[0.04]",
+};
 
-export function GuidePrioritySection({
-  priority,
+export function GuideAnchorSection({
+  id,
   title,
-  description,
   children,
-  variant = "default",
-}: GuidePrioritySectionProps) {
-  const isHero = variant === "hero";
+  accent = "slate",
+}: GuideAnchorSectionProps) {
   return (
     <section
-      className={
-        isHero
-          ? "rounded-xl border border-border/50 bg-card/40 p-4 shadow-sm"
-          : "rounded-lg border border-border/35 bg-muted/8 p-3.5"
-      }
+      id={id}
+      className={`scroll-mt-[3.75rem] rounded-lg border border-border/30 border-l-[3px] py-3 pl-3.5 pr-3 ${ACCENT_BAR[accent]} ${ACCENT_BG[accent]}`}
     >
-      <div className={`mb-3 flex gap-2.5 ${isHero ? "items-start" : "items-center"}`}>
-        <span
-          className={`flex shrink-0 items-center justify-center rounded-full font-semibold tabular-nums ${
-            isHero
-              ? "h-6 w-6 bg-primary/10 text-[11px] text-primary"
-              : "h-5 w-5 bg-muted text-[10px] text-muted-foreground"
-          }`}
-          aria-hidden
-        >
-          {priority}
-        </span>
-        <div className="min-w-0">
-          <h4
-            className={`font-medium leading-snug text-foreground ${isHero ? "text-sm" : "text-[13px]"}`}
-          >
-            {title}
-          </h4>
-          {description ? (
-            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{description}</p>
-          ) : null}
-        </div>
-      </div>
+      <h4 className="mb-2.5 text-[13px] font-medium text-foreground">{title}</h4>
       {children}
     </section>
-  );
-}
-
-interface GuideCollapsibleSectionProps {
-  priority: number;
-  title: string;
-  description?: string;
-  children: ReactNode;
-  defaultOpen?: boolean;
-}
-
-export function GuideCollapsibleSection({
-  priority,
-  title,
-  description,
-  children,
-  defaultOpen = false,
-}: GuideCollapsibleSectionProps) {
-  return (
-    <details
-      className="group rounded-lg border border-border/35 bg-muted/6 open:bg-muted/10"
-      open={defaultOpen}
-    >
-      <summary className="flex cursor-pointer list-none items-start gap-2.5 px-3.5 py-3 transition-colors duration-200 hover:bg-muted/20 [&::-webkit-details-marker]:hidden">
-        <span
-          className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-semibold tabular-nums text-muted-foreground"
-          aria-hidden
-        >
-          {priority}
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-medium leading-snug text-foreground">{title}</p>
-          {description ? (
-            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{description}</p>
-          ) : null}
-        </div>
-        <ChevronDown
-          className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-open:rotate-180"
-          aria-hidden
-        />
-      </summary>
-      <div className="border-t border-border/25 px-3.5 pb-3.5 pt-2">{children}</div>
-    </details>
   );
 }
 
@@ -123,21 +45,32 @@ interface GuideModuleCardProps {
   icon?: ReactNode;
 }
 
-const ACCENT: Record<GuideModuleCardProps["accent"], string> = {
-  violet: "border-l-violet-400/70 bg-muted/25",
-  sky: "border-l-sky-400/70 bg-muted/20",
-  amber: "border-l-amber-400/70 bg-muted/25",
-  slate: "border-l-slate-400/60 bg-muted/20",
+const MODULE_TINT: Record<GuideModuleCardProps["accent"], string> = {
+  violet: "border border-violet-500/15 bg-violet-500/[0.05]",
+  sky: "border border-sky-500/15 bg-sky-500/[0.05]",
+  amber: "border border-amber-500/15 bg-amber-500/[0.05]",
+  slate: "border border-border/25 bg-muted/20",
+};
+
+const MODULE_DOT: Record<GuideModuleCardProps["accent"], string> = {
+  violet: "bg-violet-500",
+  sky: "bg-sky-500",
+  amber: "bg-amber-500",
+  slate: "bg-muted-foreground/50",
 };
 
 export function GuideModuleCard({ label, detail, accent, icon }: GuideModuleCardProps) {
   return (
-    <div className={`rounded-lg border border-border/50 border-l-[3px] px-3 py-2.5 ${ACCENT[accent]}`}>
-      <p className="flex items-center gap-1.5 text-xs font-medium text-foreground">
-        {icon ? <span className="text-muted-foreground">{icon}</span> : null}
+    <div className={`rounded-md px-3 py-2.5 ${MODULE_TINT[accent]}`}>
+      <p className="flex items-center gap-2 text-xs font-medium text-foreground">
+        {icon ? (
+          <span className="text-muted-foreground">{icon}</span>
+        ) : (
+          <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${MODULE_DOT[accent]}`} aria-hidden />
+        )}
         {label}
       </p>
-      <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{detail}</p>
+      <p className="mt-1 pl-3.5 text-[11px] leading-relaxed text-muted-foreground">{detail}</p>
     </div>
   );
 }

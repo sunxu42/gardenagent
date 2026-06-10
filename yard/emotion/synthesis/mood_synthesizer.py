@@ -1,12 +1,15 @@
-"""Agent 回应策略合成：感知层 + 关系层 → ResponsePolicy → ActuationPlan。"""
+"""Agent 回应策略合成：感知层 + 关系层 → ResponsePolicy → StrategyTags → ActuationPlan。"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
+from yard.emotion.constants import EMOTION_SYNTHESIS_EMPATHY_GAIN, EMOTION_SYNTHESIS_WEIGHT_FLOOR
 from yard.emotion.core.policy import ActuationPlan, ResponsePolicy, TurnAppraisalV2
 from yard.emotion.core.relationship import RelationshipState, derive_stage
 from yard.emotion.core.vad import ALL_EMOTIONS, VAD, project
+from yard.emotion.synthesis.prosody_mapping import map_prosody
+from yard.emotion.synthesis.strategy_tags import StrategyTags, derive_strategy_tags
 
 
 def _lerp(a: float, b: float, t: float) -> float:
@@ -15,12 +18,6 @@ def _lerp(a: float, b: float, t: float) -> float:
 
 def _clamp(x: float, lo: float, hi: float) -> float:
     return lo if x < lo else hi if x > hi else x
-
-
-def _vad_to_prosody(vad: VAD) -> tuple[int, int]:
-    speech_rate = int(max(-50, min(50, round((vad.a - 0.35) * 40))))
-    pitch = int(max(-12, min(12, round(vad.v * 8 + (vad.a - 0.3) * 6))))
-    return speech_rate, pitch
 
 
 def _is_hostile(appraisal: TurnAppraisalV2, relationship: RelationshipState) -> bool:
@@ -36,6 +33,7 @@ class SynthesisResult:
     policy: ResponsePolicy
     actuation: ActuationPlan
     user_emotion_label: str
+    tags: StrategyTags
     rule_id: str = "balanced_default"
 
 
@@ -44,7 +42,7 @@ def synthesize_response(
     relationship: RelationshipState,
     persona_baseline: VAD,
     *,
-    empathy_gain: float = 0.6,
+    empathy_gain: float = EMOTION_SYNTHESIS_EMPATHY_GAIN,
 ) -> SynthesisResult:
     user_vad = appraisal.user_vad()
     user_emotion_label, _ = project(user_vad, ALL_EMOTIONS)
@@ -70,13 +68,13 @@ def synthesize_response(
             stance="warm_casual" if relationship.warmth >= 0.5 else "balanced",
             directiveness=0.55 if relationship.trust >= 0.6 else 0.4,
         )
-        mirror = empathy_gain * max(0.3, relationship.warmth)
+        mirror = empathy_gain * max(0.45, relationship.warmth)
         if stage == "bonded":
             mirror = min(0.95, mirror + 0.1)
         target = VAD(
             _lerp(persona_baseline.v, user_vad.v, mirror),
-            _lerp(persona_baseline.a, user_vad.a, mirror * 0.7),
-            _lerp(persona_baseline.d, user_vad.d, mirror * 0.5),
+            _lerp(persona_baseline.a, user_vad.a, mirror * 0.75),
+            _lerp(persona_baseline.d, user_vad.d, mirror * 0.55),
         )
     elif user_vad.v < -0.3:
         if relationship.warmth >= 0.5:
@@ -86,10 +84,10 @@ def synthesize_response(
                 stance="warm_casual",
                 directiveness=0.45,
             )
-            mirror = empathy_gain * relationship.warmth
+            mirror = empathy_gain * max(0.5, relationship.warmth)
             target = VAD(
                 _lerp(persona_baseline.v, user_vad.v, mirror),
-                _lerp(persona_baseline.a, min(user_vad.a, 0.5), mirror * 0.6),
+                _lerp(persona_baseline.a, min(user_vad.a, 0.5), mirror * 0.65),
                 persona_baseline.d,
             )
         else:
@@ -101,7 +99,7 @@ def synthesize_response(
                 directiveness=0.35,
             )
             target = VAD(
-                _lerp(persona_baseline.v, user_vad.v, 0.25),
+                _lerp(persona_baseline.v, user_vad.v, 0.35),
                 min(persona_baseline.a, 0.4),
                 persona_baseline.d,
             )
@@ -139,18 +137,23 @@ def synthesize_response(
     ).clamp()
 
     weight = max(appraisal.user_weight, appraisal.rel_weight * 0.8)
-    weight = max(0.2, min(0.9, weight))
+    weight = max(EMOTION_SYNTHESIS_WEIGHT_FLOOR, min(0.9, weight))
 
-    speech_rate, pitch = _vad_to_prosody(target)
+    tags = derive_strategy_tags(policy, user_emotion=user_emotion_label)
+    prosody = map_prosody(tags.tts_profile, target)
     actuation = ActuationPlan(
         vad_target=target,
         weight=weight,
-        speech_rate=speech_rate,
-        pitch=pitch,
+        speech_rate=prosody.speech_rate,
+        pitch=prosody.pitch,
+        loudness_rate=prosody.loudness_rate,
+        tts_emotion=prosody.emotion,
+        tts_emotion_scale=prosody.emotion_scale,
     )
     return SynthesisResult(
         policy=policy,
         actuation=actuation,
         user_emotion_label=user_emotion_label,
+        tags=tags,
         rule_id=rule_id,
     )

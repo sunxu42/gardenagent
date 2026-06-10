@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import type { LogEntry } from "./logTypes";
+import { buildLogsClearedEntry } from "./logUtils";
 
 const MAX_ENTRIES = 500;
 
@@ -17,7 +18,7 @@ export function useLogStream() {
   }, []);
 
   const clear = useCallback(() => {
-    setEntries([]);
+    setEntries((prev) => [buildLogsClearedEntry(prev.length)]);
   }, []);
 
   return { entries, append, clear };

@@ -15,7 +15,6 @@ from yard.emotion.constants import (
     EMOTION_REL_ALPHA,
     EMOTION_REL_TAU_SEC,
     EMOTION_TAU_SEC,
-    EMOTION_USER_AFFECT_EMA_ALPHA,
     EMOTION_USER_KEY,
 )
 from yard.emotion.core.relationship import RelationshipState
@@ -65,7 +64,6 @@ def build_emotion_service(config, persona_id=None) -> tuple[EmotionService, str]
         rel_tau_sec=EMOTION_REL_TAU_SEC,
         relationship_baseline=relationship_baseline,
         appraisal_snapshot_max=EMOTION_APPRAISAL_SNAPSHOT_MAX,
-        user_affect_ema_alpha=EMOTION_USER_AFFECT_EMA_ALPHA,
     )
     return service, prof["voice_type"]
 

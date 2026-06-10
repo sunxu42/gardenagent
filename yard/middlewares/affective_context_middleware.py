@@ -9,7 +9,7 @@ from langchain_core.messages import SystemMessage
 from deepagents.middleware._utils import append_to_system_message
 
 from yard.emotion.core.service import EmotionService
-from yard.emotion.rendering.affective_context import render_affective_sections
+from yard.emotion.rendering.affective_context import render_affective_sections, render_strategy_section
 from yard.prompt.soul import flatten_system_text
 
 
@@ -32,13 +32,22 @@ class AffectiveContextMiddleware(AgentMiddleware[AffectiveContextState, Any]):
     def modify_request(self, request: ModelRequest) -> ModelRequest:
         rel = self._service.relationship()
         label = self._service.last_user_emotion_label or "neutral"
-        section = render_affective_sections(
-            affective_path=self._affective_path,
-            user_emotion_label=label,
-            trust=rel.trust,
-            warmth=rel.warmth,
-            interpersonal_cue=self._service.last_interpersonal_cue or "",
-        ).strip()
+        blocks = [
+            render_affective_sections(
+                affective_path=self._affective_path,
+                user_emotion_label=label,
+                trust=rel.trust,
+                warmth=rel.warmth,
+                interpersonal_cue=self._service.last_interpersonal_cue or "",
+            ),
+        ]
+        synthesis = self._service.last_synthesis()
+        strategy_block = render_strategy_section(
+            synthesis.tags if synthesis is not None else None,
+        )
+        if strategy_block:
+            blocks.append(strategy_block)
+        section = "\n\n".join(b for b in blocks if b).strip()
         if not section:
             return request
         base_flat = flatten_system_text(request.system_message)

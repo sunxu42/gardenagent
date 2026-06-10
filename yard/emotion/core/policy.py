@@ -29,6 +29,9 @@ class ActuationPlan(BaseModel):
     weight: float = Field(ge=0.0, le=1.0)
     speech_rate: int = 0
     pitch: int = 0
+    loudness_rate: int = 0
+    tts_emotion: str = "neutral"
+    tts_emotion_scale: int = Field(default=4, ge=1, le=5)
 
 
 class TurnAppraisalV2(BaseModel):

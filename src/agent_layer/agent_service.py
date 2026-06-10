@@ -85,7 +85,7 @@ class AgentService:
         agent = getattr(self, "agent", None)
         if agent is not None and hasattr(agent, "current_tts_prosody"):
             return agent.current_tts_prosody()
-        return 0, 0
+        return 0, 0, 0
 
     def set_appraisal_snapshot_listener(self, listener) -> None:
         agent = getattr(self, "agent", None)

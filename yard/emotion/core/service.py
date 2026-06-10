@@ -10,7 +10,7 @@ from yard.observability.logging import LogModule, get_logger
 
 _log = get_logger(LogModule.EMOTION)
 
-from yard.emotion.core.appraisal_utils import sanitize_relationship_deltas, smooth_user_vad
+from yard.emotion.core.appraisal_utils import sanitize_relationship_deltas
 from yard.emotion.core.policy import ResponsePolicy, TurnAppraisalV2
 from yard.emotion.core.relationship import (
     RelationshipState,
@@ -39,7 +39,6 @@ class EmotionService:
         rel_tau_sec: float = 7200.0,
         relationship_baseline: RelationshipState | None = None,
         appraisal_snapshot_max: int = 64,
-        user_affect_ema_alpha: float = 0.35,
         clock: Callable[[], float] = time.time,
     ) -> None:
         self._key = key
@@ -53,7 +52,6 @@ class EmotionService:
         self._rel_tau = rel_tau_sec
         self._clock = clock
         self._max_snapshots = max(8, int(appraisal_snapshot_max))
-        self._user_ema_alpha = max(0.0, min(1.0, float(user_affect_ema_alpha)))
         self.last_render: tuple[str, int] = ("neutral", 4)
         self.last_appraisal_target: VAD | None = None
         self.last_appraisal_weight: float | None = None
@@ -63,12 +61,12 @@ class EmotionService:
         self.last_user_v: float = 0.0
         self._last_synthesis: SynthesisResult | None = None
         self._last_user_affect_display: VAD | None = None
-        self._user_affect_ema: VAD | None = None
         self._appraisal_snapshots: OrderedDict[str, dict] = OrderedDict()
         self._appraisal_snapshot_listener: Callable[[str], None] | None = None
         self._turn_snapshot_cache: tuple[str, int] | None = None
 
         rel_base = (relationship_baseline or RelationshipState()).clamp()
+        self._relationship_baseline = rel_base
         rec = store.get(key)
         if rec and isinstance(rec.get("vad"), dict):
             self._vad = VAD.from_dict(rec["vad"])
@@ -93,6 +91,38 @@ class EmotionService:
 
     def end_turn(self) -> None:
         self._turn_snapshot_cache = None
+
+    def _clear_turn_ephemeral(self) -> None:
+        """清空本轮/跨轮内存缓存，不改动持久化 VAD。"""
+        self.last_render = ("neutral", 4)
+        self.last_appraisal_target = None
+        self.last_appraisal_weight = None
+        self.last_response_policy = None
+        self.last_user_emotion_label = None
+        self.last_interpersonal_cue = None
+        self.last_user_v = 0.0
+        self._last_synthesis = None
+        self._last_user_affect_display = None
+        self._appraisal_snapshots.clear()
+        self._turn_snapshot_cache = None
+
+    def reset_to_defaults(self) -> VAD:
+        """将助手 VAD 与关系重置为人设 baseline，并写回 EmotionStore。"""
+        now = self._clock()
+        rel_base = self._relationship_baseline
+        self._vad = self._baseline.clamp()
+        self._updated_at = now
+        self._relationship = RelationshipState(
+            trust=rel_base.baseline_trust,
+            warmth=rel_base.baseline_warmth,
+            baseline_trust=rel_base.baseline_trust,
+            baseline_warmth=rel_base.baseline_warmth,
+            updated_at=now,
+        )
+        self._clear_turn_ephemeral()
+        self._persist()
+        _log.info(f"EmotionService 已重置为 baseline key={self._key}")
+        return self._vad
 
     def _decay_to_now(self) -> None:
         now = self._clock()
@@ -175,13 +205,7 @@ class EmotionService:
 
     def apply_v2_turn(self, appraisal: TurnAppraisalV2, synthesis: SynthesisResult) -> VAD:
         appraisal = sanitize_relationship_deltas(appraisal)
-        raw_user = appraisal.user_vad()
-        display, self._user_affect_ema = smooth_user_vad(
-            raw_user,
-            alpha=self._user_ema_alpha,
-            previous_ema=self._user_affect_ema,
-        )
-        self._last_user_affect_display = display
+        self._last_user_affect_display = appraisal.user_vad().clamp()
         self.apply_relationship_delta(
             trust_delta=appraisal.trust_delta,
             warmth_delta=appraisal.warmth_delta,
@@ -253,8 +277,12 @@ class EmotionService:
             "agent_emotion": emotion_label,
             "emotion_scale": int(emotion_scale),
             "synthesis_rule": synthesis.rule_id,
+            "strategy_tags": synthesis.tags.as_dict(),
             "speech_rate": int(synthesis.actuation.speech_rate),
             "pitch": int(synthesis.actuation.pitch),
+            "loudness_rate": int(synthesis.actuation.loudness_rate),
+            "tts_emotion": synthesis.actuation.tts_emotion,
+            "tts_emotion_scale": int(synthesis.actuation.tts_emotion_scale),
             "weight": synthesis.actuation.weight,
             "utterance_vad": user_affect,
         }

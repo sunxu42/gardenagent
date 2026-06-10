@@ -110,6 +110,7 @@ def load_subagents(config_path) -> list:
 def _apply_subsystem(yard_manager, emotion, memory) -> None:
     """将 emotion / memory 子系统装配结果挂到 YardManager 实例。"""
     yard_manager.emotion_service = emotion.service
+    yard_manager.emotion_appraisal_middleware = emotion.appraisal_middleware
     yard_manager.tts_voice_type = emotion.tts_voice_type
     yard_manager.mem0_service = memory.mem0_service
     yard_manager.session_buffer = memory.session_buffer
@@ -203,10 +204,16 @@ class YardManager:
         return getattr(self, "tts_voice_type", None)
 
     def current_tts_emotion(self):
-        """返回 (emotion, emotion_scale)；无情绪子系统时返回 (None, 4)。"""
+        """返回 (emotion, emotion_scale)；优先策略层 TTS preset，否则用 VAD 投影。"""
         svc = getattr(self, "emotion_service", None)
         if svc is None:
             return None, 4
+        syn = svc.last_synthesis()
+        if syn is not None:
+            act = syn.actuation
+            emotion = (act.tts_emotion or "").strip() or None
+            if emotion and emotion != "neutral":
+                return emotion, int(act.tts_emotion_scale)
         emotion, scale = svc.last_render
         return emotion, scale
 
@@ -248,7 +255,6 @@ class YardManager:
                 EMOTION_REL_ALPHA,
                 EMOTION_REL_TAU_SEC,
                 EMOTION_TAU_SEC,
-                EMOTION_USER_AFFECT_EMA_ALPHA,
                 USER_AFFECT_NEUTRAL_A,
                 USER_AFFECT_NEUTRAL_D,
                 USER_AFFECT_NEUTRAL_V,
@@ -279,7 +285,7 @@ class YardManager:
                     "warmth": float(rel_base.get("warmth", 0.4)),
                 },
                 "user_affect": {
-                    "ema_alpha": EMOTION_USER_AFFECT_EMA_ALPHA,
+                    "per_turn_only": True,
                 },
                 "agent_vad": {
                     "per_turn_alpha": EMOTION_ALPHA,
@@ -324,6 +330,25 @@ class YardManager:
         if svc is not None and hasattr(svc, "end_turn"):
             svc.end_turn()
 
+    def reset_emotion_state(self) -> bool:
+        """将情绪子系统恢复为人设 baseline（清空用户数据时调用）。"""
+        svc = getattr(self, "emotion_service", None)
+        if svc is None or not hasattr(svc, "reset_to_defaults"):
+            return False
+        try:
+            svc.reset_to_defaults()
+        except Exception as e:
+            _log.warning(f"reset_emotion_state failed: {e!r}")
+            return False
+        for mw in getattr(self, "emotion_appraisal_middleware", ()) or ():
+            reset_fn = getattr(mw, "reset_session_state", None)
+            if callable(reset_fn):
+                try:
+                    reset_fn()
+                except Exception as e:
+                    _log.warning(f"emotion appraisal middleware reset failed: {e!r}")
+        return True
+
     def affect_settled_metrics(self):
         svc = getattr(self, "emotion_service", None)
         if svc is None:
@@ -336,11 +361,16 @@ class YardManager:
     def current_tts_prosody(self):
         svc = getattr(self, "emotion_service", None)
         if svc is None:
-            return 0, 0
+            return 0, 0, 0
         syn = svc.last_synthesis()
         if syn is None:
-            return 0, 0
-        return int(syn.actuation.speech_rate), int(syn.actuation.pitch)
+            return 0, 0, 0
+        act = syn.actuation
+        return (
+            int(act.speech_rate),
+            int(act.pitch),
+            int(getattr(act, "loudness_rate", 0) or 0),
+        )
 
     def set_appraisal_snapshot_listener(self, listener) -> None:
         svc = getattr(self, "emotion_service", None)

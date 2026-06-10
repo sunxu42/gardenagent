@@ -22,12 +22,15 @@ def render_reply_plan(module: PromptModule, ctx: PromptContext, *, deps: Rendere
     if plan is None:
         return ""
 
-    lines = [
+    lines = []
+    if ctx.strategy_tags is not None and ctx.strategy_tags.llm_guideline:
+        lines.append(f"Hard constraints: {ctx.strategy_tags.llm_guideline}")
+    lines.extend([
         "## Reply plan",
         f"Turn goal: {plan.intent}",
         f"Opening move: {plan.opening_move}",
         "Reply structure:",
-    ]
+    ])
     lines.extend(f"- {item}" for item in plan.structure)
     lines.append("Voice and tone:")
     lines.extend(f"- {item}" for item in plan.voice)

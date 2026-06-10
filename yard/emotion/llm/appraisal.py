@@ -29,11 +29,11 @@ Task 1 — 用户自身情绪（User Affect）：
 
 Task 2 — 对助手的态度变化（Relationship Delta）：
 - trust_delta / warmth_delta: 各 ∈ [-0.15, 0.15]，小步增量
-- 夸奖、感谢、采纳建议 → trust 或 warmth 上升
+- 夸奖、感谢、采纳建议 → trust 或 warmth 上升（明显示好时可给 0.08~0.12）
 - 质疑、指出错误、失望 → trust 下降
-- 分享私事、温柔称呼 → warmth 上升
+- 分享私事、温柔称呼 → warmth 上升（亲近表达 warmth_delta 建议 0.08~0.12）
 - 辱骂、冷漠拒绝 → warmth 与 trust 下降
-- rel_weight: [0, 1]，本轮对关系的影响强度
+- rel_weight: [0, 1]，本轮对关系的影响强度（明显情感或态度变化时建议 ≥ 0.5）
 - interpersonal_cue: 一句中文，描述用户对助手的态度（如「用户在质疑上一轮回答」）
 
 禁止输出助手/agent 的 VAD。只输出一个纯 JSON 对象，无 Markdown 代码块。"""

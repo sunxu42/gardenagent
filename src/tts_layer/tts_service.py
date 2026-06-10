@@ -142,8 +142,9 @@ class TTSService:
                         self.tts_backend.set_emotion(emotion, scale)
                     speech_rate = message.get('speech_rate', 0)
                     pitch = message.get('pitch', 0)
+                    loudness_rate = message.get('loudness_rate', 0)
                     if hasattr(self.tts_backend, 'set_prosody'):
-                        self.tts_backend.set_prosody(speech_rate, pitch)
+                        self.tts_backend.set_prosody(speech_rate, pitch, loudness_rate)
 
                     while True:
                         self.current_session_id = str(uuid.uuid4().hex)

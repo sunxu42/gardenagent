@@ -9,13 +9,13 @@ export function AffectRecordFieldGuide() {
         accent="violet"
         icon={<MessageCircle className="h-3.5 w-3.5" aria-hidden />}
         label="用户情绪"
-        detail="从你的话解读 V/A/D。「本轮」是相对上一轮的偏移；关系栏 trust/warmth Δ 表示你对助手态度的变化。"
+        detail="从你的话解读本轮 V/A/D，每轮独立感知、无跨轮状态机。关系栏 trust/warmth 表示你对助手态度的累积变化。"
       />
       <GuideModuleCard
         accent="sky"
         icon={<Bot className="h-3.5 w-3.5" aria-hidden />}
         label="助手语气"
-        detail="Agent 状态机中的 V/A/D。卡片 Δ 为相对上轮结束状态的偏移（红升绿降）。"
+        detail="Agent 状态机中的 V/A/D。「相对上轮」为相对上轮结束状态的偏移（红升绿降）。"
       />
       <GuideModuleCard
         accent="amber"

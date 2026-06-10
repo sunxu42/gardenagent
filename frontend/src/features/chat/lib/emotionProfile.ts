@@ -6,9 +6,9 @@ export const DEFAULT_EMOTION_PROFILE: EmotionProfile = {
   userVadBaseline: DEFAULT_USER_VAD_BASELINE,
   agentVadBaseline: { v: 0.3, a: 0.55, d: 0.1 },
   relationshipBaseline: { trust: 0.5, warmth: 0.4 },
-  userAffect: { emaAlpha: 0.35 },
-  agentVad: { perTurnAlpha: 0.3, perTurnBeta: 0.05, timeTauSec: 3600 },
-  relationship: { perTurnAlpha: 0.3, timeTauSec: 7200 },
+  userAffect: { perTurnOnly: true },
+  agentVad: { perTurnAlpha: 0.48, perTurnBeta: 0.01, timeTauSec: 14400 },
+  relationship: { perTurnAlpha: 0.65, timeTauSec: 28800 },
 };
 
 function readNum(value: unknown): number | undefined {
@@ -47,7 +47,7 @@ export function parseEmotionProfile(raw: unknown): EmotionProfile | null {
   const ad = agentDecay && typeof agentDecay === "object" ? (agentDecay as Record<string, unknown>) : {};
   const rd = relDecay && typeof relDecay === "object" ? (relDecay as Record<string, unknown>) : {};
 
-  const emaAlpha = readNum(ua.ema_alpha);
+  const perTurnOnly = ua.per_turn_only === true || ua.ema_alpha === undefined;
   const perTurnAlpha = readNum(ad.per_turn_alpha);
   const perTurnBeta = readNum(ad.per_turn_beta);
   const timeTauSec = readNum(ad.time_tau_sec);
@@ -55,7 +55,6 @@ export function parseEmotionProfile(raw: unknown): EmotionProfile | null {
   const relTauSec = readNum(rd.time_tau_sec);
 
   if (
-    emaAlpha === undefined ||
     perTurnAlpha === undefined ||
     perTurnBeta === undefined ||
     timeTauSec === undefined ||
@@ -69,7 +68,7 @@ export function parseEmotionProfile(raw: unknown): EmotionProfile | null {
     userVadBaseline: userVad,
     agentVadBaseline: agentVad,
     relationshipBaseline: { trust, warmth },
-    userAffect: { emaAlpha },
+    userAffect: { perTurnOnly },
     agentVad: { perTurnAlpha, perTurnBeta, timeTauSec },
     relationship: { perTurnAlpha: relAlpha, timeTauSec: relTauSec },
   };

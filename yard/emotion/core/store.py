@@ -46,6 +46,15 @@ class EmotionStore:
     def get(self, key: str) -> Optional[dict[str, Any]]:
         return self._load().get(key)
 
+    def delete(self, key: str) -> bool:
+        """删除指定 key；文件不存在或 key 不存在时返回 False。"""
+        data = self._load()
+        if key not in data:
+            return False
+        del data[key]
+        self._atomic_write(data)
+        return True
+
     def set(
         self,
         key: str,

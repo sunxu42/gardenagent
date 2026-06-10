@@ -2,9 +2,9 @@ import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { AffectTurnRecord } from "../types";
 import { formatTimestamp } from "../lib/affectFormat";
-import { resolveAttitudeSummary } from "../lib/affectPresentation";
+import { inferUserMood, resolveAttitudeSummary } from "../lib/affectPresentation";
 import { AffectTurnCardDebug } from "./affect/AffectTurnCardDebug";
-import { agentRoundDelta, userRoundDelta, VadCompactBlock } from "./affect/VadCompactBlock";
+import { agentRoundDelta, VadCompactBlock } from "./affect/VadCompactBlock";
 
 interface AffectTurnCardProps {
   record: AffectTurnRecord;
@@ -40,7 +40,7 @@ export function AffectTurnCard({
   const agentVad = record.agentVadAfter ?? record.agentVadTarget ?? null;
   const attitude = resolveAttitudeSummary(record);
 
-  const userDelta = userRoundDelta(record.userAffectVad, prevRecord?.userAffectVad);
+  const userMood = inferUserMood(record.userAffectVad);
   const agentDelta = agentRoundDelta(record, prevRecord?.agentVadAfter);
 
   return (
@@ -54,7 +54,7 @@ export function AffectTurnCard({
             : "border-transparent bg-transparent hover:bg-muted/25"
         }`}
         aria-pressed={selected}
-        aria-label={`第 ${total - index} 轮情绪记录，点击查看说明`}
+        aria-label={`第 ${total - index} 轮情绪记录`}
       >
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
           <span className="text-xs font-medium text-muted-foreground">第 {total - index} 轮</span>
@@ -77,13 +77,13 @@ export function AffectTurnCard({
         <div className="mt-2 grid gap-1.5">
           <VadCompactBlock
             title="用户"
-            accentClass="border-border/30 bg-muted/15"
+            accentClass="bg-violet-500/[0.06]"
             point={record.userAffectVad}
-            roundDelta={userDelta}
+            footnote={`本轮感知 · ${userMood.label}`}
           />
           <VadCompactBlock
             title="助手"
-            accentClass="border-border/30 bg-muted/15"
+            accentClass="bg-sky-500/[0.06]"
             point={agentVad}
             roundDelta={agentDelta}
             pending={!agentVad && isPending}

@@ -1,174 +1,140 @@
-import { BookOpen, ChevronRight, ListOrdered, X } from "lucide-react";
+import { BookOpen } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { smoothScrollContainer } from "../lib/affectGuideMotion";
 import type { AffectTurnRecord, EmotionProfile, RelationshipSnapshot, VadPoint } from "../types";
 import { AffectBaselineDecayGuide } from "./affect/AffectBaselineDecayGuide";
 import { AffectFlowDiagram } from "./affect/AffectFlowDiagram";
-import { AffectRecordFieldGuide } from "./affect/AffectRecordFieldGuide";
-import { AffectRoundSnapshotHero } from "./affect/AffectRoundSnapshotHero";
-import {
-  GuideCollapsibleSection,
-  GuidePrioritySection,
-} from "./affect/GuideSection";
-import { VadDimensionGuide } from "./affect/VadDimensionGuide";
+import { AffectGuideNav } from "./affect/AffectGuideNav";
+import { AffectReferenceGuide } from "./affect/AffectReferenceGuide";
+import { AffectStatusOverview } from "./affect/AffectStatusOverview";
+import { GuideAnchorSection } from "./affect/GuideSection";
 
 interface AffectGuidePanelProps {
-  open: boolean;
-  onClose: () => void;
   focusedRecord?: AffectTurnRecord | null;
   focusedRoundLabel?: string | null;
   currentRelationship?: RelationshipSnapshot | null;
+  currentAgentVad?: VadPoint | null;
   emotionProfile?: EmotionProfile | null;
   agentBaselineVad?: VadPoint | null;
 }
 
-const READ_ORDER = ["本轮快照", "记录字段", "处理流程", "V/A/D 基础", "Baseline 进阶"];
+const GUIDE_SECTIONS = [
+  { id: "affect-guide-s1", label: "关系与助手" },
+  { id: "affect-guide-s2", label: "Baseline" },
+  { id: "affect-guide-s3", label: "全链路" },
+  { id: "affect-guide-s4", label: "概念参考" },
+] as const;
 
 export function AffectGuidePanel({
-  open,
-  onClose,
   focusedRecord,
   focusedRoundLabel,
   currentRelationship,
+  currentAgentVad,
   emotionProfile,
   agentBaselineVad,
 }: AffectGuidePanelProps) {
-  const snapshot = focusedRecord ?? null;
-  const rel = snapshot?.relationship ?? currentRelationship ?? null;
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [activeId, setActiveId] = useState<string>(GUIDE_SECTIONS[0].id);
+  const scrollLockRef = useRef(false);
+
+  useEffect(() => {
+    const root = scrollRef.current;
+    if (!root) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (scrollLockRef.current) return;
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+        const top = visible[0]?.target.id;
+        if (top) setActiveId(top);
+      },
+      { root, rootMargin: "-18% 0px -52% 0px", threshold: [0, 0.2, 0.45] },
+    );
+
+    for (const { id } of GUIDE_SECTIONS) {
+      const el = root.querySelector(`#${id}`);
+      if (el) observer.observe(el);
+    }
+    return () => observer.disconnect();
+  }, []);
+
+  const scrollToSection = useCallback((id: string) => {
+    const root = scrollRef.current;
+    const el = root?.querySelector(`#${id}`);
+    if (!root || !el) return;
+
+    setActiveId(id);
+    scrollLockRef.current = true;
+
+    const rootRect = root.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    const targetTop = root.scrollTop + (elRect.top - rootRect.top);
+
+    smoothScrollContainer(root, targetTop);
+
+    window.setTimeout(() => {
+      scrollLockRef.current = false;
+    }, 520);
+  }, []);
 
   return (
     <aside
-      id="affect-guide-drawer"
-      className={`affect-guide-drawer flex min-h-0 shrink-0 flex-col overflow-hidden ${open ? "affect-guide-drawer--open" : ""}`}
-      aria-hidden={!open}
-      data-open={open ? "true" : "false"}
+      id="affect-guide-panel"
+      className="affect-guide-drawer flex min-h-0 shrink-0 flex-col overflow-hidden"
+      aria-label="情绪模块说明"
     >
-      {open ? (
-        <>
-          <header className="affect-rail-header shrink-0">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h3 className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-md bg-muted/50 text-muted-foreground">
-                    <BookOpen className="h-3.5 w-3.5" aria-hidden />
-                  </span>
-                  情绪模块说明
-                </h3>
-                <p className="mt-1.5 pl-8 text-[11px] leading-relaxed text-muted-foreground/90">
-                  按重要程度阅读：先看本轮结果，再对照记录栏，最后了解机制。
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={onClose}
-                className="shrink-0 cursor-pointer rounded-lg p-2 text-muted-foreground transition-colors duration-200 hover:bg-muted/80 hover:text-foreground"
-                aria-label="收起说明"
-                title="收起"
-              >
-                <X className="h-4 w-4" aria-hidden />
-              </button>
-            </div>
-          </header>
+      <header className="affect-rail-header shrink-0">
+        <div className="affect-rail-header__row">
+          <h3 className="flex min-w-0 items-center gap-2 text-sm font-medium text-muted-foreground">
+            <span className="affect-rail-header__icon">
+              <BookOpen className="h-3.5 w-3.5" aria-hidden />
+            </span>
+            情绪模块说明
+          </h3>
+          <span className="invisible shrink-0 px-2.5 py-1.5 text-[11px]" aria-hidden>
+            开发者
+          </span>
+        </div>
+      </header>
 
-          <div className="affect-panel-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-6 pt-3">
-            <nav
-              className="mb-4 flex flex-wrap items-center gap-1.5 rounded-lg border border-border/30 bg-muted/10 px-2.5 py-2"
-              aria-label="阅读顺序"
-            >
-              <ListOrdered className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
-              {READ_ORDER.map((label, i) => (
-                <span key={label} className="inline-flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                  {i > 0 ? <span className="text-border">·</span> : null}
-                  <span className="font-medium tabular-nums text-foreground/80">{i + 1}</span>
-                  {label}
-                </span>
-              ))}
-            </nav>
+      <AffectGuideNav
+        items={GUIDE_SECTIONS}
+        activeId={activeId}
+        onSelect={scrollToSection}
+      />
 
-            <div className="space-y-4">
-              <GuidePrioritySection
-                priority={1}
-                variant="hero"
-                title="本轮情绪快照"
-                description="最重要：选中某轮后，快速看懂双方情绪与回应态度。"
-              >
-                <AffectRoundSnapshotHero
-                  snapshot={snapshot}
-                  focusedRoundLabel={focusedRoundLabel}
-                  relationship={rel}
-                />
-              </GuidePrioritySection>
+      <div
+        ref={scrollRef}
+        className="affect-panel-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-6 pt-2"
+      >
+        <div className="space-y-6">
+          <GuideAnchorSection id="affect-guide-s1" title="关系与助手情绪" accent="amber">
+            <AffectStatusOverview
+              focusedRecord={focusedRecord}
+              focusedRoundLabel={focusedRoundLabel}
+              currentRelationship={currentRelationship}
+              currentAgentVad={currentAgentVad}
+            />
+          </GuideAnchorSection>
 
-              <GuidePrioritySection
-                priority={2}
-                title="读懂左侧记录"
-                description="对照记录栏各字段，理解每列数字代表什么。"
-              >
-                <AffectRecordFieldGuide />
-              </GuidePrioritySection>
+          <GuideAnchorSection id="affect-guide-s2" title="助手 Baseline 与衰减" accent="slate">
+            <AffectBaselineDecayGuide
+              profile={emotionProfile}
+              agentBaselineFallback={agentBaselineVad}
+            />
+          </GuideAnchorSection>
 
-              <GuidePrioritySection
-                priority={3}
-                title="每轮怎么处理"
-                description="你的话如何影响助手的语气与态度（业务主链路）。"
-              >
-                <AffectFlowDiagram />
-              </GuidePrioritySection>
+          <GuideAnchorSection id="affect-guide-s3" title="每轮全链路" accent="indigo">
+            <AffectFlowDiagram />
+          </GuideAnchorSection>
 
-              <GuideCollapsibleSection
-                priority={4}
-                title="V/A/D 三个维度"
-                description="愉悦度、能量感、掌控感 — 所有数值的共同坐标系。"
-              >
-                <div className="rounded-lg border border-border/30 bg-muted/10 p-3">
-                  <VadDimensionGuide />
-                </div>
-              </GuideCollapsibleSection>
-
-              <GuideCollapsibleSection
-                priority={5}
-                title="Baseline 与衰减"
-                description="默认参考点与长期回落规律（进阶，不影响日常阅读记录）。"
-              >
-                <AffectBaselineDecayGuide
-                  profile={emotionProfile}
-                  agentBaselineFallback={agentBaselineVad}
-                />
-              </GuideCollapsibleSection>
-            </div>
-          </div>
-        </>
-      ) : null}
+          <GuideAnchorSection id="affect-guide-s4" title="概念参考" accent="violet">
+            <AffectReferenceGuide />
+          </GuideAnchorSection>
+        </div>
+      </div>
     </aside>
-  );
-}
-
-export function AffectGuideToggle({
-  open,
-  onClick,
-}: {
-  open: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`shrink-0 cursor-pointer rounded-md border px-2.5 py-1.5 text-[11px] font-medium transition-colors duration-200 ${
-        open
-          ? "border-border bg-muted/50 text-foreground"
-          : "border-transparent bg-transparent text-muted-foreground hover:bg-muted/40 hover:text-foreground"
-      }`}
-      aria-expanded={open}
-      aria-controls="affect-guide-drawer"
-      title={open ? "收起模块说明" : "展开模块说明"}
-    >
-      <span className="inline-flex items-center gap-1.5">
-        {open ? (
-          <ChevronRight className="h-3.5 w-3.5" aria-hidden />
-        ) : (
-          <BookOpen className="h-3.5 w-3.5" aria-hidden />
-        )}
-        模块说明
-      </span>
-    </button>
   );
 }

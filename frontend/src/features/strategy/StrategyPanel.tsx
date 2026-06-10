@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
+import { StrategyRailTabs } from "./StrategyRailTabs";
 import type { AffectDebugPanelProps } from "@/features/chat/components/AffectDebugPanel";
 import {
   LazyAffectPanel,
@@ -66,25 +67,7 @@ export function StrategyPanel({
       role="complementary"
       aria-label="策略面板"
     >
-      <nav className="strategy-rail-tabs" aria-label="策略分区">
-        {TABS.map(({ id, icon: Icon, label }) => {
-          const selected = activeTab === id;
-          return (
-            <button
-              key={id}
-              type="button"
-              className={`strategy-rail-tab cursor-pointer${selected ? " strategy-rail-tab--active" : ""}`}
-              aria-current={selected ? "page" : undefined}
-              aria-label={label}
-              title={label}
-              onClick={() => onTabChange(id)}
-            >
-              <Icon className="h-4 w-4" aria-hidden />
-              <span className="strategy-rail-tab__label">{label}</span>
-            </button>
-          );
-        })}
-      </nav>
+      <StrategyRailTabs tabs={TABS} activeTab={activeTab} onTabChange={onTabChange} />
 
       <div className="strategy-rail-content min-h-0 min-w-0 flex-1 overflow-hidden">
         {visitedTabs.has("emotion") ? (

@@ -1,4 +1,10 @@
-import type { AffectTurnRecord, RelationshipSnapshot, ResponsePolicySnapshot, VadPoint } from "../types";
+import type {
+  AffectTurnRecord,
+  RelationshipSnapshot,
+  ResponsePolicySnapshot,
+  StrategyTagsSnapshot,
+  VadPoint,
+} from "../types";
 
 export type MoodTone = "positive" | "neutral" | "negative" | "tense";
 
@@ -13,6 +19,7 @@ const AGENT_MOOD_LABELS: Record<string, string> = {
   angry: "生气",
   fear: "害怕",
   surprised: "惊讶",
+  hate: "厌恶",
   disgust: "厌恶",
   neutral: "平和",
 };
@@ -44,6 +51,20 @@ const REPAIR_LABELS: Record<string, string> = {
   none: "无需特别安抚",
   apologize_if_mistake: "如有误会会致歉",
   clarify_before_advise: "先澄清再给建议",
+};
+
+const STRATEGY_MODE_LABELS: Record<string, string> = {
+  de_escalation: "缓和对抗",
+  listen: "深度倾听",
+  celebrate: "分享喜悦",
+  balanced: "自然对话",
+};
+
+const STRATEGY_VOICE_LABELS: Record<string, string> = {
+  steady: "沉稳",
+  soft: "柔软",
+  bright: "明亮",
+  warm: "亲切",
 };
 
 export function agentMoodLabel(emotion?: string): string {
@@ -87,7 +108,7 @@ export function agentMoodPresentation(record: AffectTurnRecord): MoodPresentatio
   const label = agentMoodLabel(record.agentEmotion);
   const emotion = record.agentEmotion ?? "neutral";
   if (emotion === "happy" || emotion === "surprised") return { label, tone: "positive" };
-  if (emotion === "sad" || emotion === "disgust") return { label, tone: "negative" };
+  if (emotion === "sad" || emotion === "hate" || emotion === "disgust") return { label, tone: "negative" };
   if (emotion === "angry" || emotion === "fear") return { label, tone: "tense" };
   return { label, tone: "neutral" };
 }
@@ -169,8 +190,18 @@ export function responseStrategySummary(policy?: ResponsePolicySnapshot): string
   return empathyLabel(policy.empathyMode);
 }
 
+export function strategyTagsSummary(tags?: StrategyTagsSnapshot): string | null {
+  if (!tags) return null;
+  const mode = STRATEGY_MODE_LABELS[tags.mode] ?? tags.mode;
+  const voice = STRATEGY_VOICE_LABELS[tags.voiceStyle] ?? tags.voiceStyle;
+  const length = tags.length === "short" ? "短句" : "适中";
+  return `${mode} · ${voice} · ${length}`;
+}
+
 /** 本轮助手回应态度（策略层立场 + 共情方式） */
 export function resolveAttitudeSummary(record: AffectTurnRecord): string {
+  const tagLine = strategyTagsSummary(record.strategyTags);
+  if (tagLine) return tagLine;
   if (record.responsePolicy) {
     const p = record.responsePolicy;
     return `${stanceLabel(p.stance)} · ${empathyLabel(p.empathyMode)}`;

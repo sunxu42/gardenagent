@@ -54,6 +54,10 @@ class EmotionAppraisalMiddleware(AgentMiddleware[EmotionAppraisalState, Any]):
         self._appraiser = appraiser
         self._last_digest: str | None = None
 
+    def reset_session_state(self) -> None:
+        """清空用户数据后调用，避免 digest 缓存跳过新一轮评估。"""
+        self._last_digest = None
+
     def _run_appraisal(self, request: ModelRequest) -> None:
         user_text = _last_human_text(request.state.get("messages") or [])
         if not user_text:

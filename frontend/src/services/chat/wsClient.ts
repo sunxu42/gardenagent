@@ -3,6 +3,7 @@ import type {
   EmotionProfile,
   RelationshipSnapshot,
   ResponsePolicySnapshot,
+  StrategyTagsSnapshot,
 } from "../../features/chat/types";
 import type { LogEntry, LogLevel, LogModule } from "../../features/logs/logTypes";
 import { LOG_LEVELS, LOG_MODULES } from "../../features/logs/logTypes";
@@ -32,6 +33,7 @@ export interface AssistantServerMessage {
   response_policy?: unknown;
   actuation_weight?: unknown;
   synthesis_rule?: unknown;
+  strategy_tags?: unknown;
   agent_emotion?: unknown;
   emotion_scale?: unknown;
   schema_version?: unknown;
@@ -113,6 +115,7 @@ export type WsMappedEvent =
       agentVadTarget?: { v: number; a: number; d: number } | null;
       actuationWeight?: number;
       synthesisRule?: string;
+      strategyTags?: StrategyTagsSnapshot;
     }
   | {
       type: "AFFECT_TURN_SETTLED";
@@ -156,6 +159,22 @@ function readRelationship(raw: unknown): RelationshipSnapshot | undefined {
     warmthDelta: readOptionalNumber(rel.warmth_delta),
     relWeight: readOptionalNumber(rel.rel_weight),
   };
+}
+
+function readStrategyTags(raw: unknown): StrategyTagsSnapshot | undefined {
+  if (!raw || typeof raw !== "object") {
+    return undefined;
+  }
+  const tags = raw as Record<string, unknown>;
+  const mode = typeof tags.mode === "string" ? tags.mode : "";
+  const voiceStyle = typeof tags.voice_style === "string" ? tags.voice_style : "";
+  const length = typeof tags.length === "string" ? tags.length : "";
+  const llmGuideline = typeof tags.llm_guideline === "string" ? tags.llm_guideline : "";
+  const ttsProfile = typeof tags.tts_profile === "string" ? tags.tts_profile : "";
+  if (!mode && !voiceStyle && !length) {
+    return undefined;
+  }
+  return { mode, voiceStyle, length, llmGuideline, ttsProfile };
 }
 
 function readResponsePolicy(raw: unknown): ResponsePolicySnapshot | undefined {
@@ -306,6 +325,7 @@ export function mapServerMessage(msg: AssistantServerMessage): WsMappedEvent {
       agentVadTarget: readVadPoint(msg.agent_vad_target),
       actuationWeight: readOptionalNumber(msg.actuation_weight),
       synthesisRule: typeof msg.synthesis_rule === "string" ? msg.synthesis_rule : undefined,
+      strategyTags: readStrategyTags(msg.strategy_tags),
     };
   }
 
@@ -474,6 +494,7 @@ export function mapEventToAction(
         agentVadTarget: event.agentVadTarget,
         actuationWeight: event.actuationWeight,
         synthesisRule: event.synthesisRule,
+        strategyTags: event.strategyTags,
       },
     };
   }

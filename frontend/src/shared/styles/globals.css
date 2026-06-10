@@ -28,9 +28,52 @@
 
   * {
     @apply border-border;
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border) / 0.38) transparent;
   }
 
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* WebKit 滚动条（Chrome / Edge）：放在 layer 外，避免 Windows 仍渲染箭头按钮 */
+*::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+  background: transparent;
+}
+
+*::-webkit-scrollbar-button,
+*::-webkit-scrollbar-button:single-button,
+*::-webkit-scrollbar-button:vertical:start:decrement,
+*::-webkit-scrollbar-button:vertical:end:increment,
+*::-webkit-scrollbar-button:horizontal:start:decrement,
+*::-webkit-scrollbar-button:horizontal:end:increment {
+  display: none;
+  width: 0;
+  height: 0;
+  background: transparent;
+  border: none;
+}
+
+*::-webkit-scrollbar-track,
+*::-webkit-scrollbar-track-piece {
+  background: transparent;
+  border: none;
+  margin: 0;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: hsl(var(--border) / 0.38);
+  border-radius: 999px;
+  border: none;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--border) / 0.52);
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
 }

@@ -16,6 +16,11 @@ import { DEFAULT_TTS_VOICE } from "../features/chat/ttsVoices";
 import { createChatApi, type ChatApi } from "../services/chat/chatApi";
 import { getOrCreateUserId, rotateUserId } from "../lib/userId";
 import { clearLocalDataForUser } from "../lib/clearLocalUserData";
+import {
+  buildUserDataClearedEntry,
+  consumePendingLogAfterReload,
+  stashPendingLogAfterReload,
+} from "../features/logs/logUtils";
 import { loadSettingsForUser, saveSettingsForUser } from "../lib/settingsStorage";
 import { clearServerUserData } from "../services/userDataApi";
 import { useMediaQuery } from "../lib/useMediaQuery";
@@ -130,6 +135,13 @@ export function ChatApp() {
   }, [state.settings]);
 
   useEffect(() => {
+    const pending = consumePendingLogAfterReload();
+    if (pending) {
+      dispatch({ type: "logEntryReceived", payload: { entry: pending } });
+    }
+  }, []);
+
+  useEffect(() => {
     const chatApi = createChatApi({
       url: wsUrl,
       deviceId: userIdRef.current,
@@ -199,7 +211,8 @@ export function ChatApp() {
     setClearError(null);
     const oldUserId = userIdRef.current;
     try {
-      await clearServerUserData(oldUserId);
+      const result = await clearServerUserData(oldUserId);
+      stashPendingLogAfterReload(buildUserDataClearedEntry(oldUserId, result));
       await clearLocalDataForUser(oldUserId);
       rotateUserId();
       window.location.reload();
@@ -300,7 +313,12 @@ export function ChatApp() {
             emotionProfile={state.emotionProfile ?? null}
             currentRelationship={state.currentRelationship ?? null}
             logEntries={state.logEntries}
-            onClearLogs={() => dispatch({ type: "clearLogs" })}
+            onClearLogs={() =>
+              dispatch({
+                type: "clearLogs",
+                payload: { previousCount: state.logEntries.length },
+              })
+            }
           />
         ) : null}
       </div>

@@ -44,6 +44,6 @@ def validate_manifest_renderers(renderer_names: list[str]) -> None:
 def _ensure_registered() -> None:
     if _REGISTRY:
         return
-    from yard.prompt.renderers import affective, mem0, reply_plan  # noqa: F401
+    from yard.prompt.renderers import affective, mem0, reply_plan, strategy  # noqa: F401
 
 _ensure_registered()

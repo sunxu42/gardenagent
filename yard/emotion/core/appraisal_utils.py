@@ -1,9 +1,8 @@
-"""Appraisal 后处理：关系增量校验、用户情绪 EMA。"""
+"""Appraisal 后处理：关系增量校验。"""
 
 from __future__ import annotations
 
 from yard.emotion.core.policy import TurnAppraisalV2
-from yard.emotion.core.vad import VAD
 
 
 def sanitize_relationship_deltas(appraisal: TurnAppraisalV2) -> TurnAppraisalV2:
@@ -35,23 +34,3 @@ def sanitize_relationship_deltas(appraisal: TurnAppraisalV2) -> TurnAppraisalV2:
             "warmth_delta": max(-0.15, min(0.15, warmth_d)),
         }
     )
-
-
-def smooth_user_vad(
-    incoming: VAD,
-    *,
-    alpha: float,
-    previous_ema: VAD | None,
-) -> tuple[VAD, VAD]:
-    """返回 (本轮展示用平滑 VAD, 更新后的 EMA 状态)。"""
-    a = max(0.0, min(1.0, float(alpha)))
-    inc = incoming.clamp()
-    if previous_ema is None or a <= 0:
-        return inc, inc
-    prev = previous_ema.clamp()
-    ema = VAD(
-        prev.v + a * (inc.v - prev.v),
-        prev.a + a * (inc.a - prev.a),
-        prev.d + a * (inc.d - prev.d),
-    ).clamp()
-    return ema, ema

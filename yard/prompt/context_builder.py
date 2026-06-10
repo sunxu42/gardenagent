@@ -54,6 +54,8 @@ class PromptContextBuilder:
 
         policy = getattr(svc, "last_response_policy", None) if svc else None
         empathy_mode = policy.empathy_mode if policy is not None else "neutral"
+        synthesis = svc.last_synthesis() if svc is not None else None
+        strategy_tags = synthesis.tags if synthesis is not None else None
 
         ctx = PromptContext(
             agent_emotion=emotion,
@@ -70,6 +72,7 @@ class PromptContextBuilder:
             memory_bullets=bullets or "",
             locale="zh",
             user_v=user_v,
+            strategy_tags=strategy_tags,
         )
         ctx.turn_type = infer_turn_type(ctx)
         ctx.reply_plan = self._reply_planner.build(ctx)

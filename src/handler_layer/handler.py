@@ -56,6 +56,7 @@ def _build_affect_appraised_payload(turn: dict, metrics: dict) -> dict | None:
         "agent_vad_target": target if isinstance(target, dict) else None,
         "actuation_weight": metrics.get("actuation_weight") or metrics.get("weight"),
         "synthesis_rule": metrics.get("synthesis_rule"),
+        "strategy_tags": metrics.get("strategy_tags"),
     }
 
 
@@ -696,7 +697,12 @@ class Handler:
                     try:
                         voice = self._resolve_voice_type()
                         emotion, scale = self.agent_service.current_tts_emotion()
-                        speech_rate, pitch = self.agent_service.current_tts_prosody()
+                        prosody = self.agent_service.current_tts_prosody()
+                        if len(prosody) >= 3:
+                            speech_rate, pitch, loudness_rate = prosody
+                        else:
+                            speech_rate, pitch = prosody[0], prosody[1]
+                            loudness_rate = 0
                         if voice:
                             message['voice_type'] = voice
                         if emotion:
@@ -704,6 +710,7 @@ class Handler:
                         message['emotion_scale'] = scale
                         message['speech_rate'] = speech_rate
                         message['pitch'] = pitch
+                        message['loudness_rate'] = loudness_rate
                     except Exception as e:
                         self._log.debug(f"获取 TTS 情感/音色失败: {e}")
 

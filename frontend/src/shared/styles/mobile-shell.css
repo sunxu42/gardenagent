@@ -27,7 +27,8 @@
   overflow-x: hidden;
   overflow-y: auto;
   min-height: 0;
-  padding: 4px 2px;
+  margin-right: -12px;
+  padding: 4px 12px 4px 2px;
   -webkit-overflow-scrolling: touch;
 }
 

@@ -58,6 +58,8 @@ class DanhuangReplyPlanner:
         boundaries = self._boundaries_for(ctx, user_emotion)
         directiveness = self._directiveness_for(ctx, user_emotion)
         tags = self._few_shot_tags(ctx, user_emotion)
+        if ctx.strategy_tags is not None and ctx.strategy_tags.length == "short":
+            tags = _dedupe([*tags, "short_voice"])
         return ReplyPlan(
             intent=intent,
             opening_move=opening,
@@ -187,6 +189,14 @@ class DanhuangReplyPlanner:
             "Focus on only one thing per turn, and ask at most one question.",
             "Do not use standard AI-assistant stock phrases.",
         ]
+        st = ctx.strategy_tags
+        if st is not None:
+            if st.length == "short":
+                boundaries.append("Keep the reply within 2 short sentences and about 40 Chinese characters.")
+            if st.mode == "de_escalation":
+                boundaries.append("Do not joke, challenge, or lecture.")
+            if st.llm_guideline:
+                boundaries.append(st.llm_guideline)
         if user_emotion in {"sad", "fear"}:
             boundaries.extend(
                 [

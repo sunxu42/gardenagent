@@ -73,8 +73,8 @@ def apply_relationship_delta(
     alpha: float,
 ) -> RelationshipState:
     t = max(0.0, min(1.0, alpha * weight))
-    trust = _lerp(state.trust, state.trust + trust_delta, t)
-    warmth = _lerp(state.warmth, state.warmth + warmth_delta, t)
+    trust = state.trust + trust_delta * t
+    warmth = state.warmth + warmth_delta * t
     return RelationshipState(
         trust=trust,
         warmth=warmth,

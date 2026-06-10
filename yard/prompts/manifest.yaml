@@ -52,6 +52,12 @@ modules:
     renderer: affective.relationship
     when: ctx.affective_v2_enabled
 
+  - id: strategy.execution
+    tier: volatile
+    priority: 74
+    renderer: strategy
+    when: ctx.affective_v2_enabled and ctx.strategy_tags is not None
+
   - id: reply.plan
     tier: volatile
     priority: 76

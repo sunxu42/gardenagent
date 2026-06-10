@@ -9,6 +9,7 @@ import yaml
 
 from yard.emotion.core.relationship import derive_stage
 from yard.emotion.rendering.taxonomy import DEFAULT_EMOTION, load_taxonomy
+from yard.emotion.synthesis.strategy_tags import StrategyTags, strategy_tags_summary
 
 _DEFAULT_AFFECTIVE_FILENAME = "affective.yaml"
 
@@ -65,6 +66,21 @@ def render_relationship_section(
     if interaction:
         rel_lines.append(f"互动策略：{interaction}")
     return "## Relationship\n" + "\n".join(rel_lines).strip()
+
+
+def render_strategy_section(tags: StrategyTags | None) -> str:
+    if tags is None:
+        return ""
+    summary = strategy_tags_summary(tags)
+    lines = [
+        "## Strategy",
+        f"Tags: mode={tags.mode}, voice={tags.voice_style}, length={tags.length}, tts={tags.tts_profile}",
+    ]
+    if summary:
+        lines.append(f"Summary: {summary}")
+    if tags.llm_guideline:
+        lines.append(f"Hard constraints: {tags.llm_guideline}")
+    return "\n".join(lines).strip()
 
 
 def render_affective_sections(

@@ -1,11 +1,10 @@
 import { Code2, ListOrdered } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import type { AffectTurnRecord, EmotionProfile, RelationshipSnapshot, VadPoint } from "../types";
-import { AffectGuidePanel, AffectGuideToggle } from "./AffectGuidePanel";
+import { AffectGuidePanel } from "./AffectGuidePanel";
 import { AffectTurnCard } from "./AffectTurnCard";
 
 const DEV_MODE_KEY = "garden-affect-dev-mode";
-const GUIDE_OPEN_KEY = "garden-affect-guide-open";
 
 export interface AffectDebugPanelProps {
   history?: AffectTurnRecord[];
@@ -23,22 +22,14 @@ function readDevMode(): boolean {
   }
 }
 
-function readGuideOpen(): boolean {
-  try {
-    return localStorage.getItem(GUIDE_OPEN_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
 export function AffectDebugPanel({
   history,
+  currentAgentVad,
   baselineVad,
   emotionProfile,
   currentRelationship,
 }: AffectDebugPanelProps) {
   const [devMode, setDevMode] = useState(readDevMode);
-  const [guideOpen, setGuideOpen] = useState(readGuideOpen);
   const [selectedTurnId, setSelectedTurnId] = useState<string | null>(null);
 
   const safeHistory = Array.isArray(history) ? history : [];
@@ -55,36 +46,6 @@ export function AffectDebugPanel({
     });
   }, []);
 
-  const persistGuideOpen = useCallback((next: boolean) => {
-    try {
-      localStorage.setItem(GUIDE_OPEN_KEY, next ? "1" : "0");
-    } catch {
-      /* ignore */
-    }
-  }, []);
-
-  const toggleGuide = useCallback(() => {
-    setGuideOpen((prev) => {
-      const next = !prev;
-      persistGuideOpen(next);
-      return next;
-    });
-  }, [persistGuideOpen]);
-
-  const closeGuide = useCallback(() => {
-    setGuideOpen(false);
-    persistGuideOpen(false);
-  }, [persistGuideOpen]);
-
-  const openGuideForTurn = useCallback(
-    (turnId: string) => {
-      setSelectedTurnId(turnId);
-      setGuideOpen(true);
-      persistGuideOpen(true);
-    },
-    [persistGuideOpen],
-  );
-
   const focusedRecord = useMemo(() => {
     if (selectedTurnId) {
       return safeHistory.find((h) => h.turnId === selectedTurnId) ?? safeHistory[0] ?? null;
@@ -100,54 +61,39 @@ export function AffectDebugPanel({
   }, [focusedRecord, safeHistory]);
 
   return (
-    <div
-      className={`affect-panel-root h-full min-h-0 max-h-full w-full overflow-hidden flex ${guideOpen ? "affect-panel-root--guide-open" : ""}`}
-    >
-      <div
-        className={`affect-sidebar-group h-full min-h-0 max-h-full overflow-hidden ${guideOpen ? "affect-sidebar-group--guide-open" : ""}`}
-      >
+    <div className="affect-panel-root h-full min-h-0 max-h-full w-full overflow-hidden flex">
+      <div className="affect-sidebar-group h-full min-h-0 max-h-full overflow-hidden">
         <aside className="affect-history-panel flex min-h-0 flex-1 flex-col overflow-hidden">
           <header className="affect-rail-header shrink-0">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h3 className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-md bg-muted/50 text-muted-foreground">
-                    <ListOrdered className="h-3.5 w-3.5" aria-hidden />
-                  </span>
-                  情绪记录
-                </h3>
-                <p className="mt-1.5 pl-8 text-[11px] leading-relaxed text-muted-foreground/90">
-                  每轮 V·A·D 与态度；点击条目可展开模块说明
-                </p>
-              </div>
-              <div className="flex shrink-0 flex-col gap-1.5">
-                <AffectGuideToggle open={guideOpen} onClick={toggleGuide} />
-                <button
-                  type="button"
-                  onClick={toggleDevMode}
-                  className={`cursor-pointer rounded-md border px-2.5 py-1.5 text-[11px] font-medium transition-colors duration-200 ${
-                    devMode
-                      ? "border-border bg-muted/50 text-foreground"
-                      : "border-transparent bg-transparent text-muted-foreground hover:bg-muted/40 hover:text-foreground"
-                  }`}
-                  aria-pressed={devMode}
-                  title="显示原始 JSON"
-                >
-                  <span className="inline-flex items-center gap-1.5">
-                    <Code2 className="h-3.5 w-3.5" aria-hidden />
-                    开发者
-                  </span>
-                </button>
-              </div>
+            <div className="affect-rail-header__row">
+              <h3 className="flex min-w-0 items-center gap-2 text-sm font-medium text-muted-foreground">
+                <span className="affect-rail-header__icon">
+                  <ListOrdered className="h-3.5 w-3.5" aria-hidden />
+                </span>
+                情绪记录
+              </h3>
+              <button
+                type="button"
+                onClick={toggleDevMode}
+                className={`shrink-0 cursor-pointer rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-colors duration-200 ${
+                  devMode
+                    ? "bg-muted/50 text-foreground"
+                    : "text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                }`}
+                aria-pressed={devMode}
+                title="显示原始 JSON"
+              >
+                <span className="inline-flex items-center gap-1.5">
+                  <Code2 className="h-3.5 w-3.5" aria-hidden />
+                  开发者
+                </span>
+              </button>
             </div>
-
           </header>
 
           <div className="affect-panel-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-6 pt-2">
             {safeHistory.length === 0 ? (
-              <p className="pt-12 text-center text-xs leading-relaxed text-muted-foreground">
-                发送消息后，每轮数值会列在这里。
-              </p>
+              <p className="pt-12 text-center text-xs text-muted-foreground">发送消息后显示记录</p>
             ) : (
               <ul className="space-y-2">
                 {safeHistory.map((item, index) => (
@@ -158,8 +104,8 @@ export function AffectDebugPanel({
                     index={index}
                     total={safeHistory.length}
                     devMode={devMode}
-                    selected={guideOpen && selectedTurnId === item.turnId}
-                    onSelect={() => openGuideForTurn(item.turnId)}
+                    selected={selectedTurnId === item.turnId}
+                    onSelect={() => setSelectedTurnId(item.turnId)}
                   />
                 ))}
               </ul>
@@ -168,11 +114,10 @@ export function AffectDebugPanel({
         </aside>
 
         <AffectGuidePanel
-          open={guideOpen}
-          onClose={closeGuide}
           focusedRecord={focusedRecord}
           focusedRoundLabel={focusedRoundLabel}
           currentRelationship={currentRelationship}
+          currentAgentVad={currentAgentVad}
           emotionProfile={emotionProfile}
           agentBaselineVad={baselineVad}
         />

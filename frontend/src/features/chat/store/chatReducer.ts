@@ -1,5 +1,6 @@
 import type { AffectTurnRecord, ChatAction, ChatMessage, ChatState } from "../types";
 import { baseAgentVadForDelta, computeVadDelta, upsertAffectRecord } from "../lib/affectMerge";
+import { buildLogsClearedEntry } from "../../logs/logUtils";
 import { DEFAULT_TTS_VOICE } from "../ttsVoices";
 
 export const initialChatState: ChatState = {
@@ -242,6 +243,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         agentVadTarget: action.payload.agentVadTarget ?? undefined,
         actuationWeight: action.payload.actuationWeight,
         synthesisRule: action.payload.synthesisRule ?? existing?.synthesisRule,
+        strategyTags: action.payload.strategyTags ?? existing?.strategyTags,
         agentVadAfter: existing?.agentVadAfter,
         delta: existing?.delta,
         agentEmotion: existing?.agentEmotion,
@@ -333,11 +335,13 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
             : nextEntries,
       };
     }
-    case "clearLogs":
+    case "clearLogs": {
+      const previousCount = action.payload?.previousCount ?? state.logEntries.length;
       return {
         ...state,
-        logEntries: [],
+        logEntries: [buildLogsClearedEntry(previousCount)],
       };
+    }
     case "chatCleared":
       return {
         ...initialChatState,

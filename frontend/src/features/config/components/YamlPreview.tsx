@@ -24,6 +24,9 @@ const highlighterStyle: CSSProperties = {
   background: "transparent",
   fontSize: "11px",
   lineHeight: 1.55,
+  width: "100%",
+  maxWidth: "100%",
+  boxSizing: "border-box",
 };
 
 function useLineIndex(content: string): YamlLineIndex {
@@ -134,7 +137,7 @@ export function YamlPreview({ content, path, focusedNodePath, flashToken }: Yaml
       </div>
       <div
         ref={scrollRef}
-        className="config-yaml-highlight flex min-h-0 flex-1 overflow-auto rounded-md bg-white/70"
+        className="config-yaml-highlight flex min-h-0 min-w-0 flex-1 overflow-auto rounded-md bg-white/70"
       >
         <SyntaxHighlighter
           language="yaml"
@@ -143,6 +146,10 @@ export function YamlPreview({ content, path, focusedNodePath, flashToken }: Yaml
           codeTagProps={{
             style: {
               fontFamily: '"JetBrains Mono", "Cascadia Code", ui-monospace, monospace',
+              display: "block",
+              width: "100%",
+              maxWidth: "100%",
+              boxSizing: "border-box",
             },
           }}
           showLineNumbers

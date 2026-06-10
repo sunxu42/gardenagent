@@ -55,9 +55,17 @@ export interface EmotionProfile {
   userVadBaseline: VadPoint;
   agentVadBaseline: VadPoint;
   relationshipBaseline: RelationshipBaseline;
-  userAffect: { emaAlpha: number };
+  userAffect: { perTurnOnly: boolean };
   agentVad: { perTurnAlpha: number; perTurnBeta: number; timeTauSec: number };
   relationship: { perTurnAlpha: number; timeTauSec: number };
+}
+
+export interface StrategyTagsSnapshot {
+  mode: string;
+  voiceStyle: string;
+  length: string;
+  llmGuideline: string;
+  ttsProfile: string;
 }
 
 export interface ResponsePolicySnapshot {
@@ -85,6 +93,7 @@ export interface AffectTurnRecord {
   agentEmotion?: string;
   emotionScale?: number;
   synthesisRule?: string;
+  strategyTags?: StrategyTagsSnapshot;
 }
 
 export interface ChatState {
@@ -154,6 +163,7 @@ export type ChatAction =
         agentVadTarget?: VadPoint | null;
         actuationWeight?: number;
         synthesisRule?: string;
+        strategyTags?: StrategyTagsSnapshot;
       };
     }
   | {
@@ -179,5 +189,5 @@ export type ChatAction =
   | { type: "historyHydrated"; payload: { messages: ChatMessage[] } }
   | { type: "historyPrepended"; payload: { messages: ChatMessage[] } }
   | { type: "logEntryReceived"; payload: { entry: LogEntry } }
-  | { type: "clearLogs" }
+  | { type: "clearLogs"; payload?: { previousCount?: number } }
   | { type: "chatCleared" };

@@ -1,47 +1,107 @@
-import { VAD_DIMENSIONS, vadValueToPercent } from "../../lib/vadDimensions";
+import { VAD_DIMENSIONS } from "../../lib/vadDimensions";
 
-/** 三维度说明条（用于右侧引导栏） */
+function VadAxisScale({
+  bipolar,
+  poleLow,
+  poleHigh,
+  min,
+  max,
+}: {
+  bipolar: boolean;
+  poleLow: string;
+  poleHigh: string;
+  min: number;
+  max: number;
+}) {
+  const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+
+  if (bipolar) {
+    return (
+      <div className="mt-2.5" role="img" aria-label={`${poleLow} 至 ${poleHigh} 双向量表`}>
+        <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+          <span>{poleLow}</span>
+          <span className="text-muted-foreground/70">中性</span>
+          <span className="text-primary">{poleHigh}</span>
+        </div>
+        <div className="relative mt-1 h-2 overflow-hidden rounded-full bg-muted/40">
+          <div
+            className="absolute inset-0 bg-gradient-to-r from-slate-400/75 via-slate-300/45 to-primary"
+            aria-hidden
+          />
+        </div>
+        <div className="mt-0.5 flex items-center justify-between text-[9px] tabular-nums text-muted-foreground">
+          <span>{fmt(min)}</span>
+          <span>0</span>
+          <span>{fmt(max)}</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-2.5" role="img" aria-label={`${poleLow} 至 ${poleHigh} 单向量表`}>
+      <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+        <span>{poleLow}</span>
+        <span className="text-primary">{poleHigh}</span>
+      </div>
+      <div className="relative mt-1 h-2 overflow-hidden rounded-full bg-muted/40">
+        <div
+          className="absolute inset-0 bg-gradient-to-r from-primary/30 to-primary"
+          aria-hidden
+        />
+      </div>
+      <div className="mt-0.5 flex items-center justify-between text-[9px] tabular-nums text-muted-foreground">
+        <span>{fmt(min)}</span>
+        <span>{fmt(max)}</span>
+      </div>
+    </div>
+  );
+}
+
+function formatRange(min: number, max: number): string {
+  const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+  return `${fmt(min)} ~ ${fmt(max)}`;
+}
+
+/** 三维度说明（用于右侧引导栏）— 文字为主，辅以轴端标签示意 */
 export function VadDimensionGuide() {
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {VAD_DIMENSIONS.map((dim) => (
-        <div key={dim.key}>
-          <div className="mb-1 flex items-baseline justify-between gap-2">
-            <span className="text-xs font-medium text-foreground">{dim.label}</span>
-            <span className="text-[10px] text-muted-foreground">{dim.hint}</span>
-          </div>
-          <div className="relative h-2.5 overflow-hidden rounded-full bg-muted/80">
-            {dim.bipolar ? (
-              <>
-                <div className="absolute left-1/2 top-0 h-full w-px bg-border/80" />
-                <div
-                  className="absolute top-0 h-full rounded-r-full bg-muted-foreground/25"
-                  style={{
-                    left: "50%",
-                    width: `${vadValueToPercent(0.55, dim) / 2}%`,
-                  }}
-                />
-                <div
-                  className="absolute top-0 h-full rounded-l-full bg-muted-foreground/18"
-                  style={{
-                    right: "50%",
-                    width: `${vadValueToPercent(0.55, dim) / 2}%`,
-                  }}
-                />
-              </>
-            ) : (
-              <div
-                className="h-full rounded-full bg-muted-foreground/22"
-                style={{ width: `${vadValueToPercent(0.55, dim)}%` }}
-              />
-            )}
-          </div>
-          <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
-            {dim.key === "v" && "衡量积极/消极感受，影响对你情绪的判断。"}
-            {dim.key === "a" && "衡量激动/平静程度，高能量常对应紧张或兴奋。"}
-            {dim.key === "d" && "衡量强势/被动感受，影响语气是坚定还是退让。"}
+        <article
+          key={dim.key}
+          className="rounded-md bg-muted/20 px-3 py-2.5"
+        >
+          <header className="flex items-start gap-2.5">
+            <span
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/12 font-mono text-xs font-semibold uppercase tracking-wide text-primary"
+              aria-hidden
+            >
+              {dim.key}
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0">
+                <h5 className="text-xs font-medium text-foreground">{dim.fullName}</h5>
+                <span className="text-[10px] text-muted-foreground">· {dim.label}</span>
+              </div>
+              <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                {dim.description}
+              </p>
+            </div>
+          </header>
+
+          <VadAxisScale
+            bipolar={dim.bipolar}
+            poleLow={dim.poleLow}
+            poleHigh={dim.poleHigh}
+            min={dim.min}
+            max={dim.max}
+          />
+
+          <p className="mt-2 text-[10px] text-muted-foreground/80">
+            取值范围 {formatRange(dim.min, dim.max)}
           </p>
-        </div>
+        </article>
       ))}
     </div>
   );

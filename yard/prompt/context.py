@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from yard.emotion.core.policy import ResponsePolicy
 
 if TYPE_CHECKING:
+    from yard.emotion.synthesis.strategy_tags import StrategyTags
     from yard.prompt.reply_plan import ReplyPlan
 
 
@@ -28,6 +29,7 @@ class PromptContext:
     locale: str = "zh"
     user_v: float = 0.0
     empathy_mode: str = "neutral"
+    strategy_tags: "StrategyTags | None" = None
     reply_plan: ReplyPlan | None = None
 
     def get(self, name: str):

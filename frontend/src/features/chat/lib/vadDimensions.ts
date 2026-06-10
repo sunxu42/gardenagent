@@ -3,8 +3,15 @@ import { formatAffectNum } from "./affectFormat";
 
 export interface VadDimensionMeta {
   key: keyof VadPoint;
+  /** 英文全称，如 Valence */
+  fullName: string;
   label: string;
   hint: string;
+  /** 轴两端语义标签 */
+  poleLow: string;
+  poleHigh: string;
+  /** 引导说明中的简短释义 */
+  description: string;
   min: number;
   max: number;
   bipolar: boolean;
@@ -13,24 +20,36 @@ export interface VadDimensionMeta {
 export const VAD_DIMENSIONS: VadDimensionMeta[] = [
   {
     key: "v",
+    fullName: "Valence",
     label: "愉悦度",
     hint: "消极 ← → 积极",
+    poleLow: "消极",
+    poleHigh: "积极",
+    description: "衡量情绪的积极或消极倾向，影响对你当下感受的判断。",
     min: -1,
     max: 1,
     bipolar: true,
   },
   {
     key: "a",
+    fullName: "Arousal",
     label: "能量感",
     hint: "平静 ← → 激动",
+    poleLow: "平静",
+    poleHigh: "激动",
+    description: "衡量生理与心理的激活程度，高能量常对应紧张、兴奋或焦躁。",
     min: 0,
     max: 1,
     bipolar: false,
   },
   {
     key: "d",
+    fullName: "Dominance",
     label: "掌控感",
     hint: "被动 ← → 强势",
+    poleLow: "被动",
+    poleHigh: "强势",
+    description: "衡量自信与掌控感，影响语气是坚定推进还是退让回避。",
     min: -1,
     max: 1,
     bipolar: true,

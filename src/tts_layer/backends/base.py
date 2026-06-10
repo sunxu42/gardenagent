@@ -23,13 +23,20 @@ class BaseTTS(ABC):
         self.emotion = (emotion or "").strip().lower() or None
         self.emotion_scale = max(1, min(5, int(emotion_scale)))
 
-    def set_prosody(self, speech_rate: int = 0, pitch: int = 0) -> None:
+    def set_prosody(
+        self,
+        speech_rate: int = 0,
+        pitch: int = 0,
+        loudness_rate: int = 0,
+    ) -> None:
         if hasattr(self, "speech_rate"):
             self.speech_rate = int(speech_rate)
         if hasattr(self, "pitch"):
             self.pitch = int(pitch)
         if hasattr(self, "pitch_rate"):
             self.pitch_rate = int(pitch)
+        if hasattr(self, "loudness_rate"):
+            self.loudness_rate = int(loudness_rate)
     
     @abstractmethod
     async def start_session(self, session_id: str = None) -> bool:

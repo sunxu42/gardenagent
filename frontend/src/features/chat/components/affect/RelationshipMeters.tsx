@@ -48,7 +48,7 @@ function MeterBar({
 export function RelationshipMeters({ relationship, compact }: RelationshipMetersProps) {
   if (!relationship) {
     return (
-      <p className="text-xs text-muted-foreground">开始聊天后，这里会显示你们的关系亲密度。</p>
+      <p className="text-xs text-muted-foreground">暂无关系数据</p>
     );
   }
 

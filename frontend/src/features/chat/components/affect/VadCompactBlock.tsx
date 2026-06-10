@@ -6,8 +6,10 @@ interface VadCompactBlockProps {
   title: string;
   accentClass: string;
   point: VadPoint | null;
-  /** 本轮相对上一轮的变化；无上一轮时为 null */
+  /** 相对上一轮状态机的变化（仅助手侧） */
   roundDelta?: VadPoint | null;
+  /** 无 roundDelta 时的说明行（如用户侧「本轮感知」） */
+  footnote?: string;
   pending?: boolean;
   /** 素雅模式：Δ 不用红绿强调 */
   subdued?: boolean;
@@ -27,10 +29,18 @@ function DeltaCell({ label, value, subdued }: { label: string; value: number; su
   );
 }
 
-export function VadCompactBlock({ title, accentClass, point, roundDelta, pending, subdued }: VadCompactBlockProps) {
+export function VadCompactBlock({
+  title,
+  accentClass,
+  point,
+  roundDelta,
+  footnote,
+  pending,
+  subdued,
+}: VadCompactBlockProps) {
   if (pending) {
     return (
-      <div className={`rounded-lg border px-2 py-1.5 ${accentClass}`}>
+      <div className={`rounded-md px-2 py-1.5 ${accentClass}`}>
         <p className="text-[10px] font-medium text-muted-foreground">{title}</p>
         <p className="mt-0.5 text-[10px] text-muted-foreground">等待中…</p>
       </div>
@@ -39,7 +49,7 @@ export function VadCompactBlock({ title, accentClass, point, roundDelta, pending
 
   if (!point) {
     return (
-      <div className={`rounded-lg border px-2 py-1.5 ${accentClass}`}>
+      <div className={`rounded-md px-2 py-1.5 ${accentClass}`}>
         <p className="text-[10px] font-medium text-muted-foreground">{title}</p>
         <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">—</p>
       </div>
@@ -47,31 +57,25 @@ export function VadCompactBlock({ title, accentClass, point, roundDelta, pending
   }
 
   return (
-    <div className={`rounded-lg border px-2 py-1.5 ${accentClass}`}>
+    <div className={`rounded-md px-2 py-1.5 ${accentClass}`}>
       <p className="text-[10px] font-medium text-muted-foreground">{title}</p>
       <p className="mt-0.5 font-mono text-[11px] leading-relaxed text-muted-foreground">
         V {formatAffectNum(point.v)} · A {formatAffectNum(point.a)} · D {formatAffectNum(point.d)}
       </p>
       {roundDelta ? (
         <p className="mt-0.5 flex flex-wrap gap-x-2 gap-y-0">
-          <span className="text-[10px] text-muted-foreground">本轮</span>
+          <span className="text-[10px] text-muted-foreground">相对上轮</span>
           <DeltaCell label="V" value={roundDelta.v} subdued={subdued} />
           <DeltaCell label="A" value={roundDelta.a} subdued={subdued} />
           <DeltaCell label="D" value={roundDelta.d} subdued={subdued} />
         </p>
+      ) : footnote ? (
+        <p className="mt-0.5 text-[10px] text-muted-foreground">{footnote}</p>
       ) : (
-        <p className="mt-0.5 text-[10px] text-muted-foreground">本轮 · 首轮或无对比</p>
+        <p className="mt-0.5 text-[10px] text-muted-foreground">相对上轮 · 首轮或无对比</p>
       )}
     </div>
   );
-}
-
-export function userRoundDelta(
-  current: VadPoint,
-  prev: VadPoint | null | undefined,
-): VadPoint | null {
-  if (!prev) return null;
-  return computeVadDelta(current, prev);
 }
 
 export function agentRoundDelta(
