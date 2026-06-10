@@ -10,6 +10,7 @@ WebSocket 传输层实现
 """
 
 import asyncio
+import time
 from typing import Dict, Optional, Callable, Any
 from yard.observability.logging import LogModule, get_logger
 
@@ -28,6 +29,8 @@ class WebSocketTransport(TransportBase):
         
         self._connections: Dict[str, WebSocket] = {}  # client_id -> websocket
         self._is_running = False
+        self._missing_client_warn_at: Dict[str, float] = {}
+        self._missing_client_warn_interval = 60.0
         
         self._on_message_callback: Optional[Callable[[str, Any], None]] = None
         # 回调签名：client_id, is_reconnect
@@ -137,6 +140,7 @@ class WebSocketTransport(TransportBase):
         _log.debug(f"客户端连接: client_id={client_id}, is_reconnect={is_reconnect}")
         
         self._connections[client_id] = websocket
+        self._missing_client_warn_at.pop(client_id, None)
         
         if self._on_connect_callback:
             try:
@@ -210,10 +214,19 @@ class WebSocketTransport(TransportBase):
         else:
             await websocket.send_text(str(data))
     
+    def _log_missing_client(self, client_id: str) -> None:
+        now = time.monotonic()
+        last_warn = self._missing_client_warn_at.get(client_id)
+        if last_warn is None or now - last_warn >= self._missing_client_warn_interval:
+            self._missing_client_warn_at[client_id] = now
+            _log.warning(f"客户端 {client_id} 不存在，无法发送消息")
+        else:
+            _log.debug(f"客户端 {client_id} 不存在，无法发送消息")
+
     async def send_to_client(self, client_id: str, data: Any) -> bool:
         websocket = self._connections.get(client_id)
         if not websocket:
-            _log.warning(f"客户端 {client_id} 不存在，无法发送消息")
+            self._log_missing_client(client_id)
             return False
         
         try:

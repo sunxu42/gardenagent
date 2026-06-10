@@ -176,7 +176,15 @@ class Handler:
             interrupted=payload.get("interrupted", False),
         )
 
+    def _can_send_to_client(self) -> bool:
+        return (
+            self._disconnected_at is None
+            and self.transport.is_client_connected(self.client_id)
+        )
+
     async def _ws_send_log(self, raw: str) -> None:
+        if not self._can_send_to_client():
+            return
         await self.transport.send_to_client(self.client_id, raw)
 
     @contextmanager
@@ -708,6 +716,8 @@ class Handler:
     async def send_json_to_client(self, data: Dict[str, Any]):
         if not isinstance(data, dict):
             raise ValueError("data 必须是字典类型")
+        if not self._can_send_to_client():
+            return
         await self.transport.send_to_client(self.client_id, json.dumps(data))
 
     async def tts_result_handler(self, result: Dict[str, Any]):
@@ -775,6 +785,8 @@ class Handler:
 
     async def send_audio_to_client(self, audio_data: bytes, end_of_stream: bool):
         """转发音频到客户端（带流控）"""
+        if not self._can_send_to_client():
+            return
         try:
             # 将 PCM 编码为 Opus 流
             opus_packets = self.opus_utils.pcm_to_opus_stream(audio_data, end_of_stream)
