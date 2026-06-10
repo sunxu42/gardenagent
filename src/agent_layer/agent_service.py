@@ -92,6 +92,23 @@ class AgentService:
         if agent is not None and hasattr(agent, "set_appraisal_snapshot_listener"):
             agent.set_appraisal_snapshot_listener(listener)
 
+    def clear_affect_locks(self) -> None:
+        agent = getattr(self, "agent", None)
+        if agent is not None and hasattr(agent, "clear_affect_locks"):
+            agent.clear_affect_locks()
+
+    def set_affect_lock(self, dimension: str, ref_id: str | None) -> dict | None:
+        agent = getattr(self, "agent", None)
+        if agent is not None and hasattr(agent, "set_affect_lock"):
+            return agent.set_affect_lock(dimension, ref_id)
+        return None
+
+    def affect_lock_state(self) -> dict | None:
+        agent = getattr(self, "agent", None)
+        if agent is not None and hasattr(agent, "affect_lock_state"):
+            return agent.affect_lock_state()
+        return None
+
     def _validate_agent(self) -> None:
         if not hasattr(self.agent, "agent_output_queue"):
             raise RuntimeError("agent_output_queue not found on agent")

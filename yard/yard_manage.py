@@ -377,6 +377,24 @@ class YardManager:
         if svc is not None and hasattr(svc, "set_appraisal_snapshot_listener"):
             svc.set_appraisal_snapshot_listener(listener)
 
+    def clear_affect_locks(self) -> None:
+        svc = getattr(self, "emotion_service", None)
+        if svc is not None and hasattr(svc, "clear_affect_locks"):
+            svc.clear_affect_locks()
+
+    def set_affect_lock(self, dimension: str, ref_id: str | None) -> dict | None:
+        svc = getattr(self, "emotion_service", None)
+        if svc is None:
+            return None
+        svc.set_affect_lock(dimension, ref_id)
+        return svc.lock_state()
+
+    def affect_lock_state(self) -> dict | None:
+        svc = getattr(self, "emotion_service", None)
+        if svc is None:
+            return None
+        return svc.lock_state()
+
     async def aclose(self) -> None:
         """Stop background worker and heartbeat task."""
         local_scheduler = getattr(self, "local_scheduler", None)

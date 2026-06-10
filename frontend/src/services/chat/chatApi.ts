@@ -1,5 +1,6 @@
 import { waitForOpusModule } from "./opus/loadOpus";
 import {
+  buildAffectLock,
   buildHello,
   buildUserText,
   buildVoiceSession,
@@ -14,6 +15,7 @@ export interface ChatApi {
   connect: () => void;
   disconnect: () => void;
   sendText: (text: string) => void;
+  sendAffectLock: (dimension: "relationship" | "agent_vad", refId: string | null) => void;
   syncVoiceType: () => void;
   startVoice: () => Promise<void>;
   stopVoice: () => Promise<void>;
@@ -61,7 +63,25 @@ export function createChatApi(options: CreateChatApiOptions): ChatApi {
           currentVad: wsEvent.currentVad ?? null,
           relationship: wsEvent.relationship ?? null,
           emotionProfile: wsEvent.emotionProfile ?? null,
+          affectLock: wsEvent.affectLock,
         },
+      });
+    }
+    if (wsEvent.type === "AFFECT_LOCK_STATE") {
+      options.onAction({
+        type: "affectLockState",
+        payload: {
+          relationship: wsEvent.relationship,
+          agentVad: wsEvent.agentVad,
+          relationshipSnapshot: wsEvent.relationshipSnapshot ?? null,
+          currentVad: wsEvent.currentVad ?? null,
+        },
+      });
+    }
+    if (wsEvent.type === "AFFECT_LOCK_ERROR") {
+      options.onAction({
+        type: "affectLockError",
+        payload: { dimension: wsEvent.dimension, message: wsEvent.message },
       });
     }
     if (wsEvent.type === "USER_TRANSCRIPT") {
@@ -188,6 +208,17 @@ export function createChatApi(options: CreateChatApiOptions): ChatApi {
     socket.send(JSON.stringify(buildUserText(text)));
   };
 
+  const sendAffectLock = (dimension: "relationship" | "agent_vad", refId: string | null) => {
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      options.onAction({
+        type: "connectionChanged",
+        payload: { status: "offline" },
+      });
+      return;
+    }
+    socket.send(JSON.stringify(buildAffectLock(dimension, refId)));
+  };
+
   const sendVoiceSession = (state: "start" | "stop") => {
     if (!socket || socket.readyState !== WebSocket.OPEN) {
       return;
@@ -249,5 +280,5 @@ export function createChatApi(options: CreateChatApiOptions): ChatApi {
     options.onAction({ type: "voiceCallEnded" });
   };
 
-  return { connect, disconnect, sendText, syncVoiceType, startVoice, stopVoice };
+  return { connect, disconnect, sendText, sendAffectLock, syncVoiceType, startVoice, stopVoice };
 }

@@ -41,6 +41,8 @@ export function GuideAnchorSection({
 interface GuideModuleCardProps {
   label: string;
   detail: string;
+  /** 补充说明（如衰减公式），显示在 detail 下方 */
+  note?: string;
   accent: "violet" | "sky" | "amber" | "slate";
   icon?: ReactNode;
 }
@@ -59,7 +61,7 @@ const MODULE_DOT: Record<GuideModuleCardProps["accent"], string> = {
   slate: "bg-muted-foreground/50",
 };
 
-export function GuideModuleCard({ label, detail, accent, icon }: GuideModuleCardProps) {
+export function GuideModuleCard({ label, detail, note, accent, icon }: GuideModuleCardProps) {
   return (
     <div className={`rounded-md px-3 py-2.5 ${MODULE_TINT[accent]}`}>
       <p className="flex items-center gap-2 text-xs font-medium text-foreground">
@@ -71,6 +73,12 @@ export function GuideModuleCard({ label, detail, accent, icon }: GuideModuleCard
         {label}
       </p>
       <p className="mt-1 pl-3.5 text-[11px] leading-relaxed text-muted-foreground">{detail}</p>
+      {note ? (
+        <p className="mt-1.5 pl-3.5 text-[10px] leading-relaxed text-muted-foreground/90 whitespace-pre-line">
+          {note}
+        </p>
+      ) : null}
     </div>
   );
 }
+

@@ -22,3 +22,12 @@ USER_AFFECT_NEUTRAL_D = 0.0
 EMOTION_ALLOWED: frozenset[str] = frozenset({
     "happy", "sad", "angry", "fear", "hate", "surprised", "neutral",
 })
+
+# 关系阶段代表点（与 derive_stage 一致，供测试锁定）
+RELATIONSHIP_STAGE_PRESETS: dict[str, tuple[float, float]] = {
+    "stranger": (0.20, 0.20),
+    "acquaintance": (0.45, 0.45),
+    "familiar": (0.50, 0.65),
+    "trusted": (0.75, 0.50),
+    "bonded": (0.80, 0.80),
+}

@@ -34,3 +34,49 @@ export function smoothScrollContainer(
 
   requestAnimationFrame(tick);
 }
+
+export function captureFlipPositions(container: HTMLElement): Map<string, DOMRect> {
+  const map = new Map<string, DOMRect>();
+  container.querySelectorAll<HTMLElement>("[data-flip-id]").forEach((el) => {
+    const id = el.dataset.flipId;
+    if (id) {
+      map.set(id, el.getBoundingClientRect());
+    }
+  });
+  return map;
+}
+
+export function runFlipAnimation(
+  container: HTMLElement,
+  firstPositions: Map<string, DOMRect>,
+  durationMs: number = AFFECT_GUIDE_MOTION_MS,
+): void {
+  if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    return;
+  }
+
+  container.querySelectorAll<HTMLElement>("[data-flip-id]").forEach((el) => {
+    const id = el.dataset.flipId;
+    if (!id) {
+      return;
+    }
+    const first = firstPositions.get(id);
+    if (!first) {
+      return;
+    }
+    const last = el.getBoundingClientRect();
+    const dy = first.top - last.top;
+    const dx = first.left - last.left;
+    if (Math.abs(dy) < 0.5 && Math.abs(dx) < 0.5) {
+      return;
+    }
+
+    el.animate(
+      [
+        { transform: `translate(${dx}px, ${dy}px)` },
+        { transform: "translate(0, 0)" },
+      ],
+      { duration: durationMs, easing: AFFECT_GUIDE_MOTION_EASE_CSS },
+    );
+  });
+}

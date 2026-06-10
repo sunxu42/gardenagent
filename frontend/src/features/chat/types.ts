@@ -60,6 +60,21 @@ export interface EmotionProfile {
   relationship: { perTurnAlpha: number; timeTauSec: number };
 }
 
+export interface AffectLockSlice {
+  locked: boolean;
+  refId?: string | null;
+}
+
+export interface AffectLockState {
+  relationship: AffectLockSlice;
+  agentVad: AffectLockSlice;
+}
+
+export const EMPTY_AFFECT_LOCK: AffectLockState = {
+  relationship: { locked: false },
+  agentVad: { locked: false },
+};
+
 export interface StrategyTagsSnapshot {
   mode: string;
   voiceStyle: string;
@@ -112,6 +127,7 @@ export interface ChatState {
   baselineVad: VadPoint | null;
   emotionProfile: EmotionProfile | null;
   currentRelationship: RelationshipSnapshot | null;
+  affectLock: AffectLockState;
   logEntries: LogEntry[];
 }
 
@@ -146,8 +162,14 @@ export type ChatAction =
         currentVad?: VadPoint | null;
         relationship?: RelationshipSnapshot | null;
         emotionProfile?: EmotionProfile | null;
+        affectLock?: AffectLockState;
       };
     }
+  | { type: "affectLockState"; payload: AffectLockState & {
+      relationshipSnapshot?: RelationshipSnapshot | null;
+      currentVad?: VadPoint | null;
+    } }
+  | { type: "affectLockError"; payload: { dimension: string; message: string } }
   | { type: "settingsChanged"; payload: { settings: ChatSettings } }
   | {
       type: "affectTurnAppraised";

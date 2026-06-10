@@ -1,6 +1,6 @@
 import { Code2, ListOrdered } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
-import type { AffectTurnRecord, EmotionProfile, RelationshipSnapshot, VadPoint } from "../types";
+import type { AffectLockState, AffectTurnRecord, EmotionProfile, RelationshipSnapshot, VadPoint } from "../types";
 import { AffectGuidePanel } from "./AffectGuidePanel";
 import { AffectTurnCard } from "./AffectTurnCard";
 
@@ -12,6 +12,8 @@ export interface AffectDebugPanelProps {
   baselineVad?: VadPoint | null;
   emotionProfile?: EmotionProfile | null;
   currentRelationship?: RelationshipSnapshot | null;
+  affectLock: AffectLockState;
+  onToggleAffectLock: (dimension: "relationship" | "agent_vad", refId: string) => void;
 }
 
 function readDevMode(): boolean {
@@ -28,6 +30,8 @@ export function AffectDebugPanel({
   baselineVad,
   emotionProfile,
   currentRelationship,
+  affectLock,
+  onToggleAffectLock,
 }: AffectDebugPanelProps) {
   const [devMode, setDevMode] = useState(readDevMode);
   const [selectedTurnId, setSelectedTurnId] = useState<string | null>(null);
@@ -120,6 +124,8 @@ export function AffectDebugPanel({
           currentAgentVad={currentAgentVad}
           emotionProfile={emotionProfile}
           agentBaselineVad={baselineVad}
+          affectLock={affectLock}
+          onToggleAffectLock={onToggleAffectLock}
         />
       </div>
     </div>

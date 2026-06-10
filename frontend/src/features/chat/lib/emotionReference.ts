@@ -1,6 +1,6 @@
-import type { VadPoint } from "../types";
-import { agentMoodLabel, relationshipStageLabel } from "./affectPresentation";
+import type { AffectLockState, VadPoint } from "../types";
 import { formatVadTriple } from "./affectFormat";
+import { agentMoodLabel, moodToneClasses, relationshipStageLabel, type MoodTone } from "./affectPresentation";
 
 /** 与 yard/emotion/core/vad.py EMOTION_PROTOTYPES 对齐 */
 export interface EmotionPrototype {
@@ -9,6 +9,8 @@ export interface EmotionPrototype {
   /** 助手语气 / TTS 侧的典型表达 */
   expression: string;
 }
+
+export const DEFAULT_AGENT_EMOTION_ID = "neutral";
 
 export const EMOTION_PROTOTYPES: EmotionPrototype[] = [
   {
@@ -57,6 +59,15 @@ export interface RelationshipStageRef {
   expression: string;
 }
 
+/** 与 yard/emotion/constants.py RELATIONSHIP_STAGE_PRESETS 对齐 */
+export const RELATIONSHIP_STAGE_PRESETS: Record<string, { trust: number; warmth: number }> = {
+  stranger: { trust: 0.2, warmth: 0.2 },
+  acquaintance: { trust: 0.45, warmth: 0.45 },
+  familiar: { trust: 0.5, warmth: 0.65 },
+  trusted: { trust: 0.75, warmth: 0.5 },
+  bonded: { trust: 0.8, warmth: 0.8 },
+};
+
 export const RELATIONSHIP_STAGE_REFS: RelationshipStageRef[] = [
   {
     id: "bonded",
@@ -85,10 +96,71 @@ export const RELATIONSHIP_STAGE_REFS: RelationshipStageRef[] = [
   {
     id: "acquaintance",
     label: relationshipStageLabel("acquaintance"),
-    criteria: "其余默认区间",
+    criteria: "非陌生，且信任 < 70%、亲近 < 60%",
     expression: "友好但中性，逐步建立熟悉感。",
   },
 ];
+
+/** 阶段锁定/展示用代表点，与 yard/emotion/constants.py RELATIONSHIP_STAGE_PRESETS 一致 */
+export function formatRelationshipPreset(id: string): string {
+  const preset = RELATIONSHIP_STAGE_PRESETS[id];
+  if (!preset) {
+    return "—";
+  }
+  const trust = Math.round(preset.trust * 100);
+  const warmth = Math.round(preset.warmth * 100);
+  return `信任 ${trust}% · 亲近 ${warmth}%`;
+}
+
+export function emotionPrototypeVad(id: string): VadPoint | null {
+  return EMOTION_PROTOTYPES.find((emo) => emo.id === id)?.vad ?? null;
+}
+
+export function inferEmotionIdFromVad(vad: VadPoint | null | undefined): string | null {
+  if (!vad) {
+    return null;
+  }
+  let bestId: string | null = null;
+  let bestDist = Number.POSITIVE_INFINITY;
+  for (const proto of EMOTION_PROTOTYPES) {
+    const dv = vad.v - proto.vad.v;
+    const da = vad.a - proto.vad.a;
+    const dd = vad.d - proto.vad.d;
+    const dist = dv * dv + da * da + dd * dd;
+    if (dist < bestDist) {
+      bestDist = dist;
+      bestId = proto.id;
+    }
+  }
+  return bestId;
+}
+
+export function resolveLiveAgentEmotionId(
+  agentEmotion: string | null | undefined,
+  vad: VadPoint | null | undefined,
+): string {
+  if (agentEmotion) {
+    return agentEmotion;
+  }
+  return inferEmotionIdFromVad(vad) ?? DEFAULT_AGENT_EMOTION_ID;
+}
+
+export function resolveDisplayAgentVad(
+  liveVad: VadPoint | null | undefined,
+  displayEmotionId: string | null | undefined,
+  locked: boolean,
+): VadPoint | null {
+  if (locked && displayEmotionId) {
+    return emotionPrototypeVad(displayEmotionId) ?? liveVad ?? null;
+  }
+  if (liveVad) {
+    return liveVad;
+  }
+  if (displayEmotionId) {
+    return emotionPrototypeVad(displayEmotionId);
+  }
+  return emotionPrototypeVad(DEFAULT_AGENT_EMOTION_ID);
+}
 
 export function formatEmotionVad(id: string): string {
   const proto = EMOTION_PROTOTYPES.find((e) => e.id === id);
@@ -98,4 +170,27 @@ export function formatEmotionVad(id: string): string {
 
 export function emotionDisplayLabel(id: string): string {
   return agentMoodLabel(id);
+}
+
+export function emotionMoodTone(id: string): MoodTone {
+  if (id === "happy" || id === "surprised") return "positive";
+  if (id === "sad") return "negative";
+  if (id === "angry" || id === "fear") return "tense";
+  return "neutral";
+}
+
+export function emotionToneDotClass(id: string): string {
+  return moodToneClasses(emotionMoodTone(id)).dot;
+}
+
+export function toggleAffectLockRef(
+  dimension: "relationship" | "agent_vad",
+  refId: string,
+  current: AffectLockState,
+): string | null {
+  const slice = dimension === "relationship" ? current.relationship : current.agentVad;
+  if (slice.locked && slice.refId === refId) {
+    return null;
+  }
+  return refId;
 }

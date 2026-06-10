@@ -5,6 +5,7 @@ import { percent01, relationshipStageLabel } from "../../lib/affectPresentation"
 interface RelationshipMetersProps {
   relationship: RelationshipSnapshot | null;
   compact?: boolean;
+  hideStage?: boolean;
 }
 
 function MeterBar({
@@ -45,7 +46,7 @@ function MeterBar({
   );
 }
 
-export function RelationshipMeters({ relationship, compact }: RelationshipMetersProps) {
+export function RelationshipMeters({ relationship, compact, hideStage }: RelationshipMetersProps) {
   if (!relationship) {
     return (
       <p className="text-xs text-muted-foreground">暂无关系数据</p>
@@ -54,10 +55,12 @@ export function RelationshipMeters({ relationship, compact }: RelationshipMeters
 
   return (
     <div className={compact ? "space-y-2" : "space-y-3"}>
-      <p className="text-xs font-medium text-foreground">
-        关系阶段：
-        <span className="ml-1 text-primary">{relationshipStageLabel(relationship.stage)}</span>
-      </p>
+      {!hideStage ? (
+        <p className="text-xs font-medium text-foreground">
+          关系阶段：
+          <span className="ml-1 text-primary">{relationshipStageLabel(relationship.stage)}</span>
+        </p>
+      ) : null}
       <MeterBar icon={Shield} label="信任" value={relationship.trust} compact={compact} />
       <MeterBar icon={Heart} label="亲近" value={relationship.warmth} compact={compact} />
     </div>

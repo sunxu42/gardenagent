@@ -7,6 +7,8 @@ import time
 from dataclasses import dataclass
 from typing import Literal
 
+from yard.emotion.constants import RELATIONSHIP_STAGE_PRESETS
+
 RelationshipStage = Literal["stranger", "acquaintance", "familiar", "trusted", "bonded"]
 
 
@@ -46,6 +48,11 @@ class RelationshipState:
             baseline_warmth=float(data.get("baseline_warmth", 0.4)),
             updated_at=float(data.get("updated_at") or time.time()),
         ).clamp()
+
+
+def stage_preset(ref_id: str) -> tuple[float, float] | None:
+    """返回阶段代表 trust/warmth，未知 id 为 None。"""
+    return RELATIONSHIP_STAGE_PRESETS.get(ref_id)
 
 
 def derive_stage(trust: float, warmth: float) -> RelationshipStage:

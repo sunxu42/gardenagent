@@ -13,6 +13,7 @@ import type { ChatSettings, ChatState, ThemeName } from "../features/chat/types"
 import { useChatHistoryPersistence } from "../features/chat/hooks/useChatHistoryPersistence";
 import { useStickToBottomScroll } from "../features/chat/hooks/useStickToBottomScroll";
 import { DEFAULT_TTS_VOICE } from "../features/chat/ttsVoices";
+import { toggleAffectLockRef } from "../features/chat/lib/emotionReference";
 import { createChatApi, type ChatApi } from "../services/chat/chatApi";
 import { getOrCreateUserId, rotateUserId } from "../lib/userId";
 import { clearLocalDataForUser } from "../lib/clearLocalUserData";
@@ -113,6 +114,13 @@ export function ChatApp() {
     return "助手";
   }, [state.messages]);
   const chatApiRef = useRef<ChatApi | null>(null);
+  const handleToggleAffectLock = useCallback(
+    (dimension: "relationship" | "agent_vad", refId: string) => {
+      const nextRef = toggleAffectLockRef(dimension, refId, state.affectLock);
+      chatApiRef.current?.sendAffectLock(dimension, nextRef);
+    },
+    [state.affectLock],
+  );
   const assistantMessageIdRef = useRef<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
@@ -312,6 +320,8 @@ export function ChatApp() {
             baselineVad={state.baselineVad ?? null}
             emotionProfile={state.emotionProfile ?? null}
             currentRelationship={state.currentRelationship ?? null}
+            affectLock={state.affectLock}
+            onToggleAffectLock={handleToggleAffectLock}
             logEntries={state.logEntries}
             onClearLogs={() =>
               dispatch({

@@ -1,7 +1,7 @@
 import { BookOpen } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { smoothScrollContainer } from "../lib/affectGuideMotion";
-import type { AffectTurnRecord, EmotionProfile, RelationshipSnapshot, VadPoint } from "../types";
+import type { AffectLockState, AffectTurnRecord, EmotionProfile, RelationshipSnapshot, VadPoint } from "../types";
 import { AffectBaselineDecayGuide } from "./affect/AffectBaselineDecayGuide";
 import { AffectFlowDiagram } from "./affect/AffectFlowDiagram";
 import { AffectGuideNav } from "./affect/AffectGuideNav";
@@ -16,13 +16,15 @@ interface AffectGuidePanelProps {
   currentAgentVad?: VadPoint | null;
   emotionProfile?: EmotionProfile | null;
   agentBaselineVad?: VadPoint | null;
+  affectLock: AffectLockState;
+  onToggleAffectLock: (dimension: "relationship" | "agent_vad", refId: string) => void;
 }
 
 const GUIDE_SECTIONS = [
   { id: "affect-guide-s1", label: "关系与助手" },
   { id: "affect-guide-s2", label: "Baseline" },
   { id: "affect-guide-s3", label: "全链路" },
-  { id: "affect-guide-s4", label: "概念参考" },
+  { id: "affect-guide-s4", label: "V/A/D" },
 ] as const;
 
 export function AffectGuidePanel({
@@ -32,6 +34,8 @@ export function AffectGuidePanel({
   currentAgentVad,
   emotionProfile,
   agentBaselineVad,
+  affectLock,
+  onToggleAffectLock,
 }: AffectGuidePanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [activeId, setActiveId] = useState<string>(GUIDE_SECTIONS[0].id);
@@ -116,10 +120,13 @@ export function AffectGuidePanel({
               focusedRoundLabel={focusedRoundLabel}
               currentRelationship={currentRelationship}
               currentAgentVad={currentAgentVad}
+              agentBaselineVad={agentBaselineVad}
+              affectLock={affectLock}
+              onToggleAffectLock={onToggleAffectLock}
             />
           </GuideAnchorSection>
 
-          <GuideAnchorSection id="affect-guide-s2" title="助手 Baseline 与衰减" accent="slate">
+          <GuideAnchorSection id="affect-guide-s2" title="Baseline" accent="slate">
             <AffectBaselineDecayGuide
               profile={emotionProfile}
               agentBaselineFallback={agentBaselineVad}
@@ -130,7 +137,7 @@ export function AffectGuidePanel({
             <AffectFlowDiagram />
           </GuideAnchorSection>
 
-          <GuideAnchorSection id="affect-guide-s4" title="概念参考" accent="violet">
+          <GuideAnchorSection id="affect-guide-s4" title="V/A/D 维度" accent="violet">
             <AffectReferenceGuide />
           </GuideAnchorSection>
         </div>

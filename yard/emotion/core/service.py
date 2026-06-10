@@ -10,6 +10,12 @@ from yard.observability.logging import LogModule, get_logger
 
 _log = get_logger(LogModule.EMOTION)
 
+from yard.emotion.constants import RELATIONSHIP_STAGE_PRESETS
+from yard.emotion.core.affect_lock import (
+    AgentVadLock,
+    RelationshipLock,
+    build_lock_state_payload,
+)
 from yard.emotion.core.appraisal_utils import sanitize_relationship_deltas
 from yard.emotion.core.policy import ResponsePolicy, TurnAppraisalV2
 from yard.emotion.core.relationship import (
@@ -20,7 +26,7 @@ from yard.emotion.core.relationship import (
 )
 from yard.emotion.core.store import EmotionStore
 from yard.emotion.core.update import apply_appraisal, decay_over_time
-from yard.emotion.core.vad import VAD, project
+from yard.emotion.core.vad import EMOTION_PROTOTYPES, VAD, project
 from yard.emotion.synthesis.mood_synthesizer import SynthesisResult, synthesize_response
 
 
@@ -64,6 +70,8 @@ class EmotionService:
         self._appraisal_snapshots: OrderedDict[str, dict] = OrderedDict()
         self._appraisal_snapshot_listener: Callable[[str], None] | None = None
         self._turn_snapshot_cache: tuple[str, int] | None = None
+        self._agent_vad_lock: AgentVadLock | None = None
+        self._relationship_lock: RelationshipLock | None = None
 
         rel_base = (relationship_baseline or RelationshipState()).clamp()
         self._relationship_baseline = rel_base
@@ -106,8 +114,58 @@ class EmotionService:
         self._appraisal_snapshots.clear()
         self._turn_snapshot_cache = None
 
+    def clear_affect_locks(self) -> None:
+        """清除会话级锁定（新连接 / hello 时调用）。"""
+        self._agent_vad_lock = None
+        self._relationship_lock = None
+
+    def set_affect_lock(self, dimension: str, ref_id: str | None) -> None:
+        """锁定或解锁关系 / 助手 VAD。ref_id 为 None 时解锁该维。"""
+        if dimension == "agent_vad":
+            if ref_id is None:
+                self._agent_vad_lock = None
+                return
+            proto = EMOTION_PROTOTYPES.get(ref_id)
+            if proto is None:
+                raise ValueError(f"unknown agent_vad ref_id: {ref_id}")
+            locked = proto.clamp()
+            self._agent_vad_lock = AgentVadLock(ref_id=ref_id, vad=locked)
+            self._vad = locked
+            self._updated_at = self._clock()
+            self.last_render = project(self._vad, self._allowed)
+            self._turn_snapshot_cache = None
+            self._persist()
+            return
+        if dimension == "relationship":
+            if ref_id is None:
+                self._relationship_lock = None
+                return
+            preset = RELATIONSHIP_STAGE_PRESETS.get(ref_id)
+            if preset is None:
+                raise ValueError(f"unknown relationship ref_id: {ref_id}")
+            trust, warmth = preset
+            self._relationship_lock = RelationshipLock(ref_id=ref_id, trust=trust, warmth=warmth)
+            now = self._clock()
+            self._relationship = RelationshipState(
+                trust=trust,
+                warmth=warmth,
+                baseline_trust=self._relationship.baseline_trust,
+                baseline_warmth=self._relationship.baseline_warmth,
+                updated_at=now,
+            )
+            self._persist()
+            return
+        raise ValueError(f"unknown dimension: {dimension}")
+
+    def lock_state(self) -> dict:
+        return build_lock_state_payload(
+            agent_lock=self._agent_vad_lock,
+            rel_lock=self._relationship_lock,
+        )
+
     def reset_to_defaults(self) -> VAD:
         """将助手 VAD 与关系重置为人设 baseline，并写回 EmotionStore。"""
+        self.clear_affect_locks()
         now = self._clock()
         rel_base = self._relationship_baseline
         self._vad = self._baseline.clamp()
@@ -125,6 +183,8 @@ class EmotionService:
         return self._vad
 
     def _decay_to_now(self) -> None:
+        if self._agent_vad_lock is not None:
+            return
         now = self._clock()
         dt = now - self._updated_at
         if dt > 0:
@@ -132,6 +192,8 @@ class EmotionService:
             self._updated_at = now
 
     def _decay_relationship_to_now(self) -> None:
+        if self._relationship_lock is not None:
+            return
         now = self._clock()
         dt = now - self._relationship.updated_at
         if dt > 0 and self._rel_tau > 0:
@@ -181,6 +243,8 @@ class EmotionService:
         warmth_delta: float,
         weight: float,
     ) -> RelationshipState:
+        if self._relationship_lock is not None:
+            return self._relationship.clamp()
         self._decay_relationship_to_now()
         self._relationship = apply_relationship_delta(
             self._relationship,
@@ -193,6 +257,8 @@ class EmotionService:
         return self._relationship
 
     def apply(self, target: VAD, *, weight: float = 1.0, source: str = "llm") -> VAD:
+        if self._agent_vad_lock is not None:
+            return self._vad
         self._decay_to_now()
         self._vad = apply_appraisal(
             self._vad, target.clamp(), self._baseline,

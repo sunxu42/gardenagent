@@ -1,10 +1,13 @@
 import type {
+  AffectLockSlice,
+  AffectLockState,
   ChatAction,
   EmotionProfile,
   RelationshipSnapshot,
   ResponsePolicySnapshot,
   StrategyTagsSnapshot,
 } from "../../features/chat/types";
+import { EMPTY_AFFECT_LOCK } from "../../features/chat/types";
 import type { LogEntry, LogLevel, LogModule } from "../../features/logs/logTypes";
 import { LOG_LEVELS, LOG_MODULES } from "../../features/logs/logTypes";
 import { parseEmotionProfile } from "../../features/chat/lib/emotionProfile";
@@ -44,6 +47,8 @@ export interface AssistantServerMessage {
   module?: unknown;
   message?: unknown;
   extra?: unknown;
+  dimension?: unknown;
+  agent_vad?: unknown;
 }
 
 export interface HelloOptions {
@@ -71,6 +76,10 @@ export function buildUserText(text: string) {
     role: "user",
     content: [{ type: "text", text }],
   };
+}
+
+export function buildAffectLock(dimension: "relationship" | "agent_vad", refId: string | null) {
+  return { type: "affect_lock", dimension, ref_id: refId };
 }
 
 export function buildVoiceSession(state: "start" | "stop", voiceType?: string) {
@@ -101,7 +110,16 @@ export type WsMappedEvent =
       currentVad?: { v: number; a: number; d: number } | null;
       relationship?: RelationshipSnapshot | null;
       emotionProfile?: EmotionProfile | null;
+      affectLock?: AffectLockState;
     }
+  | {
+      type: "AFFECT_LOCK_STATE";
+      relationship: AffectLockSlice;
+      agentVad: AffectLockSlice;
+      relationshipSnapshot?: RelationshipSnapshot | null;
+      currentVad?: { v: number; a: number; d: number } | null;
+    }
+  | { type: "AFFECT_LOCK_ERROR"; dimension: string; message: string }
   | {
       type: "AFFECT_TURN_APPRAISED";
       turnId: string;
@@ -187,6 +205,48 @@ function readResponsePolicy(raw: unknown): ResponsePolicySnapshot | undefined {
     stance: typeof policy.stance === "string" ? policy.stance : "balanced",
     repairAction: typeof policy.repair_action === "string" ? policy.repair_action : "none",
     directiveness: readOptionalNumber(policy.directiveness) ?? 0.5,
+  };
+}
+
+function readAffectLockSlice(raw: unknown): AffectLockSlice {
+  if (!raw || typeof raw !== "object") {
+    return { locked: false };
+  }
+  const slice = raw as Record<string, unknown>;
+  return {
+    locked: slice.locked === true,
+    refId: typeof slice.ref_id === "string" ? slice.ref_id : null,
+  };
+}
+
+export function parseAffectLockState(raw: unknown): AffectLockState {
+  if (!raw || typeof raw !== "object") {
+    return EMPTY_AFFECT_LOCK;
+  }
+  const state = raw as Record<string, unknown>;
+  return {
+    relationship: readAffectLockSlice(state.relationship),
+    agentVad: readAffectLockSlice(state.agent_vad),
+  };
+}
+
+function lockSliceToRelationship(raw: unknown): RelationshipSnapshot | null {
+  if (!raw || typeof raw !== "object") {
+    return null;
+  }
+  const slice = raw as Record<string, unknown>;
+  if (slice.locked !== true) {
+    return null;
+  }
+  const trust = Number(slice.trust);
+  const warmth = Number(slice.warmth);
+  if (!Number.isFinite(trust) || !Number.isFinite(warmth)) {
+    return null;
+  }
+  return {
+    trust,
+    warmth,
+    stage: typeof slice.stage === "string" ? slice.stage : "unknown",
   };
 }
 
@@ -347,6 +407,30 @@ export function mapServerMessage(msg: AssistantServerMessage): WsMappedEvent {
     };
   }
 
+  if (msg?.type === "affect_lock_state") {
+    const lockState = parseAffectLockState(msg);
+    const agentVadRaw = msg.agent_vad;
+    const currentVad =
+      agentVadRaw && typeof agentVadRaw === "object" && (agentVadRaw as Record<string, unknown>).locked === true
+        ? readVadPoint((agentVadRaw as Record<string, unknown>).vad)
+        : null;
+    return {
+      type: "AFFECT_LOCK_STATE",
+      relationship: lockState.relationship,
+      agentVad: lockState.agentVad,
+      relationshipSnapshot: lockSliceToRelationship(msg.relationship),
+      currentVad,
+    };
+  }
+
+  if (msg?.type === "affect_lock_error") {
+    return {
+      type: "AFFECT_LOCK_ERROR",
+      dimension: typeof msg.dimension === "string" ? msg.dimension : "",
+      message: typeof msg.message === "string" ? msg.message : "锁定失败",
+    };
+  }
+
   if (msg?.type === "vad_turn_evaluated") {
     const turnId = typeof msg.turn_id === "string" ? msg.turn_id.trim() : "";
     const userText = typeof msg.user_text === "string" ? msg.user_text : "";
@@ -409,6 +493,7 @@ export function mapServerMessage(msg: AssistantServerMessage): WsMappedEvent {
     const currentVad = readVadPoint(emotion?.current_vad ?? null);
     const relationship = readRelationship(emotion?.relationship) ?? null;
     const emotionProfile = parseEmotionProfile(emotion?.profile) ?? null;
+    const affectLock = parseAffectLockState(emotion?.affect_lock);
     return {
       type: "HELLO",
       sessionId: msg.session_id,
@@ -419,6 +504,7 @@ export function mapServerMessage(msg: AssistantServerMessage): WsMappedEvent {
       currentVad,
       relationship,
       emotionProfile,
+      affectLock,
     };
   }
 

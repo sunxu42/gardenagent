@@ -330,6 +330,8 @@ class Handler:
 
             if msg_type == 'voice_session':
                 await self.handle_voice_session(data)
+            elif msg_type == 'affect_lock':
+                await self.handle_affect_lock(data)
             elif role == 'hello':
                 await self.handle_hello(data)
             elif role == 'user':
@@ -361,10 +363,38 @@ class Handler:
         else:
             self._log.warning(f"未知 voice_session state: {state!r}")
 
+    async def handle_affect_lock(self, data: Dict[str, Any]) -> None:
+        dimension = str(data.get("dimension") or "").strip()
+        ref_id = data.get("ref_id")
+        if ref_id is not None and not isinstance(ref_id, str):
+            ref_id = str(ref_id)
+        if not self.agent_service:
+            await self.send_json_to_client({
+                "type": "affect_lock_error",
+                "dimension": dimension,
+                "message": "emotion service unavailable",
+            })
+            return
+        try:
+            state = self.agent_service.set_affect_lock(dimension, ref_id)
+        except ValueError as e:
+            await self.send_json_to_client({
+                "type": "affect_lock_error",
+                "dimension": dimension,
+                "message": str(e),
+            })
+            return
+        payload: Dict[str, Any] = {"type": "affect_lock_state"}
+        if isinstance(state, dict):
+            payload.update(state)
+        await self.send_json_to_client(payload)
+
     async def handle_hello(self, data: Dict[str, Any]):
         self._emitted_appraised_turn_ids.clear()
         self._emitted_settled_turn_ids.clear()
         self._pending_settle.clear()
+        if self.agent_service:
+            self.agent_service.clear_affect_locks()
         incoming_voice = data.get("voice_type")
         if isinstance(incoming_voice, str) and incoming_voice.strip():
             self.voice_type_override = incoming_voice.strip()
@@ -408,6 +438,11 @@ class Handler:
                     self.agent_service.emotion_ui_profile()
                     if self.agent_service
                     else None
+                ),
+                "affect_lock": (
+                    self.agent_service.affect_lock_state()
+                    if self.agent_service
+                    else {"relationship": {"locked": False}, "agent_vad": {"locked": False}}
                 ),
             },
             "session_id": self.session_id

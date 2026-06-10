@@ -1,4 +1,5 @@
 import type { AffectTurnRecord, ChatAction, ChatMessage, ChatState } from "../types";
+import { EMPTY_AFFECT_LOCK } from "../types";
 import { baseAgentVadForDelta, computeVadDelta, upsertAffectRecord } from "../lib/affectMerge";
 import { buildLogsClearedEntry } from "../../logs/logUtils";
 import { DEFAULT_TTS_VOICE } from "../ttsVoices";
@@ -17,6 +18,7 @@ export const initialChatState: ChatState = {
   baselineVad: null,
   emotionProfile: null,
   currentRelationship: null,
+  affectLock: EMPTY_AFFECT_LOCK,
   logEntries: [],
   settings: {
     voiceEnabled: true,
@@ -225,7 +227,21 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         emotionProfile: action.payload.emotionProfile ?? state.emotionProfile,
         currentAgentVad: action.payload.currentVad ?? state.currentAgentVad,
         currentRelationship: action.payload.relationship ?? state.currentRelationship,
+        affectLock: action.payload.affectLock ?? EMPTY_AFFECT_LOCK,
       };
+    case "affectLockState":
+      return {
+        ...state,
+        affectLock: {
+          relationship: action.payload.relationship,
+          agentVad: action.payload.agentVad,
+        },
+        currentRelationship:
+          action.payload.relationshipSnapshot ?? state.currentRelationship,
+        currentAgentVad: action.payload.currentVad ?? state.currentAgentVad,
+      };
+    case "affectLockError":
+      return state;
     case "affectTurnAppraised": {
       const { turnId, timestamp } = action.payload;
       const existing = state.affectHistory.find((item) => item.turnId === turnId);

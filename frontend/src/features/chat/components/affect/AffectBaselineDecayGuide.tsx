@@ -19,13 +19,15 @@ export function AffectBaselineDecayGuide({
 }: AffectBaselineDecayGuideProps) {
   const p = resolveEmotionProfile(profile, agentBaselineFallback);
   const { trust, warmth } = p.relationshipBaseline;
-  const agentTau = formatTauLabel(p.agentVad.timeTauSec);
-  const relTau = formatTauLabel(p.relationship.timeTauSec);
+  const { perTurnAlpha: agentAlpha, perTurnBeta: agentBeta, timeTauSec: agentTauSec } = p.agentVad;
+  const { perTurnAlpha: relAlpha, timeTauSec: relTauSec } = p.relationship;
+  const agentTau = formatTauLabel(agentTauSec);
+  const relTau = formatTauLabel(relTauSec);
 
   return (
     <div className="space-y-3">
       <p className="text-[11px] leading-relaxed text-muted-foreground">
-        仅助手 VAD 与关系有 baseline 并随闲置回落；用户情绪每轮重评，无 baseline。
+        助手 VAD 与关系持久化并各有 baseline：每轮对话走 appraisal 更新，长时间无对话则按 τ 向 baseline 回落。用户情绪每轮单独评估，不参与此状态机。
       </p>
 
       <div className="flex flex-col items-center rounded-md border border-border/30 bg-muted/20 px-4 py-3.5 text-center">
@@ -56,28 +58,22 @@ export function AffectBaselineDecayGuide({
         <GuideModuleCard
           accent="violet"
           label="用户"
-          detail="每轮评估，不持久化，不衰减。"
+          detail="每轮：appraisal 产出当轮 user VAD，只注入本轮上下文。"
+          note="无持久化、无 baseline、无每轮/闲置衰减。"
         />
         <GuideModuleCard
           accent="sky"
           label="助手 VAD"
-          detail={`靠拢 α=${p.agentVad.perTurnAlpha}，回拉 β=${p.agentVad.perTurnBeta}，τ=${agentTau}`}
+          detail={`每轮：先向 synthesis 目标靠拢（强度 α×权重，α=${agentAlpha}），再向 VAD baseline 回拉（β=${agentBeta}）。`}
+          note={`闲置：V/A/D 各维向 baseline 插值，步长 1−e^(−Δt/τ)，τ=${agentTau}（${agentTauSec}s）。Δt 为距上次更新的秒数。`}
         />
         <GuideModuleCard
           accent="amber"
           label="关系"
-          detail={`Δ 融入 α=${p.relationship.perTurnAlpha}，τ=${relTau}`}
+          detail={`每轮：信任、亲近 += appraisal 的 Δ × α × 权重（α=${relAlpha}）；写入前先结算闲置衰减。`}
+          note={`闲置：信任、亲近向关系 baseline 插值，步长 1−e^(−Δt/τ)，τ=${relTau}（${relTauSec}s）。`}
         />
       </div>
-
-      <details className="rounded-md bg-muted/20 text-[11px] text-muted-foreground">
-        <summary className="cursor-pointer px-3 py-2 transition-colors duration-200 hover:bg-muted/30">
-          衰减公式
-        </summary>
-        <p className="px-3 pb-2 leading-relaxed">
-          1 − e^(−Δt/τ)：Δt 越大越接近 baseline，τ 越大回落越慢。
-        </p>
-      </details>
     </div>
   );
 }
