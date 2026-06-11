@@ -7,7 +7,7 @@ from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 
 from src.eval_api.schemas import EmotionEvalRequest, EmotionTurnResult
-from yard.configs.config import Config
+from yard.configs.settings import Config
 
 
 class _LlmResponse(Protocol):

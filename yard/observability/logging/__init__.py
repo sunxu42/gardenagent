@@ -1,6 +1,6 @@
 """Garden unified logging — public API."""
 
-from yard.observability.logging.config import LoggingConfig
+from yard.observability.logging import config as logging_config
 from yard.observability.logging.context import (
     bind_session,
     get_session_id,
@@ -19,19 +19,23 @@ from yard.observability.logging.sinks.websocket import WebSessionSink
 _web_sink: WebSessionSink | None = None
 
 
-def configure_logging(cfg: LoggingConfig) -> WebSessionSink:
+def configure_logging() -> WebSessionSink:
     global _web_sink
     registry.clear_sinks()
-    if cfg.console:
-        registry.register_sink(ConsoleSink(min_level=LogLevel(cfg.level)))
-    if cfg.file_enabled:
-        path = resolve_log_file(cfg.dir, cfg.file)
-        registry.register_sink(JsonlSink(path, min_level=LogLevel(cfg.file_level)))
+    if logging_config.LOG_CONSOLE_ENABLED:
+        registry.register_sink(
+            ConsoleSink(min_level=LogLevel(logging_config.LOG_LEVEL))
+        )
+    if logging_config.LOG_FILE_ENABLED:
+        path = resolve_log_file(logging_config.LOG_DIR, logging_config.LOG_FILE)
+        registry.register_sink(
+            JsonlSink(path, min_level=LogLevel(logging_config.LOG_FILE_LEVEL))
+        )
     _web_sink = WebSessionSink(
         min_level=LogLevel.INFO,
-        buffer_size=cfg.ui_buffer_size,
+        buffer_size=logging_config.LOG_UI_BUFFER_SIZE,
     )
-    if cfg.websocket:
+    if logging_config.LOG_WEBSOCKET_ENABLED:
         registry.register_sink(_web_sink)
     get_logger(LogModule.SYSTEM).info("GardenLogger configured")
     return _web_sink
@@ -56,7 +60,6 @@ __all__ = [
     "LogLevel",
     "LogModule",
     "LogRecord",
-    "LoggingConfig",
     "bind_session",
     "configure_logging",
     "get_logger",

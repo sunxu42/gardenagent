@@ -1,1 +1,1 @@
-"""可观测性相关辅助（Langfuse / OpenTelemetry 等）。"""
+"""可观测性相关辅助（结构化日志、Langfuse 等）。"""

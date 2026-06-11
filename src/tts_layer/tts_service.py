@@ -30,7 +30,7 @@ from typing import Callable, Dict, Any
 from yard.observability.logging import LogModule, get_logger
 
 _log = get_logger(LogModule.TTS)
-from src.config import TTSConfig
+from src.settings import TTSConfig
 from src.tts_layer.backends.factory import TTSFactory
 
 def clean_markdown(text: str) -> str:

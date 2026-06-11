@@ -64,10 +64,12 @@ async def _clear_checkpoints(user_id: str) -> int:
 
 
 def _clear_mem0(user_id: str) -> dict[str, Any]:
-    from yard.configs.config import load_config
+    from yard.configs.resolve import resolve_yard_runtime
+    from yard.configs.secrets import load_secrets
+    from yard.configs.settings import load_settings
     from yard.memory.mem0.service import Mem0Service
 
-    cfg = load_config()
+    cfg = resolve_yard_runtime(load_settings(), load_secrets())
     if not cfg.memory_enabled:
         return {"skipped": True, "reason": "memory_disabled"}
     service = Mem0Service.create(cfg)

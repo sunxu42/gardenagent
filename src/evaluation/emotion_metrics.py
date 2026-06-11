@@ -2,8 +2,12 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from src.eval_api.schemas import EmotionMetricScore, EmotionTurnResult, EvalSummary
+
+if TYPE_CHECKING:
+    from yard.configs.settings import Config
 
 METRIC_NAMES = [
     "empathy",
@@ -97,10 +101,40 @@ class EmotionSupportEvaluator:
     def __init__(self, metric_runner: MetricRunner | None = None) -> None:
         """Initialize the evaluator with an optional metric runner."""
 
-        self._metric_runner = metric_runner or _run_deepeval_metric
+        self._metric_runner = metric_runner
+
+    @classmethod
+    def from_config(cls, config: Config) -> EmotionSupportEvaluator:
+        """Create an evaluator wired to the resolved eval LLM settings."""
+
+        api_key = config.eval_llm_api_key
+        base_url = config.eval_llm_base_url
+        model_name = config.eval_llm_model
+        if not api_key or not base_url or not model_name:
+            raise ValueError(
+                "eval LLM 配置不完整：请在 .env 配置 EVAL_LLM_API_KEY，"
+                "在 .config.yaml 配置 eval_llm_base_url / eval_llm_model"
+            )
+
+        def runner(metric_name: str, transcript: str) -> EmotionMetricScore:
+            return _run_deepeval_metric(
+                metric_name,
+                transcript,
+                api_key=api_key,
+                base_url=base_url,
+                model_name=model_name,
+            )
+
+        return cls(metric_runner=runner)
 
     def evaluate(self, turns: Sequence[EmotionTurnResult]) -> EmotionEvaluation:
         """Run all emotion-support metrics and aggregate their scores."""
+
+        if self._metric_runner is None:
+            raise RuntimeError(
+                "EmotionSupportEvaluator 未配置 metric_runner；"
+                "请使用 from_config() 或在测试中注入 mock runner"
+            )
 
         transcript = render_transcript(turns)
         scores = [
@@ -110,14 +144,24 @@ class EmotionSupportEvaluator:
         return EmotionEvaluation(scores=scores, summary=summarize_scores(scores))
 
 
-def _run_deepeval_metric(metric_name: str, transcript: str) -> EmotionMetricScore:
+def _run_deepeval_metric(
+    metric_name: str,
+    transcript: str,
+    *,
+    api_key: str,
+    base_url: str,
+    model_name: str,
+) -> EmotionMetricScore:
     from deepeval.metrics import GEval
+    from deepeval.models import GPTModel
     from deepeval.test_case import LLMTestCase, LLMTestCaseParams
 
+    llm = GPTModel(model=model_name, api_key=api_key, base_url=base_url)
     metric = GEval(
         name=metric_name,
         criteria=_metric_criteria(metric_name),
         evaluation_params=[LLMTestCaseParams.ACTUAL_OUTPUT],
+        model=llm,
     )
     test_case = LLMTestCase(input="", actual_output=transcript)
     metric.measure(test_case)

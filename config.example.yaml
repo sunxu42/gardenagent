@@ -1,71 +1,211 @@
-# === src 层配置（对应 UnifiedConfig） ===
+# =============================================================================
+# GardenAI 运行时配置模板（非密钥）
+# 用法：复制为 .config.yaml，按需取消注释并修改
+# 密钥（API Key、Token 等）请写在 .env，勿在此文件配置
+# 加载入口：load_settings()（src/settings.py 与 yard/configs/settings.py 共用同一文件）
+# 组合密钥：resolve_server_runtime() / resolve_yard_runtime()
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# 服务端（src/settings.UnifiedConfig）— WebSocket + HTTP API
+# -----------------------------------------------------------------------------
+
+# 监听地址；0.0.0.0 表示所有网卡（局域网可访问）
 # host: "0.0.0.0"
+
+# HTTP / WebSocket 端口（默认 8005，与 frontend 代理一致）
 # port: 8005
 
+# 客户端输入模态：text=纯文本，audio=麦克风语音（需 ASR 凭证）
 # input_modality: [text, audio]
+
+# 客户端输出模态：text=仅文字回复，audio=带 TTS 语音（需 TTS 凭证）
 # output_modality: [text, audio]
 
+# WebSocket 会话处理器类型：default=完整多模态，text_in_text_out=纯文本
 # handler_type: "default"
+
+# 后端智能体实现标识（当前固定对接 yard 内核）
 # agent_type: "yard_manager"
 
-# logging:
-#   level: INFO
-#   file_level: DEBUG
-#   dir: logs
-#   file: garden.jsonl
-#   rotation: 1 day
-#   retention: 7 days
-#   console: true
-#   websocket: true
-#   file_enabled: true
-#   ui_buffer_size: 500
-
+# 音频采集 / ASR 参数（密钥在 .env，此处只配行为）
 # audio:
-#   sample_rate: 16000
-#   channels: 1
-#   bits_per_sample: 16
-#   asr_provider_name: "DoubaoStreamingASR"
-#   aliyun_HOST: "nls-gateway-cn-shanghai.aliyuncs.com"
+#   sample_rate: 16000                    # 采样率 Hz
+#   channels: 1                             # 声道数
+#   bits_per_sample: 16                     # 位深
+#   asr_provider_name: "DoubaoStreamingASR" # DoubaoStreamingASR | AliyunStreamingASR
+#   aliyun_host: "nls-gateway-cn-shanghai.aliyuncs.com"  # 阿里云 ASR 网关
+#   aliyun_max_sentence_silence: 8000     # 句尾静音判停（毫秒）
 
+# TTS 合成参数（密钥在 .env）
 # tts:
-#   tts_provider_name: "HuoshanTTS"
+#   tts_provider_name: "HuoshanTTS"         # HuoshanTTS | AliyunStreamingTTS
 #   huoshan_tts_ws_url: "wss://openspeech.bytedance.com/api/v3/tts/bidirection"
-#   huoshan_tts_resource_id: "volc.service_type.10029"
-#   aliyun_host: "nls-gateway-cn-beijing.aliyuncs.com"
+#   huoshan_tts_resource_id: "volc.service_type.10029"  # 火山 TTS 资源 ID
+#   aliyun_host: "nls-gateway-cn-beijing.aliyuncs.com"    # 阿里云 TTS 网关
 
-# === yard 层配置（对应 yard.configs.config.Config） ===
+# -----------------------------------------------------------------------------
+# Yard 智能体内核（yard/configs/settings.Config）
+# -----------------------------------------------------------------------------
+
+# Agent 技能脚本目录（相对路径）
 # skills_dir: "skills"
+
+# 工作区根目录：记忆 FAISS、情绪状态、日记等运行时数据落盘位置
 # workspace_dir: "yard/workspace"
+
+# 灵魂提示词 / 心情 YAML 目录（frontend /config 编辑的对象）
 # prompts_dir: "yard/prompts"
+
+# 子 Agent 定义文件（名称、描述、专用 system prompt）
 # subagents_yaml: "yard/configs/subagents.yaml"
+
+# MCP 设备服务列表（割草机、机械臂等工具；需单独启动 MCP Server）
 # mcp_servers_yaml: "yard/configs/mcp_servers.yaml"
-# llm_provider: "glm"
+
+# 主对话模型名称（如 glm-4-flash、qwen-plus、gpt-4o-mini）
 # llm_model_name: "glm-4-flash"
 
-# === Mem0 OSS 长期记忆（yard） ===
+# 主 LLM OpenAI 兼容 API 根 URL（必填，密钥在 .env 的 GLM_OPENAI_API_KEY）
+# 示例：https://open.bigmodel.cn/api/paas/v4/
+#       https://dashscope.aliyuncs.com/compatible-mode/v1
+# llm_base_url: "https://open.bigmodel.cn/api/paas/v4/"
+
+# --- 情绪子系统 ---
+
+# 是否启用情绪状态机（VAD、心情、TTS 音色联动）
+# emotion_enabled: true
+
+# 朝本轮 appraisal 目标靠拢的速度（0~1，越大变化越快）
+# emotion_alpha: 0.3
+
+# 会话内向个人基线回归的速度
+# emotion_beta: 0.05
+
+# 跨会话时间衰减时间常数（秒）；越久未聊，状态越向基线靠拢
+# emotion_tau_sec: 3600.0
+
+# 情绪状态 JSON 持久化路径
+# emotion_state_path: "yard/workspace/emotion/emotion_state.json"
+
+# 多用户场景下的持久化键（单用户默认 default）
+# emotion_user_key: "default"
+
+# 允许输出的离散情绪标签列表
+# emotion_allowed: [happy, sad, angry, fear, hate, surprised, neutral]
+
+# 是否在主 LLM 前对用户话做 VAD 前置判定（小模型，低延迟）
+# emotion_appraisal_enabled: true
+
+# 情绪判定模型名；不填则回退 llm_model_name
+# emotion_appraisal_model: "qwen3.6-flash"
+
+# 情绪判定 API 根 URL；不填则回退 llm_base_url
+# emotion_appraisal_base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+
+# 情绪判定采样温度（宜低，保证稳定 JSON）
+# emotion_appraisal_temperature: 0.1
+
+# 送入判定模型的用户话最大字符数（超长截断）
+# emotion_appraisal_max_user_chars: 2000
+
+# --- DeepEval 情绪支持评测（前端 Test 面板）---
+
+# 评测打分模型名；不填则回退 llm_model_name
+# eval_llm_model: "glm-4-flash"
+
+# 评测打分 API 根 URL；不填则回退 llm_base_url
+# eval_llm_base_url: "https://open.bigmodel.cn/api/paas/v4/"
+
+# 评测 API Key 写在 .env 的 EVAL_LLM_API_KEY；不填则复用 GLM_OPENAI_API_KEY
+
+# --- Prompt Composer（动态拼装 system prompt 块）---
+
+# 是否启用 Prompt Composer 中间件
+# prompt_composer_enabled: false
+
+# 是否对 stable / volatile 块做字符预算裁剪
+# prompt_budget_enabled: false
+
+# 稳定块（人格、规则等）最大字符数
+# prompt_stable_max_chars: 3000
+
+# 易变块（记忆、情绪上下文等）最大字符数
+# prompt_volatile_max_chars: 1500
+
+# --- Mem0 OSS 长期记忆 ---
+
+# 是否启用 Mem0 向量记忆（需 mem0_embedding_model + .env 中 LLM Key）
 # memory_enabled: true
-# 启用 Mem0 后需安装 NLP 依赖并下载 spaCy 模型（见 README §4）：
-#   pip install "mem0ai[nlp]"
-#   python -m spacy download en_core_web_sm
-# mem0_embedding_model: "embedding-3"
-# mem0_embedding_dims: 1536
-# mem0_top_k: 6
-# mem0_inject_max_chars: 2000
+
+# Mem0 用户 ID（多用户隔离；导出 memory.yaml 时使用）
+# mem0_user_id: "default"
+
+# FAISS 索引目录；null 表示 workspace_dir/memory/faiss
 # mem0_faiss_path: null
+
+# FAISS collection 名称
+# mem0_collection_name: "garden_memories"
+
+# 每轮对话注入检索的记忆条数上限
+# mem0_top_k: 6
+
+# 注入 prompt 的记忆文本总字符上限
+# mem0_inject_max_chars: 2000
+
+# Mem0 抽取所用 LLM 模型；不填则用 llm_model_name
+# mem0_llm_model: null
+
+# Embedding 模型名（启用 memory 时必填，如智谱 embedding-3）
+# mem0_embedding_model: "embedding-3"
+
+# Embedding 向量维度（须与模型一致，否则 FAISS 报错）
+# mem0_embedding_dims: 1536
+
+# Mem0 LLM API 根 URL；不填则回退 llm_base_url（Key 在 .env MEM0_LLM_API_KEY）
+# mem0_llm_base_url: null
+
+# 是否在日志中打印记忆检索/写入调试信息
+# memory_debug_log_enabled: false
+
+# 记忆调试日志单条最大字符数
+# memory_debug_log_max_chars: 500
+
+# 是否启用「记住」「别忘了」等显式关键词触发即时写入
 # memory_explicit_keyword_enabled: true
-# LangGraph 对话摘要（上下文过长自动压缩）后写入 Mem0
+
+# 自定义中文显式记忆关键词（覆盖代码内置列表）
+# memory_explicit_keywords_zh: []
+
+# 自定义英文显式记忆关键词
+# memory_explicit_keywords_en: []
+
+# 显式记忆误判过滤模式（正则/子串）
+# memory_explicit_negative_patterns: []
+
+# 是否启用弱匹配中文关键词（更宽松，误触率更高）
+# memory_explicit_weak_zh_enabled: false
+
+# 是否启用弱匹配英文关键词
+# memory_explicit_weak_en_enabled: false
+
+# LangGraph 对话摘要（上下文压缩）完成后是否 flush 当前 thread 到 Mem0
 # memory_session_flush_on_summarization: true
-# 上一轮对话结束后空闲多久写入 Mem0（秒），默认 300；0 关闭
+
+# 上一轮对话结束后空闲多久 flush 到 Mem0（秒）；0=关闭空闲 flush
 # memory_session_flush_idle_sec: 300
+
+# 空闲 flush 轮询间隔（秒）
 # memory_session_flush_poll_sec: 30
+
+# 进程退出前是否兜底 flush
 # memory_session_flush_on_shutdown: true
-# heartbeat 仅同步 workspace/memory/YYYY-MM-DD.md 日记
+
+# 30 分钟 heartbeat 是否同步 workspace/memory/YYYY-MM-DD.md 日记
 # memory_journal_on_heartbeat: true
 
-# === 三路 API Key 路由（可选；不填则所有调用共用 llm_api_key）===
-# 情绪评估小模型独立 Key（防止与主模型抢配额）
-# emotion_appraisal_api_key: "your-emotion-key-here"
-# emotion_appraisal_base_url: "https://open.bigmodel.cn/api/paas/v4/"
-# Mem0 infer LLM 独立 Key（冷路径异步，可使用廉价配额）
-# mem0_llm_api_key: "your-mem0-key-here"
-# mem0_llm_base_url: "https://open.bigmodel.cn/api/paas/v4/"
+# -----------------------------------------------------------------------------
+# 禁止出现在本文件的字段（写了会启动报错）：
+#   llm_api_key / emotion_appraisal_api_key / mem0_llm_api_key / eval_llm_api_key / llm_tool_calling
+# 请改用 .env：GLM_OPENAI_API_KEY、EMOTION_APPRAISAL_API_KEY、MEM0_LLM_API_KEY
+# -----------------------------------------------------------------------------

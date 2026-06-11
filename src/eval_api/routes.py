@@ -44,15 +44,18 @@ async def run_emotion_eval(request: EmotionEvalRequest) -> EmotionEvalResponse:
     from src.evaluation.emotion_metrics import EmotionSupportEvaluator
     from src.evaluation.session import EvalSession
     from src.evaluation.simulated_user import SimulatedUser
-    from yard.configs.config import load_config
+    from yard.configs.resolve import resolve_yard_runtime
+    from yard.configs.secrets import load_secrets
+    from yard.configs.settings import load_settings
 
-    config = load_config()
+    settings = load_settings()
+    config = resolve_yard_runtime(settings, load_secrets())
     simulated_user = SimulatedUser.from_config(config)
     agent_client = await YardAgentClient.create()
     session = EvalSession(
         simulated_user=simulated_user,
         agent_client=agent_client,
-        evaluator=EmotionSupportEvaluator(),
+        evaluator=EmotionSupportEvaluator.from_config(config),
     )
     return await session.run(request)
 

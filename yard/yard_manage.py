@@ -29,7 +29,9 @@ from yard.events import HEARTBEAT_INPUT_EVENT, InputEvent, OutputEvent
 from yard.middlewares import PersonaPromptMiddleware
 from yard.middlewares.persona_prompt_middleware import resolve_soul_profile
 from yard.graph import create_deep_agent
-from yard.configs.config import load_config
+from yard.configs.resolve import resolve_yard_runtime
+from yard.configs.secrets import load_secrets
+from yard.configs.settings import load_settings
 from yard.init_workspace import init_workspace
 from yard.heartbeat import run_heartbeat_enqueue_loop
 from yard.memory.runtime.flush import mark_conversation_turn_finished
@@ -119,7 +121,9 @@ def _apply_subsystem(yard_manager, emotion, memory) -> None:
 class YardManager:
 
     def __init__(self, config=None):
-        self.config = load_config(config)
+        settings = load_settings(config)
+        secrets = load_secrets()
+        self.config = resolve_yard_runtime(settings, secrets)
         self.langfuse_client, self.langfuse_handler = init_langfuse()
 
     @classmethod

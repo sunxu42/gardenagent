@@ -11,7 +11,7 @@ from src.utils.async_zmq_utils_native import (
     AsyncZMQPublisher,
     AsyncZMQSubscriber,
 )
-from src.config import Config
+CONTROL_BUS_ADDRESS = "ipc:///tmp/control_bus"
 
 
 def make_event_message(event_type: str, session_id: Optional[str] = None, **kwargs) -> Dict[str, Any]:
@@ -39,7 +39,7 @@ def make_event_message(event_type: str, session_id: Optional[str] = None, **kwar
 
 
 class EventBus:
-    CONTROL_ADDRESS = getattr(Config, "CONTROL_BUS_ADDRESS", "ipc:///tmp/control_bus")
+    CONTROL_ADDRESS = CONTROL_BUS_ADDRESS
 
     @classmethod
     async def create_publisher(cls) -> AsyncZMQPublisher:

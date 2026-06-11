@@ -9,9 +9,16 @@ import socket
 from typing import Any, Optional, Sequence, Tuple
 from urllib.parse import urlparse
 
+from dotenv import load_dotenv
+
+from yard.configs.paths import ENV_FILE
 from yard.observability.logging import LogModule, get_logger
 
 _log = get_logger(LogModule.SYSTEM)
+
+_DEFAULT_BASE_URL = "http://localhost:3000"
+_DEFAULT_TIMEOUT = 5
+_DEFAULT_PROBE_TIMEOUT_SEC = 2.0
 
 # 降低 OTEL HTTP 导出器在不可达时的刷屏（仍优先用 no-op 导出器避免重试）
 _OTEL_OTLP_LOGGER = "opentelemetry.exporter.otlp.proto.http.trace_exporter"
@@ -26,7 +33,7 @@ def _resolve_base_url() -> str:
     return (
         os.getenv("LANGFUSE_BASE_URL")
         or os.getenv("LANGFUSE_HOST")
-        or "https://cloud.langfuse.com"
+        or _DEFAULT_BASE_URL
     ).rstrip("/")
 
 
@@ -166,6 +173,7 @@ def _pick_span_exporter(
 
 def init_langfuse() -> Tuple[Optional[Any], Optional[Any]]:
     """初始化 Langfuse client + LangChain CallbackHandler；失败时返回 (None, None)。"""
+    load_dotenv(ENV_FILE)
     if not _langfuse_configured():
         return None, None
 
@@ -174,8 +182,10 @@ def init_langfuse() -> Tuple[Optional[Any], Optional[Any]]:
     base_url = _resolve_base_url()
     public_key = os.environ["LANGFUSE_PUBLIC_KEY"]
     secret_key = os.environ["LANGFUSE_SECRET_KEY"]
-    timeout = int(os.getenv("LANGFUSE_TIMEOUT", "5"))
-    probe_timeout = float(os.getenv("LANGFUSE_PROBE_TIMEOUT_SEC", "2"))
+    timeout = int(os.getenv("LANGFUSE_TIMEOUT", str(_DEFAULT_TIMEOUT)))
+    probe_timeout = float(
+        os.getenv("LANGFUSE_PROBE_TIMEOUT_SEC", str(_DEFAULT_PROBE_TIMEOUT_SEC))
+    )
 
     try:
         from langfuse import Langfuse

@@ -1,36 +1,30 @@
+"""从 `.config.yaml` 加载服务端运行时配置（不读取密钥）。"""
+
+from __future__ import annotations
 
 import os
-from dotenv import load_dotenv
-from pydantic import BaseModel, ConfigDict, Field
+
 import yaml
+from pydantic import BaseModel, Field
 
-from yard.observability.logging.config import LoggingConfig
-
-CWD = os.getcwd()
-DEFAULT_CONFIG_FILE = os.path.join(CWD, ".config.yaml")
-DEFAULT_ENV_FILE = os.path.join(CWD, ".env")
-
-load_dotenv(DEFAULT_ENV_FILE)
+from src.config_paths import CONFIG_FILE
 
 
 class TTSConfig(BaseModel):
-    
-    tts_provider_name: str = "HuoshanTTS" # "HuoshanTTS" or "AliyunStreamingTTS"
-    
-    huoshan_tts_appid: str = os.getenv("HUOSHAN_APPID", "")
-    huoshan_tts_access_token: str = os.getenv("HUOSHAN_ACCESS_TOKEN", "")
+    tts_provider_name: str = "HuoshanTTS"
+
+    huoshan_tts_appid: str = ""
+    huoshan_tts_access_token: str = ""
     huoshan_tts_resource_id: str = "volc.service_type.10029"
     huoshan_tts_ws_url: str = "wss://openspeech.bytedance.com/api/v3/tts/bidirection"
 
-    # 长期阿里云配置
-    aliyun_access_key_id: str = os.getenv("ALIYUN_ACCESS_KEY_ID", "")
-    aliyun_access_key_secret: str = os.getenv("ALIYUN_ACCESS_KEY_SECRET", "")
-    # 短期阿里云配置
-    aliyun_appkey: str = os.getenv("ALIYUN_APPKEY", "")
-    aliyun_token: str = os.getenv("ALIYUN_TOKEN", "")
+    aliyun_access_key_id: str = ""
+    aliyun_access_key_secret: str = ""
+    aliyun_appkey: str = ""
+    aliyun_token: str = ""
     aliyun_host: str = "nls-gateway-cn-shanghai.aliyuncs.com"
 
-    def get(self, key: str, default: str = ""):
+    def get(self, key: str, default: str = "") -> str:
         return getattr(self, key, default)
 
 
@@ -39,20 +33,18 @@ class AudioConfig(BaseModel):
     channels: int = 1
     bits_per_sample: int = 16
 
-    asr_provider_name: str = "DoubaoStreamingASR" # "DoubaoStreamingASR" or "AliyunStreamingASR"
+    asr_provider_name: str = "DoubaoStreamingASR"
 
-    doubao_streaming_asr_appid: str = os.getenv("DOUBAO_STREAMING_ASR_APPID", "")
-    doubao_streaming_asr_access_token: str = os.getenv("DOUBAO_STREAMING_ASR_ACCESS_TOKEN", "")
-    # 长期阿里云配置
-    aliyun_access_key_id: str = os.getenv("ALIYUN_ACCESS_KEY_ID", "")
-    aliyun_access_key_secret: str = os.getenv("ALIYUN_ACCESS_KEY_SECRET", "")
-    # 短期阿里云配置
-    aliyun_appkey: str = os.getenv("ALIYUN_APPKEY", "")
-    aliyun_token: str = os.getenv("ALIYUN_TOKEN", "")
+    doubao_streaming_asr_appid: str = ""
+    doubao_streaming_asr_access_token: str = ""
+    aliyun_access_key_id: str = ""
+    aliyun_access_key_secret: str = ""
+    aliyun_appkey: str = ""
+    aliyun_token: str = ""
     aliyun_host: str = "nls-gateway-cn-shanghai.aliyuncs.com"
     aliyun_max_sentence_silence: int = 8000
 
-    def get(self, key: str, default=""):
+    def get(self, key: str, default: str = "") -> str:
         aliases = {
             "doubao_DOUBAO_STREAMING_ASR_APPID": "doubao_streaming_asr_appid",
             "doubao_DOUBAO_STREAMING_ASR_ACCESS_TOKEN": "doubao_streaming_asr_access_token",
@@ -72,18 +64,15 @@ class AudioConfig(BaseModel):
 
 
 class UnifiedConfig(BaseModel):
-
-
     host: str = "0.0.0.0"
     port: int = 8005
-    input_modality: list[str] = ["text"] # ["text", "audio"] 
-    output_modality: list[str] = ["text"] #["text", "audio"] 
+    input_modality: list[str] = Field(default_factory=lambda: ["text"])
+    output_modality: list[str] = Field(default_factory=lambda: ["text"])
     handler_type: str = "default"
     agent_type: str = "yard_manager"
 
     audio_config: AudioConfig = Field(default_factory=AudioConfig)
     tts_config: TTSConfig = Field(default_factory=TTSConfig)
-    logging: LoggingConfig = Field(default_factory=LoggingConfig)
 
 
 def _read_yaml(file_path: str) -> dict:
@@ -96,11 +85,12 @@ def _read_yaml(file_path: str) -> dict:
     return data
 
 
-def load_config() -> UnifiedConfig:
-    if not os.path.isfile(DEFAULT_CONFIG_FILE):
+def load_settings() -> UnifiedConfig:
+    """仅读取 `.config.yaml`，不加载 `.env`。"""
+    if not os.path.isfile(CONFIG_FILE):
         return UnifiedConfig()
     try:
-        raw = _read_yaml(DEFAULT_CONFIG_FILE)
+        raw = _read_yaml(CONFIG_FILE)
     except (OSError, yaml.YAMLError):
         return UnifiedConfig()
     if not raw:
