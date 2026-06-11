@@ -18,7 +18,7 @@ from typing import Callable, Dict, Any
 from yard.observability.logging import LogModule, get_logger
 
 _log = get_logger(LogModule.ASR)
-from src.config import AudioConfig
+from src.settings import AudioConfig
 from src.audio_layer.provider.factory import ASRFactory
 
 

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from datetime import date
 from pathlib import Path
 
@@ -8,7 +7,9 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 def resolve_log_dir() -> Path:
-    override = os.getenv("GARDEN_LOG_DIR", "").strip()
+    from yard.configs.secrets import load_secrets
+
+    override = (load_secrets().garden_log_dir or "").strip()
     if override:
         return Path(override).expanduser().resolve()
     return (REPO_ROOT / "logs").resolve()

@@ -8,13 +8,14 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import uvicorn
 
-from src.config import load_config
+from src.resolve import resolve_server_runtime
+from src.settings import load_settings
 from yard.observability.logging import configure_logging
 
 
 def main() -> None:
-    cfg = load_config()
-    configure_logging(cfg.logging)
+    cfg = resolve_server_runtime(load_settings())
+    configure_logging()
     uvicorn.run(
         "src.app:app",
         host=cfg.host,

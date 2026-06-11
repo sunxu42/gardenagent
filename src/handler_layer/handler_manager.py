@@ -3,17 +3,24 @@ from typing import Dict, Optional, Any
 from yard.observability.logging import LogModule, get_logger
 
 _log = get_logger(LogModule.HANDLER)
+from src.settings import UnifiedConfig
 from src.transport_layer.base import TransportBase
 from src.handler_layer.handler_factory import load_class
 
 
 class HandlerManager:
-    
-    def __init__(self, transport: TransportBase, handler_type: str, reconnect_timeout: int = 300):
+
+    def __init__(
+        self,
+        transport: TransportBase,
+        handler_type: str,
+        server_config: UnifiedConfig,
+        reconnect_timeout: int = 300,
+    ):
         self.transport = transport
-        # 映射：client_id -> Handler
         self.handlers: Dict[str, Any] = {}
         self.handler_type = handler_type
+        self.server_config = server_config
         self.reconnect_timeout = reconnect_timeout  # 重连超时时间（秒）
         
         # 启动清理任务
@@ -68,7 +75,9 @@ class HandlerManager:
             return
 
         _log.debug(f"正在创建 {self.handler_type} Handler: client_id={client_id}")
-        handler = load_class(self.handler_type, self.transport, client_id)
+        handler = load_class(
+            self.handler_type, self.transport, client_id, self.server_config
+        )
         self.handlers[client_id] = handler
         await handler.setup_services()
     

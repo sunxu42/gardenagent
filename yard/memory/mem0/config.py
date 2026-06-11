@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import Any
 
@@ -66,7 +65,7 @@ def build_mem0_config_dict(config: Any) -> dict[str, Any]:
         },
     }
 
-    history_path = os.getenv("MEM0_HISTORY_DB_PATH")
+    history_path = getattr(config, "mem0_history_db_path", None)
     if history_path:
         mem0_config["history_db_path"] = history_path
 

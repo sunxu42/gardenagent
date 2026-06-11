@@ -60,6 +60,10 @@ export default defineConfig({
         target: "http://127.0.0.1:8005",
         changeOrigin: true,
       },
+      "/api/eval": {
+        target: "http://127.0.0.1:8005",
+        changeOrigin: true,
+      },
     },
   },
   resolve: {
