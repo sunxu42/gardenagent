@@ -12,7 +12,7 @@ from langchain_openai import ChatOpenAI
 from yard.observability.logging import LogModule, get_logger
 
 _log = get_logger(LogModule.EMOTION)
-from yard.configs.config import Config
+from yard.configs.settings import Config
 from yard.emotion.constants import EMOTION_APPRAISAL_TEMPERATURE
 from yard.emotion.core.policy import TurnAppraisalV2
 
@@ -40,9 +40,9 @@ Task 2 — 对助手的态度变化（Relationship Delta）：
 
 
 def create_emotion_appraisal_model(config: Config) -> ChatOpenAI:
-    """与主 LLM 共用模型名；Key 可独立配置 emotion_appraisal_api_key。"""
+    """使用 emotion_appraisal_model；Key 可独立配置 emotion_appraisal_api_key。"""
     default_llm_model = Config.model_fields["llm_model_name"].default or "glm-4-flash"
-    model_name = (config.llm_model_name or "").strip() or default_llm_model
+    model_name = (config.emotion_appraisal_model or "").strip() or default_llm_model
     return ChatOpenAI(
         model=model_name,
         api_key=config.emotion_appraisal_api_key,

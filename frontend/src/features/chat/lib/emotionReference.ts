@@ -1,4 +1,4 @@
-import type { AffectLockState, VadPoint } from "../types";
+import type { AffectLockState, RelationshipSnapshot, VadPoint } from "../types";
 import { formatVadTriple } from "./affectFormat";
 import { agentMoodLabel, moodToneClasses, relationshipStageLabel, type MoodTone } from "./affectPresentation";
 
@@ -143,6 +143,20 @@ export function resolveLiveAgentEmotionId(
     return agentEmotion;
   }
   return inferEmotionIdFromVad(vad) ?? DEFAULT_AGENT_EMOTION_ID;
+}
+
+export function resolveDisplayRelationship(
+  liveRelationship: RelationshipSnapshot | null | undefined,
+  displayStageId: string | null | undefined,
+  locked: boolean,
+): RelationshipSnapshot | null {
+  if (locked && displayStageId) {
+    const preset = RELATIONSHIP_STAGE_PRESETS[displayStageId];
+    if (preset) {
+      return { trust: preset.trust, warmth: preset.warmth, stage: displayStageId };
+    }
+  }
+  return liveRelationship ?? null;
 }
 
 export function resolveDisplayAgentVad(

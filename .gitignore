@@ -44,7 +44,6 @@ uv.lock
 
 # Test artifacts
 .pytest_cache/
-tests/
 
 # Local docs & AI tooling (do not commit specs/plans)
 docs/

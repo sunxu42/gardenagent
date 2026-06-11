@@ -19,7 +19,7 @@ from typing_extensions import TypedDict
 
 from langgraph.config import get_config
 
-from yard.configs.config import Config
+from yard.configs.settings import Config
 from yard.memory.core.triggers import ExplicitTriggerConfig, detect_explicit_remember
 from yard.memory.mem0.service import Mem0Service
 from yard.memory.core.buffer import SessionBuffer

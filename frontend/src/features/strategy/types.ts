@@ -1,4 +1,4 @@
-export const STRATEGY_PANEL_TABS = ["emotion", "prompt", "logs", "memory"] as const;
+export const STRATEGY_PANEL_TABS = ["emotion", "prompt", "logs", "memory", "test"] as const;
 
 export type StrategyPanelTab = (typeof STRATEGY_PANEL_TABS)[number];
 
@@ -14,4 +14,5 @@ export const STRATEGY_TAB_LABELS: Record<StrategyPanelTab, string> = {
   prompt: "Prompt",
   logs: "日志",
   memory: "记忆",
+  test: "测试",
 };

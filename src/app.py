@@ -8,7 +8,9 @@ from starlette.applications import Starlette
 from starlette.routing import WebSocketRoute
 from starlette.websockets import WebSocket
 
-from src.config import load_config
+from src.resolve import resolve_server_runtime
+from src.settings import load_settings
+from src.eval_api.routes import create_eval_routes
 from src.handler_layer.handler_manager import HandlerManager
 from src.prompt_editor_api.prompt_editor_routes import create_prompt_editor_routes
 from src.transport_layer import WebSocketTransport
@@ -19,9 +21,10 @@ PROMPTS_ROOT = REPO_ROOT / "yard" / "prompts"
 
 def create_app() -> Starlette:
     """Build the unified server with WebSocket and prompt-editor routes."""
-    cfg = load_config()
+    settings = load_settings()
+    cfg = resolve_server_runtime(settings)
     transport = WebSocketTransport(host=cfg.host, port=cfg.port)
-    handler_manager = HandlerManager(transport, cfg.handler_type)
+    handler_manager = HandlerManager(transport, cfg.handler_type, cfg)
 
     transport.register_connection_handler(
         on_connect=handler_manager.create_or_reuse_handler,
@@ -44,6 +47,7 @@ def create_app() -> Starlette:
 
     routes = [
         *create_prompt_editor_routes(PROMPTS_ROOT),
+        *create_eval_routes(),
         WebSocketRoute("/ws", ws_endpoint),
     ]
     return Starlette(routes=routes, lifespan=lifespan)

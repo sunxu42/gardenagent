@@ -89,7 +89,13 @@ class SharedState:
     def initialize(cls, backend_type=None, config=None):
         if not cls._initialized:
             try:
-                backend_type = backend_type or os.getenv('SHARED_STATE_BACKEND', 'lmdb')
+                from yard.configs.secrets import load_secrets
+
+                backend_type = (
+                    backend_type
+                    or load_secrets().shared_state_backend
+                    or "lmdb"
+                )
                 config = config or {}
                 
                 if backend_type == 'lmdb':

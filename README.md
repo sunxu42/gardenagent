@@ -33,20 +33,32 @@ uv venv
 uv pip install -e .
 ```
 
-### 2. `.env`
+### 2. `.env`（密钥）
 
-复制 `env.example` 为 `.env`，至少填好 LLM 的两项：
+复制 `env.example` 为 `.env`，填入 API Key、Token、AppId 等凭证。至少配置：
 
 ```dotenv
 GLM_OPENAI_API_KEY=...
-GLM_OPENAI_BASE_URL=...
 ```
 
-按需再填 ASR / TTS 的 key（只用文本对话时可以不填）。
+按需再填 ASR / TTS、Langfuse（`LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY`，默认上报至 `http://localhost:3000`）、`EMOTION_APPRAISAL_API_KEY` 等（纯文本对话可不填语音相关项）。
 
-### 3. `.config.yaml`（可选）
+### 3. `.config.yaml`（运行时参数）
 
-需要改 host、port、模型名、工作区路径之类的运行时参数时，参考 `config.example.yaml` 在项目根目录建一个 `.config.yaml`。不建文件就跑默认值。
+URL、模型名、功能开关等写在 `.config.yaml`（参考 `config.example.yaml`）。至少配置 LLM 端点：
+
+```yaml
+llm_model_name: "glm-4-flash"
+llm_base_url: "https://open.bigmodel.cn/api/paas/v4/"
+```
+
+不建文件则使用代码默认值（仍需 `.env` 中的密钥）。
+
+代码层加载方式：
+
+- `load_secrets()` — 只读 `.env`
+- `load_settings()` — 只读 `.config.yaml`
+- `resolve_yard_runtime(settings, secrets)` / `resolve_server_runtime(settings)` — 按需组合
 
 ### 4. Mem0 OSS 长期记忆（可选）
 
@@ -58,7 +70,7 @@ mem0_embedding_model: "embedding-3"   # 智谱等兼容 embedding 模型名
 mem0_embedding_dims: 1536
 ```
 
-也可在 `.env` 中设置 `MEM0_EMBEDDING_MODEL`。向量索引落在 `yard/workspace/memory/faiss/`。可通过统一服务端的 `/api/prompt-editor/memory-yaml/refresh` 导出只读 `yard/prompts/memory/memory.yaml`（已 gitignore，不参与对话注入）。
+向量索引落在 `yard/workspace/memory/faiss/`。可通过统一服务端的 `/api/prompt-editor/memory-yaml/refresh` 导出只读 `yard/prompts/memory/memory.yaml`（已 gitignore，不参与对话注入）。
 
 Mem0 的记忆抽取依赖 spaCy（已包含在 `mem0ai[nlp]` 可选依赖中）。首次启用长期记忆时，还需下载英文语言模型：
 
@@ -119,6 +131,6 @@ python examples/demo.py
 
 ## 常见坑
 
-- **启动报 `LLM API key and base url are required`**：`.env` 里的 `GLM_OPENAI_API_KEY` / `GLM_OPENAI_BASE_URL` 没填好。
+- **启动报 LLM 相关错误**：检查 `.env` 的 `GLM_OPENAI_API_KEY` 与 `.config.yaml` 的 `llm_base_url`。
 - **智能体调不到设备工具**：确认 MCP Server 已在 `:8000` 启动，并在 `yard/configs/mcp_servers.yaml` 里放开对应配置（默认是注释掉的）。MCP Server 不可达不会让程序崩溃，但日志里会有 `[warn] MCP server '...' is unavailable`。
 - **不想用语音**：在 `.config.yaml` 里把 `input_modality` / `output_modality` 都设成 `["text"]`，可以跳过 ASR / TTS 的所有 key 配置。

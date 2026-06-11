@@ -108,11 +108,14 @@ def create_prompt_editor_routes(prompts_root: Path) -> list[Route]:
         return _json({"ok": True, "result": result})
 
     async def post_memory_yaml_refresh(_: Request) -> JSONResponse:
-        from yard.configs.config import load_config
+        from yard.configs.resolve import resolve_yard_runtime
+        from yard.configs.secrets import load_secrets
+        from yard.configs.settings import load_settings
         from yard.memory.mem0.export import MEMORY_YAML_REL, export_memory_yaml
         from yard.memory.mem0.service import Mem0Service
 
-        cfg = load_config()
+        settings = load_settings()
+        cfg = resolve_yard_runtime(settings, load_secrets())
         if not cfg.memory_enabled:
             return _error("memory_enabled 未开启，请在 .config.yaml 中启用 Mem0 记忆")
         try:

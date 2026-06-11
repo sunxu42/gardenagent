@@ -3,6 +3,7 @@ import type { AffectLockState, AffectTurnRecord, RelationshipSnapshot, VadPoint 
 import { resolveAgentMood, resolveAttitudeSummary } from "../../lib/affectPresentation";
 import {
   resolveDisplayAgentVad,
+  resolveDisplayRelationship,
   resolveLiveAgentEmotionId,
 } from "../../lib/emotionReference";
 import { EmotionPrototypeRefPanel } from "./EmotionPrototypeRefPanel";
@@ -52,6 +53,12 @@ export function AffectStatusOverview({
     ? affectLock.agentVad.refId ?? liveEmotionId
     : liveEmotionId;
 
+  const displayRelationship = resolveDisplayRelationship(
+    rel,
+    displayStageId,
+    affectLock.relationship.locked,
+  );
+
   const displayAgentVad = resolveDisplayAgentVad(
     liveAgentVad,
     displayEmotionId,
@@ -80,7 +87,7 @@ export function AffectStatusOverview({
       >
         <p className="text-xs font-medium text-foreground">关系</p>
         <div className="mt-2">
-          <RelationshipMeters relationship={rel} compact hideStage />
+          <RelationshipMeters relationship={displayRelationship} compact hideStage />
         </div>
       </GuideCardGroup>
 
