@@ -22,6 +22,12 @@ const LogsStrategyPanel = lazy(() =>
   })),
 );
 
+const TestStrategyPanel = lazy(() =>
+  import("@/features/test/TestPanel").then((m) => ({
+    default: m.TestPanel,
+  })),
+);
+
 function PanelFallback() {
   return (
     <div className="strategy-panel-loading" role="status" aria-live="polite">
@@ -48,6 +54,10 @@ export const LazyPromptPanel = withSuspense(function PromptPanel() {
 });
 
 export const LazyLogsPanel = withSuspense<LogsPanelProps>(LogsStrategyPanel);
+
+export const LazyTestPanel = withSuspense(function TestPanel() {
+  return <TestStrategyPanel />;
+});
 
 export function MemoryPanel() {
   return (

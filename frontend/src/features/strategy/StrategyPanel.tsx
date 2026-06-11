@@ -2,6 +2,7 @@ import {
   Activity,
   Brain,
   FileCode2,
+  FlaskConical,
   ScrollText,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -12,6 +13,7 @@ import {
   LazyAffectPanel,
   LazyLogsPanel,
   LazyPromptPanel,
+  LazyTestPanel,
   MemoryPanel,
 } from "./panels/LazyStrategyPanels";
 import type { LogEntry } from "@/features/logs/logTypes";
@@ -32,6 +34,7 @@ const TABS: TabConfig[] = [
   { id: "prompt", icon: FileCode2, label: STRATEGY_TAB_LABELS.prompt },
   { id: "logs", icon: ScrollText, label: STRATEGY_TAB_LABELS.logs },
   { id: "memory", icon: Brain, label: STRATEGY_TAB_LABELS.memory },
+  { id: "test", icon: FlaskConical, label: STRATEGY_TAB_LABELS.test },
 ];
 
 export interface StrategyPanelProps extends AffectDebugPanelProps {
@@ -100,6 +103,14 @@ export function StrategyPanel({
             aria-hidden={activeTab !== "memory"}
           >
             <MemoryPanel />
+          </div>
+        ) : null}
+        {visitedTabs.has("test") ? (
+          <div
+            className={`strategy-rail-pane h-full min-h-0${activeTab === "test" ? "" : " strategy-rail-pane--hidden"}`}
+            aria-hidden={activeTab !== "test"}
+          >
+            <LazyTestPanel />
           </div>
         ) : null}
       </div>

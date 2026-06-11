@@ -9,6 +9,7 @@ from starlette.routing import WebSocketRoute
 from starlette.websockets import WebSocket
 
 from src.config import load_config
+from src.eval_api.routes import create_eval_routes
 from src.handler_layer.handler_manager import HandlerManager
 from src.prompt_editor_api.prompt_editor_routes import create_prompt_editor_routes
 from src.transport_layer import WebSocketTransport
@@ -44,6 +45,7 @@ def create_app() -> Starlette:
 
     routes = [
         *create_prompt_editor_routes(PROMPTS_ROOT),
+        *create_eval_routes(),
         WebSocketRoute("/ws", ws_endpoint),
     ]
     return Starlette(routes=routes, lifespan=lifespan)
