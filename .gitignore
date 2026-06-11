@@ -40,6 +40,7 @@ uv.lock
 .vscode/
 .idea/
 .claude/
+.worktrees/
 
 # Test artifacts
 .pytest_cache/
