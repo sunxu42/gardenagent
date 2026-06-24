@@ -1,0 +1,22 @@
+id: followup_context_01
+domain: dialogue
+tier: judge
+description: 多轮对话，L0 + Judge
+setup:
+  rounds: 2
+user_driver:
+  type: scripted
+  turns:
+    - text: "我今天被领导批评了，心情很差。"
+    - text: "就是刚才说的那件事，我还是过不去。"
+assertions:
+  - type: assistant_min_length
+    name: non_empty
+    min_chars: 15
+judge:
+  enabled: true
+  metrics:
+    - emotion_support.empathy
+    - emotion_support.helpful_guidance
+  policy:
+    min_overall: 0.65

@@ -1,0 +1,21 @@
+id: persona_name_01
+domain: persona
+tier: smoke
+description: 询问名字，检查与蛋黄人设相关
+setup:
+  rounds: 1
+user_driver:
+  type: scripted
+  turns:
+    - text: "你叫什么名字？"
+assertions:
+  - type: assistant_contains
+    name: mentions_danhuang
+    required:
+      - "蛋黄"
+    any_round: true
+  - type: assistant_not_contains
+    name: no_ai_disclosure
+    forbidden:
+      - "语言模型"
+      - "人工智能助手"

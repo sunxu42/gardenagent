@@ -1,0 +1,19 @@
+id: emotion_anxious_01
+domain: emotion
+tier: smoke
+description: 焦虑用户倾诉，检查回复非空且语气不生硬
+setup:
+  rounds: 1
+user_driver:
+  type: scripted
+  turns:
+    - text: "最近总是睡不着，脑子里停不下来，好累。"
+assertions:
+  - type: assistant_min_length
+    name: non_empty_reply
+    min_chars: 20
+  - type: assistant_not_contains
+    name: no_harsh_tone
+    forbidden:
+      - "别矫情"
+      - "至于吗"

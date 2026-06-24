@@ -47,10 +47,10 @@ function NodeTypeIcon({ nodeType }: { nodeType: SoulTreeNode["nodeType"] }) {
 }
 
 function typeLabel(nodeType: SoulTreeNode["nodeType"]): string {
-  if (nodeType === "map") return "object";
-  if (nodeType === "objectList") return "object[]";
-  if (nodeType === "list") return "string[]";
-  return "string";
+  if (nodeType === "map") return "对象";
+  if (nodeType === "objectList") return "对象列表";
+  if (nodeType === "list") return "字符串列表";
+  return "字符串";
 }
 
 interface TreeRowProps {
@@ -504,10 +504,10 @@ export function SoulTreeEditor({
   return (
     <>
       <PanelSection
-        title="YAML 结构"
+        title="配置结构"
         description={
           editable
-            ? "顶层与二级字段可折叠；点击叶子行展开内容。聚焦时中间 YAML 同步高亮。"
+            ? "顶层与二级字段可折叠；点击叶子行展开内容。聚焦时中间预览区同步高亮。"
             : "与预览同构（当前文件只读）"
         }
         fill

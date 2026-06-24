@@ -7,6 +7,8 @@ import { RetryHint } from "../features/chat/components/RetryHint";
 import { SettingsDrawer } from "../features/chat/components/SettingsDrawer";
 import { ClearUserDataDialog } from "../features/chat/components/ClearUserDataDialog";
 import { StrategyPanel } from "../features/strategy/StrategyPanel";
+import { EvalRunProvider } from "../features/test/EvalRunProvider";
+import type { EvalWsEvent } from "../features/test/evalWsTypes";
 import { parseStrategyPanelTab, type StrategyPanelTab } from "../features/strategy/types";
 import { chatReducer, initialChatState } from "../features/chat/store/chatReducer";
 import type { ChatSettings, ChatState, ThemeName } from "../features/chat/types";
@@ -114,6 +116,7 @@ export function ChatApp() {
     return "助手";
   }, [state.messages]);
   const chatApiRef = useRef<ChatApi | null>(null);
+  const evalEventDispatchRef = useRef<((event: EvalWsEvent) => void) | null>(null);
   const handleToggleAffectLock = useCallback(
     (dimension: "relationship" | "agent_vad", refId: string) => {
       const nextRef = toggleAffectLockRef(dimension, refId, state.affectLock);
@@ -159,6 +162,9 @@ export function ChatApp() {
       getAssistantMessageId: () => assistantMessageIdRef.current,
       setAssistantMessageId: (id) => {
         assistantMessageIdRef.current = id;
+      },
+      onEvalEvent: (event) => {
+        evalEventDispatchRef.current?.(event);
       },
     });
     chatApiRef.current = chatApi;
@@ -243,6 +249,7 @@ export function ChatApp() {
   };
 
   return (
+    <EvalRunProvider eventDispatchRef={evalEventDispatchRef}>
     <div
       className="chat-app-shell"
       data-theme={state.settings.theme}
@@ -333,5 +340,6 @@ export function ChatApp() {
         ) : null}
       </div>
     </div>
+    </EvalRunProvider>
   );
 }

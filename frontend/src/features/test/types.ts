@@ -18,6 +18,30 @@ export interface EmotionTurnResult {
   user: string;
   assistant: string;
   agent_affect?: AgentAffectSnapshot | null;
+  latency_ms?: number | null;
+  raw_updates?: string[];
+}
+
+export interface RunEnvironmentDTO {
+  git_commit?: string | null;
+  git_dirty?: boolean | null;
+  agent_model?: string | null;
+  eval_judge_model?: string | null;
+  prompt_manifest_hash?: string | null;
+  python_version?: string | null;
+}
+
+export interface RunTelemetryDTO {
+  agent_cold_start?: boolean | null;
+  agent_reused?: boolean | null;
+  phase_durations_ms?: Record<string, number>;
+  totals?: Record<string, number>;
+}
+
+export interface PersistedEventDTO {
+  type: string;
+  at: string;
+  payload?: Record<string, unknown>;
 }
 
 export interface EmotionMetricScore {
@@ -47,4 +71,67 @@ export interface EmotionEvalResponse {
   scores: EmotionMetricScore[];
   summary?: EvalSummary | null;
   error?: EvalErrorPayload | null;
+}
+
+export interface ScenarioSummary {
+  id: string;
+  description: string;
+  domain: string;
+  tier: "smoke" | "judge" | "exploratory";
+}
+
+export interface AssertionResultDTO {
+  name: string;
+  status: "pass" | "fail" | "skip" | "warn";
+  message: string;
+}
+
+export interface JudgeMetricScoreDTO {
+  name: string;
+  score: number;
+  passed: boolean;
+  threshold: number;
+  reason: string;
+}
+
+export interface EvalRunResponse {
+  run_id: string;
+  mode: "scenario" | "exploratory";
+  tier: "smoke" | "judge" | "exploratory";
+  status: "running" | "completed" | "failed" | "cancelled";
+  scenario_id?: string | null;
+  observations: EmotionTurnResult[];
+  assertions: AssertionResultDTO[];
+  judge: JudgeMetricScoreDTO[];
+  judge_overall_passed?: boolean | null;
+  scores: EmotionMetricScore[];
+  summary?: EvalSummary | null;
+  error?: EvalErrorPayload | null;
+  started_at?: string | null;
+  finished_at?: string | null;
+  duration_ms?: number | null;
+  environment?: RunEnvironmentDTO | null;
+  telemetry?: RunTelemetryDTO | null;
+  events?: PersistedEventDTO[];
+  exploratory_config?: EmotionEvalRequest | null;
+}
+
+export interface EvalRunStartedResponse {
+  run_id: string;
+  scenario_id: string;
+  tier: "smoke" | "judge" | "exploratory";
+  status: "running";
+}
+
+export interface EvalRunSummary {
+  run_id: string;
+  scenario_id: string;
+  tier: "smoke" | "judge" | "exploratory";
+  mode?: "scenario" | "exploratory";
+  status: "running" | "completed" | "failed" | "cancelled";
+  started_at?: string | null;
+  finished_at?: string | null;
+  duration_ms?: number | null;
+  assertions_passed?: boolean | null;
+  judge_overall_passed?: boolean | null;
 }

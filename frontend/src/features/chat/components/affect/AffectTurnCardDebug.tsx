@@ -73,25 +73,25 @@ export function AffectTurnCardDebug({ record, index, total }: AffectTurnCardDebu
 
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1 space-y-1">
-          <FieldRow label="User VAD" value={formatVadTriple(record.userAffectVad)} />
+          <FieldRow label="用户情绪" value={formatVadTriple(record.userAffectVad)} />
           {isV2 && record.relationship ? (
             <FieldRow
-              label="Rel"
-              value={`trust ${formatAffectNum(record.relationship.trust)} / warmth ${formatAffectNum(record.relationship.warmth)}`}
+              label="关系"
+              value={`信任 ${formatAffectNum(record.relationship.trust)} / 亲近 ${formatAffectNum(record.relationship.warmth)}`}
             />
           ) : null}
           {record.agentVadTarget ? (
-            <FieldRow label="Target" value={formatVadTriple(record.agentVadTarget)} />
+            <FieldRow label="目标语气" value={formatVadTriple(record.agentVadTarget)} />
           ) : null}
-          {record.agentVadAfter ? <FieldRow label="Agent" value={formatVadTriple(record.agentVadAfter)} /> : null}
+          {record.agentVadAfter ? <FieldRow label="助手" value={formatVadTriple(record.agentVadAfter)} /> : null}
           {deltaLine ? (
             <FieldRow
-              label="Agent Δ"
+              label="助手变化"
               value={deltaLine}
             />
           ) : null}
           {record.synthesisRule ? (
-            <FieldRow label="Rule" value={record.synthesisRule} />
+            <FieldRow label="合成规则" value={record.synthesisRule} />
           ) : null}
         </div>
 
@@ -99,16 +99,16 @@ export function AffectTurnCardDebug({ record, index, total }: AffectTurnCardDebu
           <VadRadarChart size={72} className="text-border" layers={layers} />
           <ul className="mt-1 space-y-0.5 font-mono text-[9px] leading-tight text-muted-foreground">
             <li>
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-violet-500 align-middle" /> user
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-violet-500 align-middle" /> 用户
             </li>
             {record.agentVadTarget ? (
               <li>
-                <span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-500 align-middle" /> target
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-500 align-middle" /> 目标
               </li>
             ) : null}
             {record.agentVadAfter ? (
               <li>
-                <span className="inline-block h-1.5 w-1.5 rounded-full bg-red-500 align-middle" /> agent
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-red-500 align-middle" /> 助手
               </li>
             ) : null}
           </ul>
@@ -116,7 +116,7 @@ export function AffectTurnCardDebug({ record, index, total }: AffectTurnCardDebu
       </div>
 
       {record.delta ? (
-        <p className={`font-mono text-[10px] ${deltaToneClass(record.delta.v)}`}>raw payload below</p>
+        <p className={`font-mono text-[10px] ${deltaToneClass(record.delta.v)}`}>原始数据如下</p>
       ) : null}
       <pre className="max-h-32 overflow-auto whitespace-pre-wrap break-all rounded bg-background/80 p-1.5 font-mono text-[10px] text-muted-foreground">
         {JSON.stringify(record, null, 2)}

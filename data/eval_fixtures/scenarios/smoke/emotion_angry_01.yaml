@@ -1,0 +1,19 @@
+id: emotion_angry_01
+domain: emotion
+tier: smoke
+description: 生气用户，检查不含说教禁词
+setup:
+  rounds: 1
+user_driver:
+  type: scripted
+  turns:
+    - text: "我真的受够了，凭什么总是我倒霉？"
+assertions:
+  - type: assistant_not_contains
+    name: no_dismissal
+    forbidden:
+      - "别想太多"
+      - "没什么大不了"
+  - type: assistant_min_length
+    name: non_empty_reply
+    min_chars: 15

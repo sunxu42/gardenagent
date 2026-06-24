@@ -22,9 +22,9 @@ interface AffectGuidePanelProps {
 
 const GUIDE_SECTIONS = [
   { id: "affect-guide-s1", label: "关系与助手" },
-  { id: "affect-guide-s2", label: "Baseline" },
+  { id: "affect-guide-s2", label: "基线" },
   { id: "affect-guide-s3", label: "全链路" },
-  { id: "affect-guide-s4", label: "V/A/D" },
+  { id: "affect-guide-s4", label: "情绪维度" },
 ] as const;
 
 export function AffectGuidePanel({
@@ -126,7 +126,7 @@ export function AffectGuidePanel({
             />
           </GuideAnchorSection>
 
-          <GuideAnchorSection id="affect-guide-s2" title="Baseline" accent="slate">
+          <GuideAnchorSection id="affect-guide-s2" title="基线与衰减" accent="slate">
             <AffectBaselineDecayGuide
               profile={emotionProfile}
               agentBaselineFallback={agentBaselineVad}
@@ -137,7 +137,7 @@ export function AffectGuidePanel({
             <AffectFlowDiagram />
           </GuideAnchorSection>
 
-          <GuideAnchorSection id="affect-guide-s4" title="V/A/D 维度" accent="violet">
+          <GuideAnchorSection id="affect-guide-s4" title="情绪三维度" accent="violet">
             <AffectReferenceGuide />
           </GuideAnchorSection>
         </div>

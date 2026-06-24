@@ -91,7 +91,7 @@ export function EmotionPrototypeRefPanel({
             </span>
             <span className="font-mono text-[10px] text-muted-foreground">{formatEmotionVad(emo.id)}</span>
             {current && isEstimate && estimateLabel && emo.id === resolvedId ? (
-              <span className="text-[10px] text-muted-foreground">由 VAD 推断</span>
+              <span className="text-[10px] text-muted-foreground">由情绪维度推断</span>
             ) : null}
           </div>
           <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{emo.expression}</p>

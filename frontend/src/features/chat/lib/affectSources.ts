@@ -89,7 +89,7 @@ export function buildAgentAffectSources(record: AffectTurnRecord): SourceItem[] 
     const a = record.agentVadAfter;
     items.push({
       label: "状态机落地",
-      detail: `更新后 Agent 语气：愉悦 ${formatAffectNum(a.v)} / 能量 ${formatAffectNum(a.a)} / 掌控 ${formatAffectNum(a.d)}`,
+      detail: `更新后助手语气：愉悦 ${formatAffectNum(a.v)} / 能量 ${formatAffectNum(a.a)} / 掌控 ${formatAffectNum(a.d)}`,
     });
   }
 

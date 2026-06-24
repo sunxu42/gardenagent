@@ -10,7 +10,7 @@ import "./shared/styles/theme-mint-cute.css";
 const rootElement = document.getElementById("root");
 
 if (!rootElement) {
-  throw new Error("Failed to mount app: #root element not found.");
+  throw new Error("应用挂载失败：未找到 #root 元素。");
 }
 
 ReactDOM.createRoot(rootElement).render(

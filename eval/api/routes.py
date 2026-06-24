@@ -1,0 +1,396 @@
+from __future__ import annotations
+
+from collections.abc import Mapping, Sequence
+from json import JSONDecodeError
+from pathlib import Path
+
+from shared.config.paths import resolve_eval_scenarios_dir
+
+from pydantic import BaseModel, ValidationError
+from starlette.requests import Request
+from starlette.responses import JSONResponse, Response
+from starlette.routing import Route
+
+from eval.api.schemas import (
+    EmotionEvalRequest,
+    EmotionEvalResponse,
+    EmotionSupportRunRequest,
+    EvalError,
+    EvalRunCancelResponse,
+    EvalRunRequest,
+    EvalRunResponse,
+    EvalRunStartedResponse,
+    EvalRunSummary,
+    ScenarioEvalRequest,
+    ScenarioSummary,
+)
+from eval.api.mapping import to_eval_run_response, to_eval_run_response_from_record
+from eval.application.job_manager import EvalJobConflictError, EvalJobManager
+from eval.infrastructure.persistence import list_run_summaries, load_run_record
+from eval.domain.scenario import load_scenario, resolve_scenario_by_id
+
+
+def _cors_headers() -> dict[str, str]:
+    """Return CORS headers for eval API requests."""
+
+    return {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+    }
+
+
+def _json(
+    payload: BaseModel | Mapping[str, object] | Sequence[object],
+    status: int = 200,
+) -> JSONResponse:
+    """Return a JSON response with eval API CORS headers."""
+
+    if isinstance(payload, BaseModel):
+        content: object = payload.model_dump(mode="json")
+    elif isinstance(payload, Sequence) and not isinstance(payload, (str, bytes, bytearray)):
+        content = [
+            item.model_dump(mode="json") if isinstance(item, BaseModel) else item
+            for item in payload
+        ]
+    else:
+        content = payload
+    return JSONResponse(content, status_code=status, headers=_cors_headers())
+
+
+async def _options(_request: Request) -> Response:
+    """Handle eval API CORS preflight requests."""
+
+    return Response(status_code=204, headers=_cors_headers())
+
+
+async def run_emotion_eval(request: EmotionEvalRequest) -> EmotionEvalResponse:
+    """Run one emotion-support evaluation with production dependencies."""
+
+    from eval.application.agent_client import EvalAgentClient
+    from eval.domain.emotion_metrics import EmotionSupportEvaluator
+    from eval.domain.session import EvalSession
+    from eval.domain.simulated_user import SimulatedUser
+    from shared.config.resolve_agent import resolve_agent_runtime
+    from agent.configs.secrets import load_secrets
+    from shared.config.agent import load_agent_settings
+
+    settings = load_agent_settings()
+    config = resolve_agent_runtime(settings, load_secrets())
+    simulated_user = SimulatedUser.from_config(config)
+    agent_client = await EvalAgentClient.create()
+    session = EvalSession(
+        simulated_user=simulated_user,
+        agent_client=agent_client,
+        evaluator=EmotionSupportEvaluator.from_config(config),
+    )
+    return await session.run(request)
+
+
+async def run_scenario_eval(request: ScenarioEvalRequest) -> EvalRunResponse:
+    """Run one scripted scenario evaluation."""
+
+    from eval.application.agent_pool import EvalAgentPool
+    from eval.domain.judge.model_factory import build_eval_model
+    from eval.domain.judge.runner import JudgeRunner
+    from eval.domain.runner import EvalRunner
+    from shared.config.resolve_agent import resolve_agent_runtime
+    from agent.configs.secrets import load_secrets
+    from shared.config.agent import load_agent_settings
+
+    scenario = resolve_scenario_by_id(request.scenario_id)
+    judge_runner = None
+    if scenario.judge is not None and scenario.judge.enabled:
+        config = resolve_agent_runtime(load_agent_settings(), load_secrets())
+        judge_runner = JudgeRunner(build_eval_model(config))
+
+    async with EvalAgentPool.run_guard():
+        agent_client, _ = await EvalAgentPool.acquire_client()
+        result = await EvalRunner(
+            agent_client=agent_client,
+            judge_runner=judge_runner,
+        ).run_scenario(scenario, persist=request.persist)
+    return to_eval_run_response(result)
+
+
+async def run_eval(request: EvalRunRequest) -> EvalRunResponse:
+    """Dispatch a unified evaluation request."""
+
+    if request.mode == "scenario":
+        if not request.scenario_id:
+            raise ValueError("scenario_id is required for scenario mode")
+        return await run_scenario_eval(
+            ScenarioEvalRequest(scenario_id=request.scenario_id, persist=request.persist),
+        )
+
+    if request.exploratory is None:
+        raise ValueError("exploratory payload is required for exploratory mode")
+
+    emotion_result = await run_emotion_eval(request.exploratory)
+    return EvalRunResponse(
+        run_id=emotion_result.session_id,
+        mode="exploratory",
+        tier="exploratory",
+        status=emotion_result.status,
+        observations=emotion_result.turns,
+        scores=emotion_result.scores,
+        summary=emotion_result.summary,
+        judge=[
+        ],
+        error=emotion_result.error,
+    )
+
+
+def list_scenario_summaries(tier: str | None = None) -> list[ScenarioSummary]:
+    """List available scenario fixtures."""
+
+    root = resolve_eval_scenarios_dir()
+    summaries: list[ScenarioSummary] = []
+    for path in sorted(root.glob("**/*.yaml")):
+        scenario = load_scenario(path)
+        if tier and scenario.tier != tier:
+            continue
+        summaries.append(
+            ScenarioSummary(
+                id=str(path.relative_to(root)).replace("\\", "/").removesuffix(".yaml"),
+                description=scenario.description,
+                domain=scenario.domain,
+                tier=scenario.tier,
+            )
+        )
+    return summaries
+
+
+async def get_scenarios(request: Request) -> JSONResponse:
+    """Return scenario summaries for the Test panel."""
+
+    tier = request.query_params.get("tier")
+    return _json(list_scenario_summaries(tier))
+
+
+async def post_eval_run(request: Request) -> JSONResponse:
+    """Validate and run a unified evaluation request."""
+
+    try:
+        payload = await request.json()
+    except (JSONDecodeError, UnicodeDecodeError, ValueError) as exc:
+        return _json(_failed_run_response("invalid_json", str(exc)), status=400)
+
+    try:
+        eval_request = EvalRunRequest.model_validate(payload)
+    except ValidationError as exc:
+        return _json(_failed_run_response("validation_error", str(exc.errors())), status=400)
+
+    try:
+        result = await run_eval(eval_request)
+    except Exception as exc:
+        return _json(_failed_run_response("eval_run_failed", str(exc)), status=500)
+
+    return _json(result, status=200 if result.status == "completed" else 500)
+
+
+async def post_scenario_run(request: Request, job_manager: EvalJobManager | None = None) -> JSONResponse:
+    """Validate and run one scenario evaluation."""
+
+    try:
+        payload = await request.json()
+    except (JSONDecodeError, UnicodeDecodeError, ValueError) as exc:
+        return _json(_failed_run_response("invalid_json", str(exc)), status=400)
+
+    try:
+        eval_request = ScenarioEvalRequest.model_validate(payload)
+    except ValidationError as exc:
+        return _json(_failed_run_response("validation_error", str(exc.errors())), status=400)
+
+    if eval_request.async_run:
+        manager = job_manager or getattr(request.app.state, "eval_job_manager", None)
+        if manager is None:
+            return _json(
+                _failed_run_response("eval_unavailable", "async eval is not configured"),
+                status=500,
+            )
+        if not eval_request.client_id:
+            return _json(
+                _failed_run_response("validation_error", "client_id is required for async runs"),
+                status=400,
+            )
+        try:
+            scenario = resolve_scenario_by_id(eval_request.scenario_id)
+            run_id = await manager.start_scenario(
+                eval_request.scenario_id,
+                eval_request.client_id,
+            )
+        except EvalJobConflictError as exc:
+            return _json(
+                _failed_run_response("eval_already_running", str(exc)),
+                status=409,
+            )
+        except Exception as exc:
+            return _json(_failed_run_response("eval_run_failed", str(exc)), status=500)
+
+        return _json(
+            EvalRunStartedResponse(
+                run_id=run_id,
+                scenario_id=eval_request.scenario_id,
+                tier=scenario.tier,
+            ),
+            status=202,
+        )
+
+    try:
+        result = await run_scenario_eval(eval_request)
+    except Exception as exc:
+        return _json(_failed_run_response("eval_run_failed", str(exc)), status=500)
+
+    return _json(result, status=200 if result.status == "completed" else 500)
+
+
+async def post_cancel_run(request: Request) -> JSONResponse:
+    """Cancel one async eval run."""
+
+    manager = getattr(request.app.state, "eval_job_manager", None)
+    if manager is None:
+        return _json(
+            _failed_run_response("eval_unavailable", "async eval is not configured"),
+            status=500,
+        )
+    run_id = request.path_params["run_id"]
+    cancelled = await manager.cancel(run_id)
+    if not cancelled:
+        return _json(_failed_run_response("not_found", f"run not found: {run_id}"), status=404)
+    return _json(EvalRunCancelResponse(run_id=run_id))
+
+
+async def get_runs(request: Request) -> JSONResponse:
+    """List persisted eval run summaries."""
+
+    limit = int(request.query_params.get("limit", "50"))
+    tier = request.query_params.get("tier")
+    summaries = [
+        EvalRunSummary.model_validate(item)
+        for item in list_run_summaries(limit=limit, tier=tier)
+    ]
+    return _json(summaries)
+
+
+async def get_run(request: Request) -> JSONResponse:
+    """Return one persisted eval run."""
+
+    run_id = request.path_params["run_id"]
+    record = load_run_record(run_id)
+    if record is None:
+        return _json(_failed_run_response("not_found", f"run not found: {run_id}"), status=404)
+    return _json(to_eval_run_response_from_record(record))
+
+
+async def post_emotion_support_run(request: Request) -> JSONResponse:
+    """Validate an evaluation request and run the emotion-support session."""
+
+    try:
+        payload = await request.json()
+    except (JSONDecodeError, UnicodeDecodeError, ValueError) as exc:
+        return _json(
+            _failed_emotion_response("invalid_json", f"Invalid JSON request body: {exc}"),
+            status=400,
+        )
+
+    try:
+        run_request = EmotionSupportRunRequest.model_validate(payload)
+    except ValidationError as exc:
+        return _json(
+            _failed_emotion_response("validation_error", exc.errors()),
+            status=400,
+        )
+
+    eval_request = EmotionEvalRequest.model_validate(
+        run_request.model_dump(
+            exclude={"client_id", "async_run"},
+            by_alias=False,
+        )
+    )
+
+    if run_request.async_run:
+        manager = getattr(request.app.state, "eval_job_manager", None)
+        if manager is None:
+            return _json(
+                _failed_emotion_response("eval_unavailable", "async eval is not configured"),
+                status=500,
+            )
+        if not run_request.client_id:
+            return _json(
+                _failed_emotion_response("validation_error", "client_id is required for async runs"),
+                status=400,
+            )
+        try:
+            run_id = await manager.start_exploratory(eval_request, run_request.client_id)
+        except EvalJobConflictError as exc:
+            return _json(
+                _failed_emotion_response("eval_already_running", str(exc)),
+                status=409,
+            )
+        except Exception as exc:
+            return _json(_failed_emotion_response("eval_run_failed", str(exc)), status=500)
+
+        return _json(
+            EvalRunStartedResponse(
+                run_id=run_id,
+                scenario_id="exploratory",
+                tier="exploratory",
+            ),
+            status=202,
+        )
+
+    try:
+        result = await run_emotion_eval(eval_request)
+    except Exception as exc:
+        return _json(
+            _failed_emotion_response("eval_run_failed", str(exc)),
+            status=500,
+        )
+
+    return _json(result, status=200 if result.status == "completed" else 500)
+
+
+def create_eval_routes(job_manager: EvalJobManager | None = None) -> list[Route]:
+    """Create Starlette routes for the eval HTTP API."""
+
+    async def scenario_run_endpoint(request: Request) -> JSONResponse:
+        return await post_scenario_run(request, job_manager=job_manager)
+
+    return [
+        Route("/api/eval/run", post_eval_run, methods=["POST"]),
+        Route("/api/eval/run", _options, methods=["OPTIONS"]),
+        Route("/api/eval/scenarios", get_scenarios, methods=["GET"]),
+        Route("/api/eval/scenarios", _options, methods=["OPTIONS"]),
+        Route("/api/eval/scenario/run", scenario_run_endpoint, methods=["POST"]),
+        Route("/api/eval/scenario/run", _options, methods=["OPTIONS"]),
+        Route("/api/eval/runs/{run_id}/cancel", post_cancel_run, methods=["POST"]),
+        Route("/api/eval/runs/{run_id}/cancel", _options, methods=["OPTIONS"]),
+        Route("/api/eval/runs/{run_id}", get_run, methods=["GET"]),
+        Route("/api/eval/runs/{run_id}", _options, methods=["OPTIONS"]),
+        Route("/api/eval/runs", get_runs, methods=["GET"]),
+        Route("/api/eval/runs", _options, methods=["OPTIONS"]),
+        Route("/api/eval/emotion-support/run", post_emotion_support_run, methods=["POST"]),
+        Route("/api/eval/emotion-support/run", _options, methods=["OPTIONS"]),
+    ]
+
+
+def _failed_emotion_response(code: str, message: object) -> EmotionEvalResponse:
+    return EmotionEvalResponse(
+        session_id="",
+        status="failed",
+        error=EvalError(
+            code=code,
+            message=str(message),
+        ),
+    )
+
+
+def _failed_run_response(code: str, message: object) -> EvalRunResponse:
+    return EvalRunResponse(
+        run_id="",
+        mode="scenario",
+        tier="smoke",
+        status="failed",
+        error=EvalError(code=code, message=str(message)),
+    )

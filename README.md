@@ -1,136 +1,212 @@
 # GardenAI
 
-一个面向庭院 / 智能家居场景的个人 AI 管家。它把语音和文本会话、可长期运行的智能体内核，以及对庭院设备（割草机、灌溉、泳池、机械臂等）的控制整合在一起。
+面向庭院 / 智能家居场景的个人 AI 管家。整合语音与文本会话、可长期运行的智能体内核，以及对庭院设备（割草机、灌溉、泳池、机械臂等）的 MCP 控制。
 
-## 架构
+## 项目能力
 
-项目由三块组成：
+| 能力 | 说明 |
+|------|------|
+| **多模态对话** | WebSocket 实时会话，支持语音输入（ASR）、语音输出（TTS）与纯文本模式 |
+| **智能体推理** | LangGraph deep agent，支持工具调用、子 Agent、对话摘要 |
+| **情绪建模** | 每轮 LLM 评估用户情绪，维护 VAD 状态，驱动 TTS 语气与前端情感展示 |
+| **长期记忆** | Mem0 + FAISS 向量检索，支持会话 flush、摘要触发写入、「记住」即时写入 |
+| **设备控制** | 通过 MCP 连接庭院设备模拟服务，智能体可调用割草、灌溉等工具 |
+| **提示词热编辑** | `soul.yaml` 等提示词每轮从磁盘加载，Web UI `/config` 可视化编辑 |
+| **自动化评测** | 场景回归、L0 断言、LLM Judge、情绪支持专项，前端 Test Panel 触发 |
 
-- **`src/`** — 基于 WebSocket 的多模态服务端，处理前端连接、ASR、TTS，并把消息转发给智能体。
-- **`frontend/`** — 移动优先 Web UI（聊天、`/config` 提示词编辑）。
-- **`yard/`** — 智能体内核，基于 [`deepagents`](https://github.com/langchain-ai/deepagents) / LangGraph，负责对话、技能、记忆、心跳和定时任务。
-- **`mcp_servers/garden_system/`** — 用 [FastMCP](https://github.com/jlowin/fastmcp) 把设备控制能力暴露成工具，供智能体调用。
+## 模块架构
+
+各模块职责与内部架构见对应 README：
+
+| 模块 | 职责 | 文档 |
+|------|------|------|
+| **`server/`** | WebSocket 传输、Handler 编排、ASR/TTS/Session 多模态服务、HTTP API | [server/README.md](server/README.md) |
+| **`agent/`** | LangGraph 智能体内核、情绪、记忆、MCP 工具、中间件链 | [agent/README.md](agent/README.md) |
+| **`eval/`** | 场景评测、Judge、异步任务、结果持久化 | [eval/README.md](eval/README.md) |
+| **`shared/`** | 配置加载（`.config.yaml` + `.env`）、结构化日志 | [shared/README.md](shared/README.md) |
+| **`data/`** | 提示词、评测 fixture、Agent 配置（可版本管理） | [data/README.md](data/README.md) |
+| **`mcp_servers/`** | 庭院设备 MCP Server（独立进程） | [mcp_servers/README.md](mcp_servers/README.md) |
+| **`frontend/`** | 移动优先 Web UI（聊天、`/config`、Test Panel） | [frontend/README.md](frontend/README.md) |
+| **`runtime/`** | 运行时产物（workspace、eval_runs、logs，已 gitignore） | — |
+
+### 能力如何实现
 
 ```mermaid
-flowchart LR
-    Web["前端 (frontend/)"] <--> Src["src/ 统一服务端<br/>WebSocket + HTTP API :8005"]
-    Src --> Yard["yard/ 智能体内核<br/>(deepagents)"]
-    Src --> PromptsYaml["yard/prompts<br/>YAML 提示词"]
-    Yard -.MCP.-> MCP["mcp_servers/garden_system<br/>FastMCP :8000"]
-    Yard <--> Workspace[("yard/workspace/<br/>记忆 / 配置 / 技能")]
+flowchart TB
+    subgraph client [客户端]
+        FE["frontend/ :5173"]
+    end
+
+    subgraph server_pkg [server/ :8005]
+        WS["WebSocket /ws"]
+        API["HTTP API"]
+        H["Handler 编排"]
+        ASR["ASR"]
+        TTS["TTS"]
+        SES["Session 桥接"]
+    end
+
+    subgraph agent_pkg [agent/]
+        AM["AgentManager"]
+        EM["情绪子系统"]
+        MM["Mem0 记忆"]
+        MCPc["MCP Client"]
+    end
+
+    subgraph external [外部]
+        MCPs["mcp_servers/ :8000"]
+        Data["data/prompts<br/>data/eval_fixtures"]
+        RT["runtime/workspace"]
+    end
+
+    Eval["eval/"] --> API
+
+    FE <-->|"/ws, /api/*"| server_pkg
+    WS --> H
+    H --> ASR --> SES
+    SES <-->|"队列"| AM
+    AM --> TTS
+    TTS --> WS
+    AM --> EM
+    AM --> MM
+    AM --> MCPc --> MCPs
+    AM --> Data
+    MM --> RT
+    Eval --> AM
+    API --> Data
 ```
 
-`python src/server.py` 在同一端口（默认 `:8005`）提供 WebSocket 与 **`/api/prompt-editor/`** HTTP API，用于在浏览器里查看和编辑 `yard/prompts/` 下的 YAML 提示词配置。`frontend` 开发服务器已将 **`/ws`** 与 **`/api/prompt-editor/`** 均代理到 `:8005`；生产环境经 nginx 同源暴露时同样反代到 `:8005`。
+**一条语音对话的链路**：
 
-## 配置
+1. `frontend` 经 WebSocket 发送 Opus 音频 → `server/transport`
+2. `handler/default.py` 解码 → `multimodal/audio` ASR → 文本
+3. `multimodal/session` 将文本包装为 `InputEvent` 入队 → `agent/AgentManager`
+4. Agent 经中间件注入人设、情绪、记忆后推理，流式输出 `OutputEvent`
+5. Handler 将文本回传客户端，并（语音模式）送入 `multimodal/tts` 合成 → Opus 回传
+
+**设备控制**：Agent 启动时从 `data/agent_configs/mcp_servers.yaml` 加载 MCP 工具；需独立启动 `mcp_servers/garden_system/mcp_server.py`。
+
+**评测**：`eval/` 直接调用 `AgentManager.achat()`，不经 WebSocket；API 挂载在 `server/app.py`，进度经 WebSocket 推送到 Test Panel。
+
+## 快速启动
 
 ### 1. 安装
 
-推荐用 [uv](https://github.com/astral-sh/uv)：
+推荐 [uv](https://github.com/astral-sh/uv)：
 
 ```bash
 uv venv
 uv pip install -e .
 ```
 
-### 2. `.env`（密钥）
+### 2. 配置
 
-复制 `env.example` 为 `.env`，填入 API Key、Token、AppId 等凭证。至少配置：
+**`.env`（密钥）** — 复制 `env.example` 为 `.env`，至少配置：
 
 ```dotenv
 GLM_OPENAI_API_KEY=...
 ```
 
-按需再填 ASR / TTS、Langfuse（`LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY`，默认上报至 `http://localhost:3000`）、`EMOTION_APPRAISAL_API_KEY` 等（纯文本对话可不填语音相关项）。
-
-### 3. `.config.yaml`（运行时参数）
-
-URL、模型名、功能开关等写在 `.config.yaml`（参考 `config.example.yaml`）。至少配置 LLM 端点：
+**`.config.yaml`（运行时参数）** — 参考 `config.example.yaml`，至少配置：
 
 ```yaml
 llm_model_name: "glm-4-flash"
 llm_base_url: "https://open.bigmodel.cn/api/paas/v4/"
 ```
 
-不建文件则使用代码默认值（仍需 `.env` 中的密钥）。
+配置加载细节见 [shared/README.md](shared/README.md)。
 
-代码层加载方式：
-
-- `load_secrets()` — 只读 `.env`
-- `load_settings()` — 只读 `.config.yaml`
-- `resolve_yard_runtime(settings, secrets)` / `resolve_server_runtime(settings)` — 按需组合
-
-### 4. Mem0 OSS 长期记忆（可选）
-
-在 `.config.yaml` 中启用（需已配置 GLM OpenAI 兼容端点，并指定 embedding 模型）：
-
-```yaml
-memory_enabled: true
-mem0_embedding_model: "embedding-3"   # 智谱等兼容 embedding 模型名
-mem0_embedding_dims: 1536
-```
-
-向量索引落在 `yard/workspace/memory/faiss/`。可通过统一服务端的 `/api/prompt-editor/memory-yaml/refresh` 导出只读 `yard/prompts/memory/memory.yaml`（已 gitignore，不参与对话注入）。
-
-Mem0 的记忆抽取依赖 spaCy（已包含在 `mem0ai[nlp]` 可选依赖中）。首次启用长期记忆时，还需下载英文语言模型：
+### 3. 启动服务
 
 ```bash
-pip install "mem0ai[nlp]"
-python -m spacy download en_core_web_sm
-```
-
-若使用 `uv pip install -e .`，`pyproject.toml` 已声明 `mem0ai[nlp]`，安装项目后只需执行 `python -m spacy download en_core_web_sm`。
-
-**Session 对话写入 Mem0**（动态策略，与 30 分钟 heartbeat 解耦，默认）：
-
-| 时机 | 默认 |
-|------|------|
-| LangGraph 对话摘要（上下文过长自动压缩） | 立即 flush 当前会话 |
-| 上一轮对话结束且空闲满 5 分钟 | flush（`memory_session_flush_idle_sec`） |
-| 进程退出 | 兜底 flush |
-| 用户说「记住」/ `remember` 工具 | 即时写入 |
-
-30 分钟 heartbeat 仅用于可选的 `memory/YYYY-MM-DD.md` 日记同步（`memory_journal_on_heartbeat`）。可在 `.config.yaml` 调整 `memory_session_flush_idle_sec`（设为 `0` 关闭空闲写入）、`memory_session_flush_on_summarization`。
-
-### 5. 灵魂提示词与心情（`yard/prompts`）
-
-- **灵魂文件**：`yard/prompts/soul.yaml` 合并原 base + 角色正文；`PersonaPromptMiddleware` 按通用模板渲染为 system prompt，每轮从磁盘热加载。
-- **few-shot**：`speech_examples` 等块写在 `soul.yaml` 中，由渲染器格式化为 User/Assistant 示例。
-- **心情**：情绪 middleware 使用 `yard/prompts/agent_mood.yaml`；用户侧回应策略在 `yard/prompts/affective.yaml`；VAD baseline / TTS 音色 v1 为代码默认值，后续可在 frontend `/config` 编辑（TODO）。
-- **编辑**：启动 `python src/server.py` 后，从聊天页笔形图标进入 `/config`（桌面三栏，仅 `soul.yaml` 可表单编辑）。
-- 从旧结构迁移：`python scripts/merge_soul_yaml.py`（需保留 `base/` 与 `roles/Lora.yaml` 备份时方可重跑）。
-
-## 运行
-
-按需启动以下进程，互相独立：
-
-```bash
-# 庭院设备 MCP Server（要让智能体能控制设备就启动它）
+# 庭院设备 MCP（需要设备控制能力时启动）
 python mcp_servers/garden_system/mcp_server.py
 
-# 统一服务端（WebSocket + /api/prompt-editor HTTP API，默认 :8005）
-python src/server.py
+# 统一服务端（WebSocket + HTTP API，默认 :8005）
+python -m server
 
-# 聊天前端（含 /config 提示词编辑）
+# 聊天前端
 cd frontend && npm install && npm run dev
 ```
 
-## Frontend
+推荐联调顺序：先 `python -m server`，再 `cd frontend && npm run dev`。
 
-- `frontend` 承载聊天与 `soul.yaml` 提示词配置（`/config`）。
-- 局域网 HTTPS 语音调试需自签名证书，见 `web-portal/ssl/README.txt`。
-- 推荐联调顺序：
-  1. 启动服务端：`python src/server.py`
-  2. 启动前端：`cd frontend && npm install && npm run dev`
-
-如果只想跑智能体本体试一下：
+仅验证智能体本体：
 
 ```bash
 python examples/demo.py
 ```
 
+### 4. 访问
+
+| 服务 | 地址 |
+|------|------|
+| 前端 | `http://localhost:5173` |
+| 后端 API / WebSocket | `http://localhost:8005` |
+| MCP Server | `http://localhost:8000/mcp` |
+
+前端开发服务器已将 `/ws` 与 `/api/*` 代理到 `:8005`。
+
+## 配置要点
+
+### 纯文本模式（跳过 ASR/TTS）
+
+在 `.config.yaml` 中设置：
+
+```yaml
+input_modality: ["text"]
+output_modality: ["text"]
+```
+
+无需配置语音相关 API Key。
+
+### Mem0 长期记忆（可选）
+
+```yaml
+memory_enabled: true
+mem0_embedding_model: "embedding-3"
+mem0_embedding_dims: 1536
+```
+
+向量索引落在 `runtime/workspace/memory/faiss/`。首次启用需：
+
+```bash
+python -m spacy download en_core_web_sm
+```
+
+Session 写入策略（默认）：
+
+| 时机 | 行为 |
+|------|------|
+| LangGraph 对话摘要 | 立即 flush 当前会话 |
+| 上一轮结束且空闲满 5 分钟 | flush（`memory_session_flush_idle_sec`） |
+| 进程退出 | 兜底 flush |
+| 用户说「记住」/ `remember` 工具 | 即时写入 |
+
+### 提示词与心情
+
+- 灵魂文件：`data/prompts/soul.yaml`（详见 [data/README.md](data/README.md)）
+- 心情模板：`data/prompts/agent_mood.yaml`
+- 情感策略：`data/prompts/affective.yaml`
+- Web 编辑：启动 server 后访问 `/config`
+
+### MCP 设备工具
+
+确认 `mcp_servers` 已在 `:8000` 运行，并在 `data/agent_configs/mcp_servers.yaml` 中启用对应配置（默认注释）。不可达时日志会有 `[warn] MCP server '...' is unavailable`，不会导致崩溃。
+
 ## 常见坑
 
 - **启动报 LLM 相关错误**：检查 `.env` 的 `GLM_OPENAI_API_KEY` 与 `.config.yaml` 的 `llm_base_url`。
-- **智能体调不到设备工具**：确认 MCP Server 已在 `:8000` 启动，并在 `yard/configs/mcp_servers.yaml` 里放开对应配置（默认是注释掉的）。MCP Server 不可达不会让程序崩溃，但日志里会有 `[warn] MCP server '...' is unavailable`。
-- **不想用语音**：在 `.config.yaml` 里把 `input_modality` / `output_modality` 都设成 `["text"]`，可以跳过 ASR / TTS 的所有 key 配置。
+- **WebSocket 连接后立刻断开**：检查 ASR/TTS 工厂模块路径、Opus 库是否安装（conda 环境 `igard` 已包含）。
+- **智能体调不到设备工具**：确认 MCP Server 已启动且 `mcp_servers.yaml` 已放开配置。
+- **局域网语音**：手机 / 局域网 IP 访问需 HTTPS，证书见 `web-portal/ssl/README.txt`。
+
+## 测试
+
+```bash
+# 评测冒烟
+pytest -m smoke tests/eval/
+
+# 评测单元测试
+pytest tests/eval/unit/
+```

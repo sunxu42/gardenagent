@@ -68,12 +68,12 @@ export function consumePendingLogAfterReload(): LogEntry | null {
 
 function summarizeClearResult(result: Record<string, unknown> | undefined): string {
   const mem0 = result?.mem0;
-  let mem0Part = "Mem0 —";
+  let mem0Part = "向量记忆 —";
   if (mem0 && typeof mem0 === "object") {
     const m = mem0 as Record<string, unknown>;
-    if (m.skipped) mem0Part = "Mem0 跳过";
-    else if (m.cleared) mem0Part = "Mem0 已清";
-    else if (m.error) mem0Part = "Mem0 失败";
+    if (m.skipped) mem0Part = "向量记忆已跳过";
+    else if (m.cleared) mem0Part = "向量记忆已清空";
+    else if (m.error) mem0Part = "向量记忆清空失败";
   }
   const checkpoints = Number(result?.checkpoints ?? 0);
   const buffers = Number(result?.session_buffers ?? 0);
@@ -82,7 +82,7 @@ function summarizeClearResult(result: Record<string, unknown> | undefined): stri
   if (emotion && typeof emotion === "object") {
     emotionN = Number((emotion as Record<string, unknown>).reset_managers ?? 0);
   }
-  return `${mem0Part}；checkpoint×${checkpoints}；session_buffer×${buffers}；emotion_reset×${emotionN}`;
+  return `${mem0Part}；检查点×${checkpoints}；会话缓冲×${buffers}；情绪重置×${emotionN}`;
 }
 
 export function buildUserDataClearedEntry(

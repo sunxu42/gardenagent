@@ -85,7 +85,7 @@ export function AffectDebugPanel({
                     : "text-muted-foreground hover:bg-muted/40 hover:text-foreground"
                 }`}
                 aria-pressed={devMode}
-                title="显示原始 JSON"
+                title="显示原始数据"
               >
                 <span className="inline-flex items-center gap-1.5">
                   <Code2 className="h-3.5 w-3.5" aria-hidden />

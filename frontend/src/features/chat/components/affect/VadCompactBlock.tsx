@@ -60,14 +60,14 @@ export function VadCompactBlock({
     <div className={`rounded-md px-2 py-1.5 ${accentClass}`}>
       <p className="text-[10px] font-medium text-muted-foreground">{title}</p>
       <p className="mt-0.5 font-mono text-[11px] leading-relaxed text-muted-foreground">
-        V {formatAffectNum(point.v)} · A {formatAffectNum(point.a)} · D {formatAffectNum(point.d)}
+        效价 {formatAffectNum(point.v)} · 唤醒 {formatAffectNum(point.a)} · 支配 {formatAffectNum(point.d)}
       </p>
       {roundDelta ? (
         <p className="mt-0.5 flex flex-wrap gap-x-2 gap-y-0">
           <span className="text-[10px] text-muted-foreground">相对上轮</span>
-          <DeltaCell label="V" value={roundDelta.v} subdued={subdued} />
-          <DeltaCell label="A" value={roundDelta.a} subdued={subdued} />
-          <DeltaCell label="D" value={roundDelta.d} subdued={subdued} />
+          <DeltaCell label="效价" value={roundDelta.v} subdued={subdued} />
+          <DeltaCell label="唤醒" value={roundDelta.a} subdued={subdued} />
+          <DeltaCell label="支配" value={roundDelta.d} subdued={subdued} />
         </p>
       ) : footnote ? (
         <p className="mt-0.5 text-[10px] text-muted-foreground">{footnote}</p>
