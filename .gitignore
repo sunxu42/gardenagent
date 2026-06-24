@@ -25,8 +25,8 @@ frontend/package-lock.json
 .env
 .config.yaml
 
-# Runtime & generated data
-runtime/
+# Runtime & generated data (repo root only; do not match agent/memory/runtime)
+/runtime/
 eval_runs/
 /logs/
 audio_output/
