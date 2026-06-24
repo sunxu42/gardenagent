@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import type { LogEntry } from "./logTypes";
 import { LEVEL_COLORS, MODULE_COLORS, MODULE_SHORT } from "./logColors";
+import { labelLogLevel, labelLogModule } from "@/lib/uiLabels";
 
 function formatLogTime(tsMs: number): string {
   const dt = new Date(tsMs);
@@ -45,12 +46,12 @@ export function LogLine({ entry }: LogLineProps) {
             color: MODULE_COLORS[entry.module],
             borderColor: `${MODULE_COLORS[entry.module]}55`,
           }}
-          title={entry.module}
+          title={labelLogModule(entry.module)}
         >
           {MODULE_SHORT[entry.module]}
         </span>
         <span className="logs-line__level" style={{ color: LEVEL_COLORS[entry.level] }}>
-          {entry.level}
+          {labelLogLevel(entry.level)}
         </span>
         <span className="logs-line__message">{entry.message}</span>
         {expandable ? (

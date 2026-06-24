@@ -8,6 +8,7 @@ import {
   mapEventToAction,
   mapServerMessage,
 } from "./wsClient";
+import type { EvalWsEvent } from "../../features/test/evalWsTypes";
 import type { ChatAction } from "../../features/chat/types";
 import { createVoiceClient } from "./voiceClient";
 
@@ -31,6 +32,7 @@ interface CreateChatApiOptions {
   getVoiceType: () => string | null;
   getAssistantMessageId: () => string | null;
   setAssistantMessageId: (id: string | null) => void;
+  onEvalEvent?: (event: EvalWsEvent) => void;
 }
 
 export function createChatApi(options: CreateChatApiOptions): ChatApi {
@@ -55,6 +57,10 @@ export function createChatApi(options: CreateChatApiOptions): ChatApi {
   };
 
   const applyMappedEvent = (wsEvent: WsMappedEvent) => {
+    if (wsEvent.type === "EVAL_EVENT") {
+      options.onEvalEvent?.(wsEvent.event);
+      return;
+    }
     if (wsEvent.type === "HELLO") {
       options.onAction({
         type: "vadBaselineUpdated",

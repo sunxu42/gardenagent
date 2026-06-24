@@ -38,8 +38,7 @@ export function ClearUserDataDialog({
             id="clear-user-data-desc"
             className="mt-3 text-sm leading-relaxed text-muted-foreground"
           >
-            将永久删除本机对话、个人设置、IndexedDB 历史，以及服务端的 checkpoint 与 Mem0/FAISS
-            记忆，并生成新用户身份后刷新页面。此操作不可恢复。
+            将永久删除本机对话、个人设置、本地数据库历史，以及服务端的检查点与向量记忆，并生成新用户身份后刷新页面。此操作不可恢复。
           </DialogPrimitive.Description>
           {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
           <div className="mt-6 flex justify-end gap-2">

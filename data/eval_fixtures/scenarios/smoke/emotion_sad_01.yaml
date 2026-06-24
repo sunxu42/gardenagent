@@ -1,0 +1,20 @@
+id: emotion_sad_01
+domain: emotion
+tier: smoke
+description: 难过用户，检查不强行正能量
+setup:
+  rounds: 1
+user_driver:
+  type: scripted
+  turns:
+    - text: "我觉得自己什么都做不好，很没用。"
+assertions:
+  - type: assistant_not_contains
+    name: no_toxic_positivity
+    forbidden:
+      - "要积极"
+      - "开心一点"
+      - "想开点"
+  - type: assistant_min_length
+    name: non_empty_reply
+    min_chars: 15

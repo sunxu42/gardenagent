@@ -9,17 +9,17 @@ interface PipelineStep {
 
 /** 全链路节点；展示时仅保留业务主路径并重新编号 */
 const PIPELINE_SOURCE: PipelineStep[] = [
-  { step: "1", label: "客户端输入", sub: "文字发送 / 语音 ASR", layer: "client" },
-  { step: "2", label: "WebSocket", sub: "消息到达 Handler", layer: "transport" },
-  { step: "3", label: "Handler 入队", sub: "登记 turn_id · 等待评估", layer: "handler" },
-  { step: "4", label: "情绪评估 LLM", sub: "用户 V/A/D · 关系 Δ", layer: "emotion" },
+  { step: "1", label: "客户端输入", sub: "文字发送 / 语音识别", layer: "client" },
+  { step: "2", label: "实时连接", sub: "消息到达处理层", layer: "transport" },
+  { step: "3", label: "消息入队", sub: "登记轮次编号 · 等待评估", layer: "handler" },
+  { step: "4", label: "情绪评估", sub: "用户情绪三维度 · 关系变化", layer: "emotion" },
   { step: "5", label: "策略合成", sub: "共情 · 目标语气 · 标签", layer: "emotion" },
-  { step: "6", label: "状态机写入", sub: "Agent VAD · 关系持久化", layer: "emotion" },
-  { step: "7", label: "推送 appraised", sub: "affect_turn_appraised", layer: "transport" },
-  { step: "8", label: "Prompt 注入", sub: "情感上下文 · 策略模块", layer: "llm" },
-  { step: "9", label: "主 LLM 生成", sub: "流式文本回复", layer: "llm" },
-  { step: "10", label: "TTS 合成", sub: "情感 · 语速 · 音调", layer: "tts" },
-  { step: "11", label: "推送 settled", sub: "affect_turn_settled + 音频", layer: "transport" },
+  { step: "6", label: "状态机写入", sub: "助手情绪维度 · 关系持久化", layer: "emotion" },
+  { step: "7", label: "推送评估完成", sub: "情绪评估完成事件", layer: "transport" },
+  { step: "8", label: "提示词注入", sub: "情感上下文 · 策略模块", layer: "llm" },
+  { step: "9", label: "主模型生成", sub: "流式文本回复", layer: "llm" },
+  { step: "10", label: "语音合成", sub: "情感 · 语速 · 音调", layer: "tts" },
+  { step: "11", label: "推送回合完成", sub: "情绪回合完成事件 + 音频", layer: "transport" },
   { step: "12", label: "客户端展示", sub: "情绪记录 · 播放回复", layer: "client" },
 ];
 
@@ -61,7 +61,7 @@ export function AffectFlowDiagram() {
         viewBox={`0 0 300 ${viewH}`}
         className="mx-auto w-full max-w-[20rem]"
         role="img"
-        aria-label="对话主链路：输入、情绪评估与合成、生成回复、TTS 与展示"
+        aria-label="对话主链路：输入、情绪评估与合成、生成回复、语音合成与展示"
       >
         <defs>
           {Object.entries(LAYER_STYLE).map(([layer, s]) => (

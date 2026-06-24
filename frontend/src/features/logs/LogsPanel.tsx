@@ -45,7 +45,7 @@ export function LogsPanel({ entries, onClear }: LogsPanelProps) {
             className={`logs-panel__btn${minLevel === "DEBUG" ? " logs-panel__btn--active" : ""}`}
             onClick={() => setMinLevel((prev) => (prev === "DEBUG" ? "INFO" : "DEBUG"))}
           >
-            {minLevel === "DEBUG" ? "隐藏 DEBUG" : "显示 DEBUG"}
+            {minLevel === "DEBUG" ? "隐藏调试日志" : "显示调试日志"}
           </button>
           <button
             type="button"

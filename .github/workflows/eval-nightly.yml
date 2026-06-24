@@ -1,0 +1,46 @@
+name: Eval Nightly
+
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+jobs:
+  judge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Run L0 smoke integration
+        env:
+          EVAL_INTEGRATION: "1"
+          GLM_OPENAI_API_KEY: ${{ secrets.GLM_OPENAI_API_KEY }}
+        run: python -m pytest tests/eval/smoke -m smoke -v
+
+      - name: Run DeepEval judge suite
+        env:
+          EVAL_INTEGRATION: "1"
+          EVAL_LLM_API_KEY: ${{ secrets.EVAL_LLM_API_KEY }}
+          GLM_OPENAI_API_KEY: ${{ secrets.GLM_OPENAI_API_KEY }}
+          DEEPEVAL_RESULTS_FOLDER: ./runtime/eval_runs/deepeval
+          DEEPEVAL_RETRY_MAX_ATTEMPTS: "6"
+          DEEPEVAL_RETRY_INITIAL_SECONDS: "2"
+          DEEPEVAL_RETRY_CAP_SECONDS: "30"
+          EVAL_JUDGE_METRIC_DELAY_SEC: "1.5"
+          EVAL_JUDGE_SCENARIO_DELAY_SEC: "3"
+          DEEPEVAL_VERBOSE_MODE: "0"
+          DEEPEVAL_PER_ATTEMPT_TIMEOUT_SECONDS_OVERRIDE: "120"
+        run: python -m deepeval test run tests/eval/judge/test_emotion_judge.py -m judge
+
+      - name: Upload eval artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-runs
+          path: runtime/eval_runs/

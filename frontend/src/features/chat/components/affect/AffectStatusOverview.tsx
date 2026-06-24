@@ -111,12 +111,12 @@ export function AffectStatusOverview({
         <div className="mt-2 space-y-2">
           {displayAgentVad ? (
             <VadCompactBlock
-              title="VAD"
+              title="情绪维度"
               accentClass="bg-sky-500/[0.05]"
               point={displayAgentVad}
             />
           ) : (
-            <p className="text-[11px] text-muted-foreground">暂无 VAD 数据</p>
+            <p className="text-[11px] text-muted-foreground">暂无情绪维度数据</p>
           )}
           {attitude ? (
             <p className="text-[11px] text-muted-foreground">

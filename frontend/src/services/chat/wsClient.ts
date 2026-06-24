@@ -11,6 +11,7 @@ import { EMPTY_AFFECT_LOCK } from "../../features/chat/types";
 import type { LogEntry, LogLevel, LogModule } from "../../features/logs/logTypes";
 import { LOG_LEVELS, LOG_MODULES } from "../../features/logs/logTypes";
 import { parseEmotionProfile } from "../../features/chat/lib/emotionProfile";
+import type { EvalWsEvent } from "../../features/test/evalWsTypes";
 
 export interface AssistantServerMessage {
   role?: string;
@@ -152,6 +153,7 @@ export type WsMappedEvent =
       timestamp: number;
     }
   | { type: "LOG_ENTRY"; entry: LogEntry }
+  | { type: "EVAL_EVENT"; event: EvalWsEvent }
   | { type: "IGNORE" };
 
 function readOptionalNumber(raw: unknown): number | undefined {
@@ -354,6 +356,11 @@ function parseLogEntry(msg: AssistantServerMessage): LogEntry | null {
 }
 
 export function mapServerMessage(msg: AssistantServerMessage): WsMappedEvent {
+  const msgType = typeof msg?.type === "string" ? msg.type : "";
+  if (msgType.startsWith("eval_")) {
+    return { type: "EVAL_EVENT", event: msg as EvalWsEvent };
+  }
+
   if (msg?.type === "log_entry") {
     const entry = parseLogEntry(msg);
     if (!entry) {

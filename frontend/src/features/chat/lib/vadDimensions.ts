@@ -20,7 +20,7 @@ export interface VadDimensionMeta {
 export const VAD_DIMENSIONS: VadDimensionMeta[] = [
   {
     key: "v",
-    fullName: "Valence",
+    fullName: "效价",
     label: "愉悦度",
     hint: "消极 ← → 积极",
     poleLow: "消极",
@@ -32,7 +32,7 @@ export const VAD_DIMENSIONS: VadDimensionMeta[] = [
   },
   {
     key: "a",
-    fullName: "Arousal",
+    fullName: "唤醒度",
     label: "能量感",
     hint: "平静 ← → 激动",
     poleLow: "平静",
@@ -44,7 +44,7 @@ export const VAD_DIMENSIONS: VadDimensionMeta[] = [
   },
   {
     key: "d",
-    fullName: "Dominance",
+    fullName: "支配感",
     label: "掌控感",
     hint: "被动 ← → 强势",
     poleLow: "被动",

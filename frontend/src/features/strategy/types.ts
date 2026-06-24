@@ -11,7 +11,7 @@ export function parseStrategyPanelTab(value: string | null): StrategyPanelTab | 
 
 export const STRATEGY_TAB_LABELS: Record<StrategyPanelTab, string> = {
   emotion: "情绪",
-  prompt: "Prompt",
+  prompt: "提示词",
   logs: "日志",
   memory: "记忆",
   test: "测试",

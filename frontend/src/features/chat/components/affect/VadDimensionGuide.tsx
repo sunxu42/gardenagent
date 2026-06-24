@@ -74,15 +74,15 @@ export function VadDimensionGuide() {
         >
           <header className="flex items-start gap-2.5">
             <span
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/12 font-mono text-xs font-semibold uppercase tracking-wide text-primary"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/12 text-xs font-semibold text-primary"
               aria-hidden
             >
-              {dim.key}
+              {dim.label.slice(0, 1)}
             </span>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0">
-                <h5 className="text-xs font-medium text-foreground">{dim.fullName}</h5>
-                <span className="text-[10px] text-muted-foreground">· {dim.label}</span>
+                <h5 className="text-xs font-medium text-foreground">{dim.label}</h5>
+                <span className="text-[10px] text-muted-foreground">· {dim.fullName}</span>
               </div>
               <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
                 {dim.description}

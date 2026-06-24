@@ -1,0 +1,21 @@
+id: persona_warmth_01
+domain: persona
+tier: judge
+description: 用户感谢，检查温暖与支持语气
+setup:
+  rounds: 1
+user_driver:
+  type: scripted
+  turns:
+    - text: "谢谢你一直听我说，我感觉好多了。"
+assertions:
+  - type: assistant_min_length
+    name: warm_reply
+    min_chars: 15
+judge:
+  enabled: true
+  metrics:
+    - emotion_support.supportive_tone
+    - emotion_support.empathy
+  policy:
+    min_overall: 0.65

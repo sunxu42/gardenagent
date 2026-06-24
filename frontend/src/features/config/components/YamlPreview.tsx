@@ -114,9 +114,9 @@ export function YamlPreview({ content, path, focusedNodePath, flashToken }: Yaml
 
   if (!path) {
     return (
-      <PanelSection title="YAML 预览" description="选择文件后查看磁盘原文（只读）" fill>
+      <PanelSection title="配置预览" description="选择文件后查看磁盘原文（只读）" fill>
         <div className="flex min-h-[10rem] flex-1 items-center justify-center rounded-md bg-amber-50/60 px-4">
-          <p className="m-0 text-center text-sm text-muted-foreground">在左侧选择 YAML 文件</p>
+          <p className="m-0 text-center text-sm text-muted-foreground">在左侧选择配置文件</p>
         </div>
       </PanelSection>
     );
@@ -126,7 +126,7 @@ export function YamlPreview({ content, path, focusedNodePath, flashToken }: Yaml
 
   return (
     <PanelSection
-      title="YAML 预览"
+      title="配置预览"
       description={focusedNodePath ? `联动：${focusedNodePath}` : "聚焦右侧字段可定位到此"}
       fill
       bodyClassName="flex min-h-0 flex-1 flex-col !pb-3"

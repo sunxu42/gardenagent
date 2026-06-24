@@ -9,6 +9,7 @@ __pycache__/
 *.egg-info/
 .eggs/
 .deepeval/
+eval_runs/
 build/
 dist/
 wheels/
@@ -24,14 +25,16 @@ frontend/package-lock.json
 .env
 .config.yaml
 
-# Runtime & generated data（仅仓库根目录 JSONL 日志，勿用 logs/ 以免忽略 frontend/src/features/logs/）
+# Runtime & generated data
+runtime/
+eval_runs/
 /logs/
 audio_output/
 tts_outputs/
 *.lmdb
 workspace/
 yard/workspace/
-yard/prompts/memory/
+data/prompts/memory/
 
 # Tool locks (local resolver output)
 uv.lock

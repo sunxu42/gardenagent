@@ -129,11 +129,11 @@ export function PromptEditor() {
     <div className="config-desktop-page config-desktop-page--embedded">
       <header className="config-desktop-toolbar">
         <div className="min-w-0 flex-1">
-          <h1 className="config-desktop-toolbar__title">Prompt 配置</h1>
+          <h1 className="config-desktop-toolbar__title">提示词配置</h1>
           {selectedPath ? (
             <p className="config-desktop-toolbar__path truncate">{selectedPath}</p>
           ) : (
-            <p className="config-desktop-toolbar__path">yard/prompts</p>
+            <p className="config-desktop-toolbar__path">data/prompts</p>
           )}
         </div>
         {dirty ? <span className="config-desktop-badge config-desktop-badge--dirty">未保存</span> : null}
@@ -162,7 +162,7 @@ export function PromptEditor() {
         <aside className="config-desktop-panel--sidebar">
           <PanelSection
             title="文件"
-            description="yard/prompts"
+            description="data/prompts"
             fill
             bodyClassName="config-desktop-panel__body--scroll"
           >
