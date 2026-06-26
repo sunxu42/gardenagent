@@ -37,7 +37,6 @@ export function AffectDebugPanel({
   onToggleAffectLock,
 }: AffectDebugPanelProps) {
   const [devMode, setDevMode] = useState(readDevMode);
-  const [selectedTurnId, setSelectedTurnId] = useState<string | null>(null);
 
   const safeHistory = Array.isArray(history) ? history : [];
 
@@ -53,17 +52,16 @@ export function AffectDebugPanel({
     });
   }, []);
 
-  const focusedRecord = useMemo(() => {
-    if (selectedTurnId) {
-      return safeHistory.find((h) => h.turnId === selectedTurnId) ?? safeHistory[0] ?? null;
-    }
-    return safeHistory[0] ?? null;
-  }, [safeHistory, selectedTurnId]);
+  const focusedRecord = safeHistory[0] ?? null;
 
   const focusedRoundLabel = useMemo(() => {
-    if (!focusedRecord) return null;
+    if (!focusedRecord) {
+      return null;
+    }
     const idx = safeHistory.findIndex((h) => h.turnId === focusedRecord.turnId);
-    if (idx < 0) return null;
+    if (idx < 0) {
+      return null;
+    }
     return `第 ${safeHistory.length - idx} 轮`;
   }, [focusedRecord, safeHistory]);
 
@@ -94,7 +92,7 @@ export function AffectDebugPanel({
             {safeHistory.length === 0 ? (
               <p className="pt-12 text-center text-xs text-muted-foreground">发送消息后显示记录</p>
             ) : (
-              <ul className="space-y-2">
+              <ul className="affect-turn-list space-y-2" aria-label="情绪记录">
                 {safeHistory.map((item, index) => (
                   <AffectTurnCard
                     key={item.turnId}
@@ -103,8 +101,6 @@ export function AffectDebugPanel({
                     index={index}
                     total={safeHistory.length}
                     devMode={devMode}
-                    selected={selectedTurnId === item.turnId}
-                    onSelect={() => setSelectedTurnId(item.turnId)}
                   />
                 ))}
               </ul>
