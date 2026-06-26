@@ -107,7 +107,11 @@
   display: flex;
   flex-direction: column;
   position: relative;
-  background: hsl(var(--background) / 0.28);
+  --rail-panel-surface: hsl(var(--rail-list) / 0.22);
+  --rail-panel-surface-list: hsl(var(--rail-list) / 0.32);
+  --rail-panel-surface-detail: hsl(var(--strategy-surface-b, var(--secondary)) / 0.28);
+  --rail-panel-divider: hsl(var(--border) / 0.35);
+  background: var(--rail-panel-surface);
 }
 
 .strategy-rail-pane {
@@ -120,78 +124,7 @@
   display: none;
 }
 
-.strategy-panel-loading {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  min-height: 12rem;
-  font-size: 0.8125rem;
-  color: hsl(var(--muted-foreground));
-}
-
-.strategy-panel-loading__spinner {
-  width: 1.25rem;
-  height: 1.25rem;
-  border: 2px solid hsl(var(--border));
-  border-top-color: hsl(var(--primary) / 0.75);
-  border-radius: 50%;
-  animation: strategy-spin 0.7s linear infinite;
-}
-
-@keyframes strategy-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.strategy-placeholder {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  padding: 2rem 1.5rem;
-  text-align: center;
-  min-height: 0;
-}
-
-.strategy-placeholder__icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 3.5rem;
-  height: 3.5rem;
-  border-radius: 0.75rem;
-  border: 1px solid hsl(var(--border) / 0.4);
-  background: hsl(var(--secondary) / 0.55);
-  color: hsl(var(--primary));
-}
-
-.strategy-placeholder__title {
-  margin: 0;
-  font-size: 0.9375rem;
-  font-weight: 600;
-  color: hsl(var(--foreground) / 0.85);
-}
-
-.strategy-placeholder__desc {
-  margin: 0;
-  max-width: 22rem;
-  font-size: 0.8125rem;
-  line-height: 1.55;
-  color: hsl(var(--muted-foreground));
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .strategy-panel-loading__spinner {
-    animation: none;
-    border-top-color: hsl(var(--primary) / 0.55);
-  }
-
   .strategy-rail-tab {
     transition: none;
   }

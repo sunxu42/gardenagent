@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { AppRouter } from "./app/Router";
 import "./shared/styles/reset.css";
 import "./shared/styles/globals.css";
+import "./shared/styles/rail-panel-shell.css";
 import "./shared/styles/mobile-shell.css";
 import "./shared/styles/chat-desktop.css";
 import "./shared/styles/theme-mint-cute.css";

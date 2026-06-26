@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { PanelLoading } from "@/components/panel/PanelLoading";
 import { RailCheckboxField } from "@/components/rail/RailCheckboxField";
+import { RailPanelScroll } from "@/components/rail/RailPanelShell";
 import { Button } from "@/components/ui/button";
 import type { ScenarioSummary } from "@/features/test/types";
 import { listScenarios } from "@/services/eval/scenarioApi";
@@ -121,11 +122,12 @@ export function ScenarioPicker({
 
       {error ? <p className="px-1 text-xs text-destructive">{error}</p> : null}
 
-      <ul
-        aria-label="要运行的场景"
-        className="test-panel-scroll m-0 list-none space-y-1.5 p-0 !px-1 !pb-2 !pt-0"
-        role="group"
-      >
+      <RailPanelScroll padded className="!px-1 !pb-2 !pt-0">
+        <ul
+          aria-label="要运行的场景"
+          className="m-0 list-none space-y-1.5 p-0"
+          role="group"
+        >
         {scenarios.map((scenario) => {
           const checked = selectedIds.includes(scenario.id);
           return (
@@ -163,6 +165,7 @@ export function ScenarioPicker({
           <li className="py-8 text-center text-xs text-muted-foreground">暂无场景</li>
         ) : null}
       </ul>
+      </RailPanelScroll>
     </div>
   );
 }

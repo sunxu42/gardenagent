@@ -1,5 +1,7 @@
 import { ClipboardList, FlaskConical, Sparkles } from "lucide-react";
 
+import { PanelEmpty } from "@/components/panel/PanelEmpty";
+
 import { EvalBatchQueueView } from "@/features/test/EvalBatchQueueView";
 import { EvalRunProgressView } from "@/features/test/EvalRunProgressView";
 import { EvalRunResultView } from "@/features/test/EvalRunResultView";
@@ -16,26 +18,6 @@ interface EvalDomainRunDockProps {
 
 function formatScore(score: number): string {
   return `${Math.round(score * 100)}%`;
-}
-
-function TestEmptyState({
-  icon: Icon,
-  title,
-  description,
-}: {
-  icon: typeof FlaskConical;
-  title: string;
-  description: string;
-}): JSX.Element {
-  return (
-    <div className="test-empty-state">
-      <div className="test-empty-state__icon">
-        <Icon className="h-4 w-4" aria-hidden />
-      </div>
-      <p className="test-empty-state__title">{title}</p>
-      <p className="test-empty-state__desc">{description}</p>
-    </div>
-  );
 }
 
 export function EvalDomainRunDock({
@@ -209,7 +191,7 @@ export function EvalDomainRunDock({
         ) : null}
 
         {showEmpty ? (
-          <TestEmptyState description={description} icon={emptyIcon} title={title} />
+          <PanelEmpty variant="compact" icon={emptyIcon} description={description} title={title} />
         ) : null}
       </div>
     </div>

@@ -1,6 +1,8 @@
 import { FlaskConical, History, LayoutGrid } from "lucide-react";
 import { useState } from "react";
 
+import { RailPanelHeader } from "@/components/rail/RailPanelHeader";
+import { RailPanelBody, RailPanelRoot } from "@/components/rail/RailPanelShell";
 import { RailTab, RailTabList } from "@/components/rail/RailTabGroup";
 import { EvalHistoryView } from "@/features/test/EvalHistoryView";
 import { EvalOverviewView } from "@/features/test/EvalOverviewView";
@@ -23,15 +25,11 @@ export function TestPanel(): JSX.Element {
   useCoverageRefreshOnEvalComplete(coverage.reload);
 
   return (
-    <section className="test-panel-root flex h-full min-h-0 flex-col overflow-hidden">
-      <header className="affect-rail-header shrink-0">
-        <div className="affect-rail-header__row">
-          <h2 className="flex min-w-0 items-center gap-2 text-sm font-medium text-muted-foreground">
-            <span className="affect-rail-header__icon">
-              <FlaskConical className="h-3.5 w-3.5" aria-hidden />
-            </span>
-            测试
-          </h2>
+    <RailPanelRoot className="test-panel-root" aria-label="评测">
+      <RailPanelHeader
+        icon={FlaskConical}
+        title="测试"
+        actions={
           <RailTabList aria-label="评测类型">
             {PANEL_TABS.map((tab) => (
               <RailTab
@@ -43,10 +41,10 @@ export function TestPanel(): JSX.Element {
               </RailTab>
             ))}
           </RailTabList>
-        </div>
-      </header>
+        }
+      />
 
-      <div className="min-h-0 flex-1 overflow-hidden">
+      <RailPanelBody>
         {activeTab === "overview" ? (
           <EvalOverviewView
             panelView={panelView}
@@ -64,7 +62,7 @@ export function TestPanel(): JSX.Element {
         ) : null}
 
         {activeTab === "history" ? <EvalHistoryView /> : null}
-      </div>
-    </section>
+      </RailPanelBody>
+    </RailPanelRoot>
   );
 }

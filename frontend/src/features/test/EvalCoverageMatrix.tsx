@@ -3,6 +3,7 @@ import { useMemo } from "react";
 
 import { PanelEmpty } from "@/components/panel/PanelEmpty";
 import { PanelLoading } from "@/components/panel/PanelLoading";
+import { RailDetailPane, RailListPane, RailSidebarGroup } from "@/components/rail/RailPanelShell";
 import { EvalCoverageRadar } from "@/features/test/EvalCoverageRadar";
 import { EvalDomainSummary } from "@/features/test/EvalDomainSummary";
 import { buildDomainRadarPoints } from "@/features/test/coverageRadarModel";
@@ -59,16 +60,16 @@ export function EvalCoverageMatrix({
   }
 
   return (
-    <div className="test-sidebar-group min-h-0 flex-1">
-      <div className="test-list-panel eval-coverage-radar-panel">
+    <RailSidebarGroup>
+      <RailListPane className="eval-coverage-radar-panel">
         <EvalCoverageRadar
           points={radarPoints}
           selectedDomain={selectedDomain}
           onEnterDomain={onEnterDomain}
           onSelectDomain={onSelectDomain}
         />
-      </div>
-      <div className="test-detail-panel">
+      </RailListPane>
+      <RailDetailPane>
         <EvalDomainSummary
           point={selectedPoint}
           onEnter={() => {
@@ -77,7 +78,7 @@ export function EvalCoverageMatrix({
             }
           }}
         />
-      </div>
-    </div>
+      </RailDetailPane>
+    </RailSidebarGroup>
   );
 }

@@ -1,5 +1,8 @@
 import { BookOpen } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+
+import { RailPanelHeader } from "@/components/rail/RailPanelHeader";
+import { RailDetailPane, RailPanelScroll } from "@/components/rail/RailPanelShell";
 import { smoothScrollContainer } from "../lib/affectGuideMotion";
 import type { AffectLockState, AffectTurnRecord, EmotionProfile, RelationshipSnapshot, VadPoint } from "../types";
 import { AffectBaselineDecayGuide } from "./affect/AffectBaselineDecayGuide";
@@ -86,24 +89,16 @@ export function AffectGuidePanel({
   }, []);
 
   return (
-    <aside
+    <RailDetailPane
       id="affect-guide-panel"
-      className="affect-guide-drawer flex min-h-0 shrink-0 flex-col overflow-hidden"
       aria-label="情绪模块说明"
     >
-      <header className="affect-rail-header shrink-0">
-        <div className="affect-rail-header__row">
-          <h3 className="flex min-w-0 items-center gap-2 text-sm font-medium text-muted-foreground">
-            <span className="affect-rail-header__icon">
-              <BookOpen className="h-3.5 w-3.5" aria-hidden />
-            </span>
-            情绪模块说明
-          </h3>
-          <span className="invisible shrink-0 px-2.5 py-1.5 text-[11px]" aria-hidden>
-            开发者
-          </span>
-        </div>
-      </header>
+      <RailPanelHeader
+        level={3}
+        icon={BookOpen}
+        title="情绪模块说明"
+        actionPlaceholder
+      />
 
       <AffectGuideNav
         items={GUIDE_SECTIONS}
@@ -111,10 +106,7 @@ export function AffectGuidePanel({
         onSelect={scrollToSection}
       />
 
-      <div
-        ref={scrollRef}
-        className="affect-panel-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-6 pt-2"
-      >
+      <RailPanelScroll ref={scrollRef} className="px-4 pb-6 pt-2">
         <div className="space-y-6">
           <GuideAnchorSection id="affect-guide-s1" title="关系与助手情绪" accent="amber">
             <AffectStatusOverview
@@ -144,7 +136,7 @@ export function AffectGuidePanel({
             <AffectReferenceGuide />
           </GuideAnchorSection>
         </div>
-      </div>
-    </aside>
+      </RailPanelScroll>
+    </RailDetailPane>
   );
 }

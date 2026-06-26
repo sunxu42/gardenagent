@@ -1,6 +1,13 @@
 import { Activity, Code2 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
+import { RailPanelHeader } from "@/components/rail/RailPanelHeader";
+import {
+  RailListPane,
+  RailPanelRoot,
+  RailPanelScroll,
+  RailSidebarGroup,
+} from "@/components/rail/RailPanelShell";
 import { RailToolbarButton } from "@/components/rail/RailToolbarButton";
 
 import type { AffectLockState, AffectTurnRecord, EmotionProfile, RelationshipSnapshot, VadPoint } from "../types";
@@ -67,17 +74,14 @@ export function AffectDebugPanel({
   }, [focusedRecord, safeHistory]);
 
   return (
-    <div className="affect-panel-root h-full min-h-0 max-h-full w-full overflow-hidden flex">
-      <div className="affect-sidebar-group h-full min-h-0 max-h-full overflow-hidden">
-        <aside className="affect-history-panel flex min-h-0 flex-1 flex-col overflow-hidden">
-          <header className="affect-rail-header shrink-0">
-            <div className="affect-rail-header__row">
-              <h3 className="flex min-w-0 items-center gap-2 text-sm font-medium text-muted-foreground">
-                <span className="affect-rail-header__icon">
-                  <Activity className="h-3.5 w-3.5" aria-hidden />
-                </span>
-                情绪记录
-              </h3>
+    <RailPanelRoot>
+      <RailSidebarGroup>
+        <RailListPane>
+          <RailPanelHeader
+            level={3}
+            icon={Activity}
+            title="情绪记录"
+            actions={
               <RailToolbarButton
                 pressed={devMode}
                 icon={<Code2 className="h-3.5 w-3.5" />}
@@ -86,10 +90,10 @@ export function AffectDebugPanel({
               >
                 开发者
               </RailToolbarButton>
-            </div>
-          </header>
+            }
+          />
 
-          <div className="affect-panel-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-6 pt-2">
+          <RailPanelScroll className="px-4 pb-6 pt-2">
             {safeHistory.length === 0 ? (
               <p className="pt-12 text-center text-xs text-muted-foreground">发送消息后显示记录</p>
             ) : (
@@ -106,8 +110,8 @@ export function AffectDebugPanel({
                 ))}
               </ul>
             )}
-          </div>
-        </aside>
+          </RailPanelScroll>
+        </RailListPane>
 
         <AffectGuidePanel
           focusedRecord={focusedRecord}
@@ -120,7 +124,7 @@ export function AffectDebugPanel({
           affectLock={affectLock}
           onToggleAffectLock={onToggleAffectLock}
         />
-      </div>
-    </div>
+      </RailSidebarGroup>
+    </RailPanelRoot>
   );
 }

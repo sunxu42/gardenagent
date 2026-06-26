@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
+import { RailDetailPane, RailListPane, RailSidebarGroup } from "@/components/rail/RailPanelShell";
 import { EvalDomainBreadcrumb } from "@/features/test/EvalDomainBreadcrumb";
 import { EvalDomainModeTabs } from "@/features/test/EvalDomainModeTabs";
 import { EvalDomainRunDock } from "@/features/test/EvalDomainRunDock";
@@ -173,8 +174,8 @@ export function EvalDomainWorkspace({
         <EvalDomainModeTabs mode={mode} showExploratory={showExploratory} onChange={handleModeChange} />
       </div>
 
-      <div className="eval-domain-workspace__body test-sidebar-group">
-        <aside className="eval-domain-workspace__list test-list-panel">
+      <RailSidebarGroup className="eval-domain-workspace__body">
+        <RailListPane className="eval-domain-workspace__list">
           {mode === "exploratory" ? (
             <EvalExploratoryPane
               running={exploratoryRunning}
@@ -193,15 +194,15 @@ export function EvalDomainWorkspace({
               onRun={() => void handleScenarioRun()}
             />
           )}
-        </aside>
+        </RailListPane>
 
-        <div className="eval-domain-workspace__detail test-detail-panel">
+        <RailDetailPane className="eval-domain-workspace__detail">
           <EvalDomainRunDock
             error={dockError}
             mode={mode === "exploratory" ? "exploratory" : "scenario"}
           />
-        </div>
-      </div>
+        </RailDetailPane>
+      </RailSidebarGroup>
     </div>
   );
 }

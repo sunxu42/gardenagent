@@ -1,7 +1,9 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
-import { Save } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { FileCode2, Save } from "lucide-react";
+
 import { PanelLoading } from "@/components/panel/PanelLoading";
+import { RailPanelHeader } from "@/components/rail/RailPanelHeader";
+import { RailToolbarButton } from "@/components/rail/RailToolbarButton";
 import { FileTree } from "./components/FileTree";
 import { PanelSection } from "./components/PanelSection";
 import { SoulTreeEditor } from "./components/SoulTreeEditor";
@@ -137,36 +139,32 @@ export function PromptEditor() {
 
   return (
     <div className="config-desktop-page config-desktop-page--embedded">
-      <header className="config-desktop-toolbar">
-        <div className="min-w-0 flex-1">
-          <h1 className="config-desktop-toolbar__title">提示词配置</h1>
-          {selectedPath ? (
-            <p className="config-desktop-toolbar__path truncate">{selectedPath}</p>
-          ) : (
-            <p className="config-desktop-toolbar__path">data/prompts</p>
-          )}
-        </div>
-        {dirty ? <span className="config-desktop-badge config-desktop-badge--dirty">未保存</span> : null}
-        {!editable && selectedPath ? (
-          <span className="config-desktop-badge config-desktop-badge--readonly">只读</span>
-        ) : null}
-        {editable ? (
-          <Button
-            type="button"
-            className="cursor-pointer shrink-0 gap-2"
-            disabled={!dirty || saving}
-            onClick={() => void handleSave()}
-          >
-            <Save className="h-4 w-4" />
-            {saving ? "保存中…" : "保存"}
-          </Button>
-        ) : null}
-        {status ? (
-          <span className="shrink-0 text-xs text-muted-foreground" role="status">
-            {status}
-          </span>
-        ) : null}
-      </header>
+      <RailPanelHeader
+        icon={FileCode2}
+        title="提示词"
+        actions={
+          <>
+            {dirty ? <span className="config-desktop-badge config-desktop-badge--dirty">未保存</span> : null}
+            {!editable && selectedPath ? (
+              <span className="config-desktop-badge config-desktop-badge--readonly">只读</span>
+            ) : null}
+            {editable ? (
+              <RailToolbarButton
+                disabled={!dirty || saving}
+                icon={<Save className="h-3 w-3" />}
+                onClick={() => void handleSave()}
+              >
+                {saving ? "保存中…" : "保存"}
+              </RailToolbarButton>
+            ) : null}
+            {status ? (
+              <span className="shrink-0 text-xs text-muted-foreground" role="status">
+                {status}
+              </span>
+            ) : null}
+          </>
+        }
+      />
 
       <div className="config-desktop-columns">
         <aside className="config-desktop-panel--sidebar">

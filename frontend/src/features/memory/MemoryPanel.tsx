@@ -1,7 +1,10 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { Brain, RefreshCw } from "lucide-react";
 
+import { PanelEmpty } from "@/components/panel/PanelEmpty";
 import { PanelLoading } from "@/components/panel/PanelLoading";
+import { RailPanelHeader } from "@/components/rail/RailPanelHeader";
+import { RailPanelBody, RailPanelColumn } from "@/components/rail/RailPanelShell";
 import { RailToolbarButton } from "@/components/rail/RailToolbarButton";
 import {
   fetchPromptContent,
@@ -32,20 +35,17 @@ function MemoryPanelEmptyState({
   const notFound = isMemoryNotFound(error);
 
   return (
-    <div className="memory-panel__empty">
-      <div className="memory-panel__empty-icon" aria-hidden>
-        <Brain className="h-8 w-8" strokeWidth={1.5} />
-      </div>
-      <h3 className="memory-panel__empty-title">
-        {notFound ? "暂无记忆导出" : "加载失败"}
-      </h3>
-      <p className="memory-panel__empty-desc">
-        {notFound
+    <PanelEmpty
+      variant="hero"
+      icon={Brain}
+      title={notFound ? "暂无记忆导出" : "加载失败"}
+      description={
+        notFound
           ? "memory.yaml 尚未生成。与 Agent 对话产生记忆后，点击「从 Mem0 刷新」即可查看导出内容。"
-          : error}
-      </p>
-      <div className="memory-panel__empty-actions">
-        {notFound ? (
+          : error
+      }
+      actions={
+        notFound ? (
           <RailToolbarButton
             disabled={refreshing}
             icon={
@@ -59,9 +59,9 @@ function MemoryPanelEmptyState({
           </RailToolbarButton>
         ) : (
           <RailToolbarButton onClick={onRetry}>重试</RailToolbarButton>
-        )}
-      </div>
-    </div>
+        )
+      }
+    />
   );
 }
 
@@ -115,18 +115,11 @@ export function MemoryPanel(): JSX.Element {
   };
 
   return (
-    <section className="memory-panel" aria-label="记忆导出">
-      <header className="memory-panel__toolbar">
-        <div className="memory-panel__title-row">
-          <span className="memory-panel__icon" aria-hidden>
-            <Brain className="h-3.5 w-3.5" />
-          </span>
-          <div className="min-w-0">
-            <h2 className="memory-panel__title">记忆</h2>
-            <p className="memory-panel__subtitle">Mem0 导出 · 只读</p>
-          </div>
-        </div>
-        <div className="memory-panel__actions">
+    <RailPanelColumn className="memory-panel" aria-label="记忆导出">
+      <RailPanelHeader
+        icon={Brain}
+        title="记忆"
+        actions={
           <RailToolbarButton
             disabled={refreshing}
             icon={
@@ -138,10 +131,10 @@ export function MemoryPanel(): JSX.Element {
           >
             {refreshing ? "刷新中…" : "从 Mem0 刷新"}
           </RailToolbarButton>
-        </div>
-      </header>
+        }
+      />
 
-      <div className="memory-panel__body">
+      <RailPanelBody className="memory-panel__body">
         {loading && !loadedOnce ? (
           <PanelLoading label="加载记忆文件…" />
         ) : null}
@@ -165,7 +158,7 @@ export function MemoryPanel(): JSX.Element {
             />
           </Suspense>
         ) : null}
-      </div>
-    </section>
+      </RailPanelBody>
+    </RailPanelColumn>
   );
 }

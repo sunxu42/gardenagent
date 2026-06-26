@@ -1,6 +1,7 @@
 import { History } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
+import { PanelEmpty } from "@/components/panel/PanelEmpty";
 import { PanelLoading } from "@/components/panel/PanelLoading";
 import { RailChipButton } from "@/components/rail/RailTabGroup";
 import { RailListbox, RailListboxOption } from "@/components/rail/RailListbox";
@@ -15,7 +16,13 @@ import {
   filterHistoryItems,
 } from "@/features/test/evalHistoryFilters";
 import { getErrorMessage } from "@/features/test/evalFormConstants";
-import { TestRailHeader } from "@/features/test/TestRailHeader";
+import { RailPanelHeader } from "@/components/rail/RailPanelHeader";
+import {
+  RailDetailPane,
+  RailListPane,
+  RailPanelScroll,
+  RailSidebarGroup,
+} from "@/components/rail/RailPanelShell";
 import type { EvalRunSummary, HistoryDomainFilter, HistoryTierFilter } from "@/features/test/types";
 import { formatDurationZh, labelEvalTier, labelRunStatus } from "@/lib/uiLabels";
 import { getEvalRun, listEvalRuns, listScenarios } from "@/services/eval/scenarioApi";
@@ -37,24 +44,6 @@ function historyItemTitle(item: EvalRunSummary): string {
     return "情绪探索";
   }
   return item.scenario_id;
-}
-
-function TestEmptyState({
-  title,
-  description,
-}: {
-  title: string;
-  description: string;
-}): JSX.Element {
-  return (
-    <div className="test-empty-state">
-      <div className="test-empty-state__icon">
-        <History className="h-4 w-4" aria-hidden />
-      </div>
-      <p className="test-empty-state__title">{title}</p>
-      <p className="test-empty-state__desc">{description}</p>
-    </div>
-  );
 }
 
 export function EvalHistoryView(): JSX.Element {
@@ -131,9 +120,14 @@ export function EvalHistoryView(): JSX.Element {
   const detailError = error ?? focusedLive?.error;
 
   return (
-    <div className="test-sidebar-group h-full">
-      <aside className="test-list-panel">
-        <TestRailHeader icon={History} subtitle="评测运行记录持久化存储" title="历史列表" />
+    <RailSidebarGroup>
+      <RailListPane>
+        <RailPanelHeader
+          level={3}
+          icon={History}
+          subtitle="评测运行记录持久化存储"
+          title="历史列表"
+        />
 
         <div className="border-b border-border/25 bg-muted/10 px-2 py-2 space-y-2">
           <div className="flex flex-wrap gap-1">
@@ -162,16 +156,20 @@ export function EvalHistoryView(): JSX.Element {
         </div>
 
         {historyLoading ? (
-          <PanelLoading label="加载历史…" fill={false} className="test-panel-scroll py-4" />
+          <RailPanelScroll padded className="py-4">
+            <PanelLoading label="加载历史…" fill={false} />
+          </RailPanelScroll>
         ) : filteredItems.length === 0 ? (
-          <div className="test-panel-scroll">
-            <TestEmptyState
+          <RailPanelScroll padded>
+            <PanelEmpty
+              variant="compact"
+              icon={History}
               description="运行场景回归或情绪探索后，记录会出现在这里。"
               title="暂无历史记录"
             />
-          </div>
+          </RailPanelScroll>
         ) : (
-          <RailListbox aria-label="运行历史" className="test-panel-scroll">
+          <RailListbox aria-label="运行历史" className="rail-panel-scroll rail-panel-scroll--padded">
             {filteredItems.map((item) => (
               <RailListboxOption
                 key={item.run_id}
@@ -195,12 +193,12 @@ export function EvalHistoryView(): JSX.Element {
             ))}
           </RailListbox>
         )}
-      </aside>
+      </RailListPane>
 
-      <div className="test-detail-panel">
-        <TestRailHeader icon={History} subtitle="选中记录查看详情" title="历史详情" />
+      <RailDetailPane>
+        <RailPanelHeader level={3} icon={History} subtitle="选中记录查看详情" title="历史详情" />
 
-        <div className="test-panel-scroll space-y-3">
+        <RailPanelScroll padded className="space-y-3">
           {detailError ? (
             <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-xs text-destructive">
               <p className="font-medium">加载失败</p>
@@ -222,13 +220,15 @@ export function EvalHistoryView(): JSX.Element {
           ) : null}
 
           {!detailError && !historyDetail ? (
-            <TestEmptyState
+            <PanelEmpty
+              variant="compact"
+              icon={History}
               description="从左侧选择一条运行记录，完整评测结果将显示在这里。"
               title="未选择记录"
             />
           ) : null}
-        </div>
-      </div>
-    </div>
+        </RailPanelScroll>
+      </RailDetailPane>
+    </RailSidebarGroup>
   );
 }

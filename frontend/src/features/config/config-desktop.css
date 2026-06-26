@@ -34,33 +34,8 @@
 .config-desktop-page .font-mono,
 .config-desktop-page pre,
 .config-desktop-page code,
-.config-desktop-toolbar__path,
 .config-desktop-page textarea {
   font-family: var(--config-font-mono);
-}
-
-.config-desktop-toolbar {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.625rem 1.25rem;
-  background: hsl(var(--config-surface-card));
-  box-shadow: 0 1px 0 hsl(32 22% 82% / 0.9);
-}
-
-.config-desktop-toolbar__title {
-  margin: 0;
-  font-size: 0.9375rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-}
-
-.config-desktop-toolbar__path {
-  margin: 0.125rem 0 0;
-  font-size: 0.75rem;
-  font-weight: 400;
-  color: hsl(var(--config-text-muted));
 }
 
 .config-desktop-badge {
@@ -504,20 +479,28 @@
   flex: 1 1 auto;
   min-height: 0;
   min-width: 0;
+  background: var(--rail-panel-surface);
 }
 
 .config-desktop-page--embedded .config-desktop-panel--sidebar {
   width: 12.5rem;
+  background: var(--rail-panel-surface-list);
+}
+
+.config-desktop-page--embedded .config-desktop-split__preview {
+  background: var(--rail-panel-surface-detail);
+  border-left: 1px solid var(--rail-panel-divider);
 }
 
 .config-desktop-page--embedded .config-desktop-split__editor {
   min-width: 16rem;
+  background: var(--rail-panel-surface-detail);
+  border-left: 1px solid var(--rail-panel-divider);
 }
 
 @media (prefers-reduced-motion: no-preference) {
   .config-desktop-split__handle,
   .config-desktop-panel button,
-  .config-desktop-toolbar button,
   .config-tree-row {
     transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
   }
