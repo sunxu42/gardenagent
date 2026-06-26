@@ -10,10 +10,11 @@ import { EmotionPrototypeRefPanel } from "./EmotionPrototypeRefPanel";
 import { GuideCardGroup } from "./GuideCardGroup";
 import { RelationshipMeters } from "./RelationshipMeters";
 import { RelationshipStageRefPanel } from "./RelationshipStageRefPanel";
-import { VadCompactBlock } from "./VadCompactBlock";
+import { agentRoundDelta, VadCompactBlock } from "./VadCompactBlock";
 
 interface AffectStatusOverviewProps {
   focusedRecord?: AffectTurnRecord | null;
+  prevFocusedRecord?: AffectTurnRecord | null;
   focusedRoundLabel?: string | null;
   currentRelationship?: RelationshipSnapshot | null;
   currentAgentVad?: VadPoint | null;
@@ -24,6 +25,7 @@ interface AffectStatusOverviewProps {
 
 export function AffectStatusOverview({
   focusedRecord,
+  prevFocusedRecord,
   focusedRoundLabel,
   currentRelationship,
   currentAgentVad,
@@ -64,6 +66,10 @@ export function AffectStatusOverview({
     displayEmotionId,
     affectLock.agentVad.locked,
   );
+
+  const agentRoundDeltaValue = focusedRecord
+    ? agentRoundDelta(focusedRecord, prevFocusedRecord?.agentVadAfter)
+    : null;
 
   return (
     <div className="space-y-4">
@@ -114,6 +120,7 @@ export function AffectStatusOverview({
               title="情绪维度"
               accentClass="bg-sky-500/[0.05]"
               point={displayAgentVad}
+              roundDelta={agentRoundDeltaValue}
             />
           ) : (
             <p className="text-[11px] text-muted-foreground">暂无情绪维度数据</p>

@@ -11,6 +11,7 @@ import { GuideAnchorSection } from "./affect/GuideSection";
 
 interface AffectGuidePanelProps {
   focusedRecord?: AffectTurnRecord | null;
+  prevFocusedRecord?: AffectTurnRecord | null;
   focusedRoundLabel?: string | null;
   currentRelationship?: RelationshipSnapshot | null;
   currentAgentVad?: VadPoint | null;
@@ -29,6 +30,7 @@ const GUIDE_SECTIONS = [
 
 export function AffectGuidePanel({
   focusedRecord,
+  prevFocusedRecord,
   focusedRoundLabel,
   currentRelationship,
   currentAgentVad,
@@ -117,6 +119,7 @@ export function AffectGuidePanel({
           <GuideAnchorSection id="affect-guide-s1" title="关系与助手情绪" accent="amber">
             <AffectStatusOverview
               focusedRecord={focusedRecord}
+              prevFocusedRecord={prevFocusedRecord}
               focusedRoundLabel={focusedRoundLabel}
               currentRelationship={currentRelationship}
               currentAgentVad={currentAgentVad}

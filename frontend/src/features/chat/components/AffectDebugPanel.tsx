@@ -1,4 +1,4 @@
-import { Code2, ListOrdered } from "lucide-react";
+import { Activity, Code2 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
 import { RailToolbarButton } from "@/components/rail/RailToolbarButton";
@@ -53,6 +53,7 @@ export function AffectDebugPanel({
   }, []);
 
   const focusedRecord = safeHistory[0] ?? null;
+  const prevFocusedRecord = safeHistory[1] ?? null;
 
   const focusedRoundLabel = useMemo(() => {
     if (!focusedRecord) {
@@ -73,7 +74,7 @@ export function AffectDebugPanel({
             <div className="affect-rail-header__row">
               <h3 className="flex min-w-0 items-center gap-2 text-sm font-medium text-muted-foreground">
                 <span className="affect-rail-header__icon">
-                  <ListOrdered className="h-3.5 w-3.5" aria-hidden />
+                  <Activity className="h-3.5 w-3.5" aria-hidden />
                 </span>
                 情绪记录
               </h3>
@@ -110,6 +111,7 @@ export function AffectDebugPanel({
 
         <AffectGuidePanel
           focusedRecord={focusedRecord}
+          prevFocusedRecord={prevFocusedRecord}
           focusedRoundLabel={focusedRoundLabel}
           currentRelationship={currentRelationship}
           currentAgentVad={currentAgentVad}
