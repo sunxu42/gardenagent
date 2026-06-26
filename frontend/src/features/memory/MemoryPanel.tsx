@@ -1,7 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { Brain, RefreshCw } from "lucide-react";
 
-import { PanelEmpty } from "@/components/panel/PanelEmpty";
 import { PanelLoading } from "@/components/panel/PanelLoading";
 import { RailToolbarButton } from "@/components/rail/RailToolbarButton";
 import {
@@ -12,6 +11,59 @@ import {
 import "./memory-panel.css";
 
 const MEMORY_YAML_PATH = "memory/memory.yaml";
+
+function isMemoryNotFound(message: string): boolean {
+  return /\b404\b/.test(message);
+}
+
+interface MemoryPanelEmptyStateProps {
+  error: string;
+  refreshing: boolean;
+  onRetry: () => void;
+  onRefresh: () => void;
+}
+
+function MemoryPanelEmptyState({
+  error,
+  refreshing,
+  onRetry,
+  onRefresh,
+}: MemoryPanelEmptyStateProps): JSX.Element {
+  const notFound = isMemoryNotFound(error);
+
+  return (
+    <div className="memory-panel__empty">
+      <div className="memory-panel__empty-icon" aria-hidden>
+        <Brain className="h-8 w-8" strokeWidth={1.5} />
+      </div>
+      <h3 className="memory-panel__empty-title">
+        {notFound ? "暂无记忆导出" : "加载失败"}
+      </h3>
+      <p className="memory-panel__empty-desc">
+        {notFound
+          ? "memory.yaml 尚未生成。与 Agent 对话产生记忆后，点击「从 Mem0 刷新」即可查看导出内容。"
+          : error}
+      </p>
+      <div className="memory-panel__empty-actions">
+        {notFound ? (
+          <RailToolbarButton
+            disabled={refreshing}
+            icon={
+              <RefreshCw
+                className={`h-3 w-3${refreshing ? " animate-spin motion-reduce:animate-none" : ""}`}
+              />
+            }
+            onClick={onRefresh}
+          >
+            {refreshing ? "刷新中…" : "从 Mem0 刷新"}
+          </RailToolbarButton>
+        ) : (
+          <RailToolbarButton onClick={onRetry}>重试</RailToolbarButton>
+        )}
+      </div>
+    </div>
+  );
+}
 
 const YamlPreview = lazy(() =>
   import("@/features/config/components/YamlPreview").then((module) => ({
@@ -95,14 +147,11 @@ export function MemoryPanel(): JSX.Element {
         ) : null}
 
         {!loading && error ? (
-          <PanelEmpty
-            title="加载失败"
-            description={error}
-            action={
-              <button className="panel-state__action" type="button" onClick={() => void loadContent()}>
-                重试
-              </button>
-            }
+          <MemoryPanelEmptyState
+            error={error}
+            refreshing={refreshing}
+            onRetry={() => void loadContent()}
+            onRefresh={() => void handleRefresh()}
           />
         ) : null}
 
