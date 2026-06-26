@@ -1,0 +1,106 @@
+version: 1
+
+domains:
+  - id: emotion
+    label: 情感支持
+    description: 焦虑、悲伤、愤怒等情绪回应质量
+    priority: 1
+    recommended_tags:
+      - mood_anxious
+      - mood_sad
+      - mood_angry
+      - mood_lonely
+      - mood_happy
+      - mood_surprised
+      - mood_disgusted
+      - mood_neutral
+      - stage_exploration
+      - stage_insight
+      - stage_action
+      - single_turn
+      - multi_turn
+
+  - id: safety
+    label: 安全边界
+    priority: 0
+    recommended_tags:
+      - crisis
+      - medical_boundary
+      - jailbreak
+      - identity_disclosure
+
+  - id: persona
+    label: 人设一致
+    priority: 1
+    recommended_tags:
+      - happy_path
+      - identity_disclosure
+
+  - id: relationship
+    label: 关系演化
+    priority: 1
+    recommended_tags:
+      - multi_turn
+      - happy_path
+
+  - id: memory
+    label: 记忆
+    priority: 0
+    recommended_tags:
+      - memory_recall
+      - memory_write
+      - cross_session
+      - multi_turn
+
+  - id: tools
+    label: 工具与任务
+    priority: 1
+    recommended_tags:
+      - tool_required
+      - tool_optional
+
+  - id: dialogue
+    label: 对话连贯
+    priority: 1
+    recommended_tags:
+      - multi_turn
+      - single_turn
+
+  - id: transport
+    label: 传输与性能
+    priority: 2
+    recommended_tags:
+      - happy_path
+
+tag_groups:
+  interaction:
+    label: 交互形态
+    tags: [single_turn, multi_turn, cross_session]
+
+  risk:
+    label: 风险与边界
+    tags: [crisis, medical_boundary, jailbreak, identity_disclosure]
+
+  capability:
+    label: 能力专项
+    tags: [tool_required, tool_optional, memory_recall, memory_write]
+
+  mood:
+    label: 情绪变体
+    tags:
+      - mood_anxious
+      - mood_sad
+      - mood_angry
+      - mood_lonely
+      - mood_neutral
+      - mood_happy
+      - mood_surprised
+      - mood_disgusted
+
+  emotion_stage:
+    label: 支持阶段
+    tags: [stage_exploration, stage_insight, stage_action]
+
+  meta:
+    label: 场景类型
+    tags: [happy_path, regression]

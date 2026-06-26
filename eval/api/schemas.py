@@ -118,6 +118,42 @@ class ScenarioSummary(BaseModel):
     description: str
     domain: str
     tier: EvalTier
+    tags: list[str] = Field(default_factory=list)
+
+
+class CoverageScenarioRefDTO(BaseModel):
+    """Scenario row inside a coverage cell."""
+
+    id: str
+    description: str
+    tags: list[str] = Field(default_factory=list)
+    last_status: str | None = None
+    last_passed: bool | None = None
+
+
+class CoverageCellDTO(BaseModel):
+    """One domain × tier coverage cell."""
+
+    domain: str
+    domain_label: str
+    tier: EvalTier
+    scenario_count: int
+    scenarios: list[CoverageScenarioRefDTO] = Field(default_factory=list)
+    tags_covered: list[str] = Field(default_factory=list)
+    tags_expected: list[str] = Field(default_factory=list)
+    tags_missing: list[str] = Field(default_factory=list)
+    last_run_at: str | None = None
+    pass_count: int = 0
+    fail_count: int = 0
+    pass_rate: float | None = None
+
+
+class CoverageMatrixDTO(BaseModel):
+    """Coverage matrix API response."""
+
+    generated_at: str
+    cells: list[CoverageCellDTO] = Field(default_factory=list)
+    tag_coverage: list[dict[str, object]] = Field(default_factory=list)
 
 
 class EvalRunRequest(BaseModel):

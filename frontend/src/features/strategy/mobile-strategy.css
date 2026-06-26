@@ -1,0 +1,23 @@
+.mobile-strategy-sheet {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: hsl(var(--background));
+}
+
+.mobile-strategy-sheet .strategy-rail {
+  flex: 1 1 auto;
+  max-width: none;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  border-left: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.mobile-strategy-sheet > button.absolute {
+  top: 0.625rem;
+  right: 0.625rem;
+  background: hsl(var(--background) / 0.85);
+}

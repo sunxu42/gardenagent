@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PanelLoading } from "@/components/panel/PanelLoading";
 import { FileTree } from "./components/FileTree";
 import { PanelSection } from "./components/PanelSection";
 import { SoulTreeEditor } from "./components/SoulTreeEditor";
-import { YamlPreview } from "./components/YamlPreview";
 import { useConfigSplitPane } from "./hooks/useConfigSplitPane";
 import {
   dumpSoulYaml,
@@ -22,9 +22,16 @@ import {
 } from "@/services/promptEditorApi";
 import "./config-desktop.css";
 
+const YamlPreview = lazy(() =>
+  import("./components/YamlPreview").then((module) => ({
+    default: module.YamlPreview,
+  })),
+);
+
 export function PromptEditor() {
   const { containerRef, ratio, dragging, startDrag } = useConfigSplitPane(0.4);
   const [tree, setTree] = useState<TreeNode[]>([]);
+  const [treeLoading, setTreeLoading] = useState(true);
   const [treeError, setTreeError] = useState<string | null>(null);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [preview, setPreview] = useState("");
@@ -43,12 +50,15 @@ export function PromptEditor() {
   }, []);
 
   const loadTree = useCallback(async () => {
+    setTreeLoading(true);
     try {
       const children = await fetchPromptTree();
       setTree(children);
       setTreeError(null);
     } catch {
       setTreeError("无法加载文件树。请确认已运行：python src/server.py");
+    } finally {
+      setTreeLoading(false);
     }
   }, []);
 
@@ -143,7 +153,7 @@ export function PromptEditor() {
         {editable ? (
           <Button
             type="button"
-            className="cursor-pointer shrink-0 gap-2 bg-amber-800 text-amber-50 hover:bg-amber-900"
+            className="cursor-pointer shrink-0 gap-2"
             disabled={!dirty || saving}
             onClick={() => void handleSave()}
           >
@@ -166,18 +176,32 @@ export function PromptEditor() {
             fill
             bodyClassName="config-desktop-panel__body--scroll"
           >
-            <FileTree nodes={tree} selectedPath={selectedPath} onSelect={handleSelectPath} />
+            {treeLoading ? (
+              <PanelLoading label="加载文件树…" fill={false} className="py-6" />
+            ) : (
+              <FileTree nodes={tree} selectedPath={selectedPath} onSelect={handleSelectPath} />
+            )}
           </PanelSection>
         </aside>
 
         <div ref={containerRef} className="config-desktop-split">
           <section className="config-desktop-split__preview" style={{ width: `${ratio * 100}%` }}>
-            <YamlPreview
-              content={preview}
-              path={selectedPath}
-              focusedNodePath={focusedNodePath}
-              flashToken={yamlFlashToken}
-            />
+            {selectedPath ? (
+              <Suspense fallback={<PanelLoading label="加载预览…" fill={false} className="h-full" />}>
+                <YamlPreview
+                  content={preview}
+                  path={selectedPath}
+                  focusedNodePath={focusedNodePath}
+                  flashToken={yamlFlashToken}
+                />
+              </Suspense>
+            ) : (
+              <PanelSection title="配置预览" description="选择文件后查看磁盘原文（只读）" fill>
+                <div className="flex min-h-[10rem] flex-1 items-center justify-center rounded-md bg-secondary/40 px-4">
+                  <p className="m-0 text-center text-sm text-muted-foreground">在左侧选择配置文件</p>
+                </div>
+              </PanelSection>
+            )}
           </section>
 
           <div

@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+
+import { RailToolbarButton } from "@/components/rail/RailToolbarButton";
+
 import type { LogEntry, LogLevel } from "./logTypes";
 import { LogLine } from "./LogLine";
 import "./logs-panel.css";
@@ -40,23 +43,16 @@ export function LogsPanel({ entries, onClear }: LogsPanelProps) {
           {visibleEntries.length}/{entries.length}
         </span>
         <div className="logs-panel__actions">
-          <button
-            type="button"
-            className={`logs-panel__btn${minLevel === "DEBUG" ? " logs-panel__btn--active" : ""}`}
+          <RailToolbarButton
+            pressed={minLevel === "DEBUG"}
             onClick={() => setMinLevel((prev) => (prev === "DEBUG" ? "INFO" : "DEBUG"))}
           >
             {minLevel === "DEBUG" ? "隐藏调试日志" : "显示调试日志"}
-          </button>
-          <button
-            type="button"
-            className={`logs-panel__btn${autoScroll ? " logs-panel__btn--active" : ""}`}
-            onClick={() => setAutoScroll((v) => !v)}
-          >
+          </RailToolbarButton>
+          <RailToolbarButton pressed={autoScroll} onClick={() => setAutoScroll((value) => !value)}>
             {autoScroll ? "暂停滚动" : "自动滚动"}
-          </button>
-          <button type="button" className="logs-panel__btn" onClick={() => onClear?.()}>
-            清空
-          </button>
+          </RailToolbarButton>
+          <RailToolbarButton onClick={() => onClear?.()}>清空</RailToolbarButton>
         </div>
       </header>
       <div ref={listRef} className="logs-panel__list" role="log" aria-live="polite">

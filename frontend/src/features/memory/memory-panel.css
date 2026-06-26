@@ -1,0 +1,72 @@
+.memory-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background: hsl(var(--rail-list) / 0.2);
+}
+
+.memory-panel__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  padding: 0.625rem 0.75rem;
+  border-bottom: 1px solid hsl(var(--border) / 0.38);
+  background: hsl(var(--background) / 0.55);
+}
+
+.memory-panel__title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.memory-panel__icon {
+  display: flex;
+  height: 1.5rem;
+  width: 1.5rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.375rem;
+  background: hsl(var(--secondary) / 0.55);
+  color: hsl(var(--primary));
+}
+
+.memory-panel__title {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: hsl(var(--foreground) / 0.9);
+}
+
+.memory-panel__subtitle {
+  margin: 0.125rem 0 0;
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.memory-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.memory-panel__body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0.5rem;
+}
+
+.memory-panel__body .config-desktop-panel__body--scroll {
+  min-height: 0;
+}

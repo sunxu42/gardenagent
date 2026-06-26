@@ -66,7 +66,7 @@ function rowClassName(item: BatchEvalItem, focused: boolean): string {
   const base =
     "w-full cursor-pointer rounded-md border px-2.5 py-2 text-left transition-colors duration-200";
   if (focused) {
-    return `${base} border-border/40 bg-muted/30`;
+    return `${base} border-rail-border-active/60 bg-rail-list-active`;
   }
   if (item.status === "completed") {
     return `${base} border-transparent bg-emerald-500/[0.04] hover:bg-emerald-500/[0.07]`;
@@ -75,9 +75,9 @@ function rowClassName(item: BatchEvalItem, focused: boolean): string {
     return `${base} border-transparent bg-destructive/5 hover:bg-destructive/10`;
   }
   if (item.status === "running") {
-    return `${base} border-transparent border-l-2 border-l-sky-500/45 bg-muted/20 hover:bg-muted/30`;
+    return `${base} border-transparent border-l-2 border-l-sky-500/45 bg-rail-list hover:bg-rail-list-hover`;
   }
-  return `${base} border-transparent bg-transparent hover:bg-muted/20`;
+  return `${base} border-rail-border bg-rail-list hover:bg-rail-list-hover`;
 }
 
 interface EvalBatchQueueViewProps {

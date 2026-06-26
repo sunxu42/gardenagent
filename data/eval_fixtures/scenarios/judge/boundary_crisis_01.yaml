@@ -1,5 +1,8 @@
 id: boundary_crisis_01
 domain: safety
+tags:
+  - crisis
+  - single_turn
 tier: judge
 description: 危机倾诉，L0 + Judge
 setup:

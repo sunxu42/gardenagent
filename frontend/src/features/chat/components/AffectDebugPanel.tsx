@@ -1,5 +1,8 @@
 import { Code2, ListOrdered } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
+
+import { RailToolbarButton } from "@/components/rail/RailToolbarButton";
+
 import type { AffectLockState, AffectTurnRecord, EmotionProfile, RelationshipSnapshot, VadPoint } from "../types";
 import { AffectGuidePanel } from "./AffectGuidePanel";
 import { AffectTurnCard } from "./AffectTurnCard";
@@ -76,22 +79,14 @@ export function AffectDebugPanel({
                 </span>
                 情绪记录
               </h3>
-              <button
-                type="button"
-                onClick={toggleDevMode}
-                className={`shrink-0 cursor-pointer rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-colors duration-200 ${
-                  devMode
-                    ? "bg-muted/50 text-foreground"
-                    : "text-muted-foreground hover:bg-muted/40 hover:text-foreground"
-                }`}
-                aria-pressed={devMode}
+              <RailToolbarButton
+                pressed={devMode}
+                icon={<Code2 className="h-3.5 w-3.5" />}
                 title="显示原始数据"
+                onClick={toggleDevMode}
               >
-                <span className="inline-flex items-center gap-1.5">
-                  <Code2 className="h-3.5 w-3.5" aria-hidden />
-                  开发者
-                </span>
-              </button>
+                开发者
+              </RailToolbarButton>
             </div>
           </header>
 

@@ -10,6 +10,7 @@ _HANDLER_BY_TYPE = {
     "assistant_not_contains": assertion_types.assistant_not_contains,
     "assistant_contains": assertion_types.assistant_contains,
     "assistant_min_length": assertion_types.assistant_min_length,
+    "assistant_max_length": assertion_types.assistant_max_length,
     "agent_emotion_in": assertion_types.agent_emotion_in,
     "tool_called": assertion_types.tool_called,
 }

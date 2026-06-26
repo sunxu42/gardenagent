@@ -7,11 +7,12 @@ import { RetryHint } from "../features/chat/components/RetryHint";
 import { SettingsDrawer } from "../features/chat/components/SettingsDrawer";
 import { ClearUserDataDialog } from "../features/chat/components/ClearUserDataDialog";
 import { StrategyPanel } from "../features/strategy/StrategyPanel";
+import { MobileStrategySheet } from "../features/strategy/MobileStrategySheet";
 import { EvalRunProvider } from "../features/test/EvalRunProvider";
 import type { EvalWsEvent } from "../features/test/evalWsTypes";
 import { parseStrategyPanelTab, type StrategyPanelTab } from "../features/strategy/types";
 import { chatReducer, initialChatState } from "../features/chat/store/chatReducer";
-import type { ChatSettings, ChatState, ThemeName } from "../features/chat/types";
+import type { ChatSettings, ChatState, ThemeName, AppearanceMode } from "../features/chat/types";
 import { useChatHistoryPersistence } from "../features/chat/hooks/useChatHistoryPersistence";
 import { useStickToBottomScroll } from "../features/chat/hooks/useStickToBottomScroll";
 import { DEFAULT_TTS_VOICE } from "../features/chat/ttsVoices";
@@ -29,9 +30,14 @@ import { clearServerUserData } from "../services/userDataApi";
 import { useMediaQuery } from "../lib/useMediaQuery";
 
 const themeSet = new Set<ThemeName>(["mint-cute", "pink-blossom", "gray-mist", "orange-sunrise"]);
+const appearanceSet = new Set<AppearanceMode>(["light", "dark"]);
 
 function isThemeName(value: unknown): value is ThemeName {
   return typeof value === "string" && themeSet.has(value as ThemeName);
+}
+
+function isAppearanceMode(value: unknown): value is AppearanceMode {
+  return typeof value === "string" && appearanceSet.has(value as AppearanceMode);
 }
 
 function mergeSettings(partial: Partial<ChatSettings>): ChatSettings {
@@ -41,6 +47,9 @@ function mergeSettings(partial: Partial<ChatSettings>): ChatSettings {
     ...partial,
     voiceType: voiceType || initialChatState.settings.voiceType || DEFAULT_TTS_VOICE,
     theme: isThemeName(partial.theme) ? partial.theme : initialChatState.settings.theme,
+    appearance: isAppearanceMode(partial.appearance)
+      ? partial.appearance
+      : initialChatState.settings.appearance,
   };
 }
 
@@ -59,22 +68,7 @@ export function ChatApp() {
   const isDesktop = useMediaQuery("(min-width: 1024px)");
   const [searchParams, setSearchParams] = useSearchParams();
   const strategyTab = parseStrategyPanelTab(searchParams.get("panel")) ?? "emotion";
-
-  const panelParam = searchParams.get("panel");
-
-  useEffect(() => {
-    if (isDesktop || !panelParam) {
-      return;
-    }
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        next.delete("panel");
-        return next;
-      },
-      { replace: true },
-    );
-  }, [isDesktop, panelParam, setSearchParams]);
+  const [strategySheetOpen, setStrategySheetOpen] = useState(false);
 
   const handleStrategyTabChange = useCallback(
     (tab: StrategyPanelTab) => {
@@ -248,22 +242,59 @@ export function ChatApp() {
     void chatApiRef.current?.stopVoice();
   };
 
+  const handleStrategySheetOpenChange = useCallback(
+    (open: boolean) => {
+      setStrategySheetOpen(open);
+      if (!open && !isDesktop) {
+        setSearchParams(
+          (prev) => {
+            const next = new URLSearchParams(prev);
+            next.delete("panel");
+            return next;
+          },
+          { replace: true },
+        );
+      }
+    },
+    [isDesktop, setSearchParams],
+  );
+
+  const strategyPanelProps = {
+    activeTab: strategyTab,
+    onTabChange: handleStrategyTabChange,
+    history: state.affectHistory ?? [],
+    currentAgentVad: state.currentAgentVad ?? null,
+    baselineVad: state.baselineVad ?? null,
+    emotionProfile: state.emotionProfile ?? null,
+    currentRelationship: state.currentRelationship ?? null,
+    affectLock: state.affectLock,
+    onToggleAffectLock: handleToggleAffectLock,
+    logEntries: state.logEntries,
+    onClearLogs: () =>
+      dispatch({
+        type: "clearLogs",
+        payload: { previousCount: state.logEntries.length },
+      }),
+  };
+
   return (
     <EvalRunProvider eventDispatchRef={evalEventDispatchRef}>
     <div
       className="chat-app-shell"
       data-theme={state.settings.theme}
+      data-appearance={state.settings.appearance}
       data-font-size={state.settings.fontSize}
       data-motion={state.settings.motion}
     >
       <div className="chat-app-layout">
         <div className="chat-main-column">
-        <div className="mobile-chat-page mobile-shell" data-theme={state.settings.theme}>
+        <div className="mobile-chat-page mobile-shell" data-theme={state.settings.theme} data-appearance={state.settings.appearance}>
         <header role="banner">
           <HeaderBar
             agentName={agentDisplayName}
             connectionStatus={state.connectionStatus}
             onOpenSettings={() => setSettingsOpen(true)}
+            onOpenStrategy={isDesktop ? undefined : () => setStrategySheetOpen(true)}
           />
         </header>
         <main
@@ -318,27 +349,15 @@ export function ChatApp() {
         />
         </div>
         </div>
-        {isDesktop ? (
-          <StrategyPanel
-            activeTab={strategyTab}
-            onTabChange={handleStrategyTabChange}
-            history={state.affectHistory ?? []}
-            currentAgentVad={state.currentAgentVad ?? null}
-            baselineVad={state.baselineVad ?? null}
-            emotionProfile={state.emotionProfile ?? null}
-            currentRelationship={state.currentRelationship ?? null}
-            affectLock={state.affectLock}
-            onToggleAffectLock={handleToggleAffectLock}
-            logEntries={state.logEntries}
-            onClearLogs={() =>
-              dispatch({
-                type: "clearLogs",
-                payload: { previousCount: state.logEntries.length },
-              })
-            }
-          />
-        ) : null}
+        {isDesktop ? <StrategyPanel {...strategyPanelProps} /> : null}
       </div>
+      {!isDesktop ? (
+        <MobileStrategySheet
+          open={strategySheetOpen}
+          onOpenChange={handleStrategySheetOpenChange}
+          {...strategyPanelProps}
+        />
+      ) : null}
     </div>
     </EvalRunProvider>
   );

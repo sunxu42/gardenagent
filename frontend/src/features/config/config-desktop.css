@@ -4,17 +4,17 @@
   --config-font-mono: "JetBrains Mono", "Cascadia Code", ui-monospace, monospace;
 
   --config-sidebar-w: 15rem;
-  --config-surface-sidebar: 36 32% 93%;
-  --config-surface-preview: 34 28% 90%;
-  --config-surface-editor: 40 45% 96%;
-  --config-surface-editor-deep: 35 32% 91%;
-  --config-surface-footer: 38 38% 93%;
-  --config-surface-focus: 38 58% 88%;
-  --config-surface-card: 42 55% 99%;
-  --config-accent: 28 62% 46%;
-  --config-accent-soft: 38 75% 90%;
-  --config-text-muted: 30 12% 44%;
-  --config-text-body: 28 22% 16%;
+  --config-surface-sidebar: var(--rail-track);
+  --config-surface-preview: var(--rail-list);
+  --config-surface-editor: var(--background);
+  --config-surface-editor-deep: var(--secondary);
+  --config-surface-footer: var(--muted);
+  --config-surface-focus: var(--secondary);
+  --config-surface-card: var(--card);
+  --config-accent: var(--primary);
+  --config-accent-soft: var(--secondary);
+  --config-text-muted: var(--muted-foreground);
+  --config-text-body: var(--foreground);
 
   min-height: 0;
   height: 100%;
@@ -27,7 +27,7 @@
   letter-spacing: 0.01em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: hsl(38 35% 97%);
+  background: hsl(var(--secondary) / 0.28);
   color: hsl(var(--config-text-body));
 }
 
@@ -73,8 +73,8 @@
 }
 
 .config-desktop-badge--dirty {
-  background: hsl(38 92% 94%);
-  color: hsl(32 95% 32%);
+  background: hsl(var(--primary) / 0.12);
+  color: hsl(var(--primary));
 }
 
 .config-desktop-badge--readonly {

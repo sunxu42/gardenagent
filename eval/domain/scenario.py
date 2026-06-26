@@ -27,6 +27,7 @@ class AssertionConfig(BaseModel):
     forbidden: list[str] = Field(default_factory=list)
     required: list[str] = Field(default_factory=list)
     min_chars: int | None = None
+    max_chars: int | None = None
     allowed: list[str] = Field(default_factory=list)
     any_round: bool = False
     tool_name: str | None = None
@@ -46,11 +47,17 @@ class JudgeConfig(BaseModel):
 
 class ScenarioSetup(BaseModel):
     rounds: int = Field(default=1, ge=1, le=8)
+    session_reset_after_round: int | None = Field(default=None, ge=1, le=7)
+
+
+class ScenarioValidationError(ValueError):
+    """Raised when a scenario fixture fails taxonomy validation."""
 
 
 class ScenarioFixture(BaseModel):
     id: str
     domain: str
+    tags: list[str] = Field(default_factory=list)
     tier: EvalTier = "smoke"
     description: str = ""
     setup: ScenarioSetup = Field(default_factory=ScenarioSetup)
@@ -59,11 +66,20 @@ class ScenarioFixture(BaseModel):
     judge: JudgeConfig | None = None
 
 
-def load_scenario(path: Path) -> ScenarioFixture:
+def load_scenario(path: Path, *, validate: bool = True) -> ScenarioFixture:
     """Load one scenario fixture from a YAML file."""
 
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
-    return ScenarioFixture.model_validate(data)
+    scenario = ScenarioFixture.model_validate(data)
+    if validate:
+        from eval.domain.taxonomy import get_taxonomy_registry
+
+        registry = get_taxonomy_registry()
+        try:
+            registry.validate_scenario(domain=scenario.domain, tags=scenario.tags)
+        except ValueError as exc:
+            raise ScenarioValidationError(str(exc)) from exc
+    return scenario
 
 
 def list_scenarios(directory: Path) -> list[ScenarioFixture]:
@@ -71,6 +87,17 @@ def list_scenarios(directory: Path) -> list[ScenarioFixture]:
 
     paths = sorted(directory.glob("**/*.yaml"))
     return [load_scenario(path) for path in paths]
+
+
+def list_scenarios_with_paths(root: Path | None = None) -> list[tuple[str, ScenarioFixture]]:
+    """Load all scenario fixtures with repository-relative ids."""
+
+    scenario_root = root or resolve_eval_scenarios_dir()
+    items: list[tuple[str, ScenarioFixture]] = []
+    for path in sorted(scenario_root.glob("**/*.yaml")):
+        rel_id = str(path.relative_to(scenario_root)).replace("\\", "/").removesuffix(".yaml")
+        items.append((rel_id, load_scenario(path)))
+    return items
 
 
 def resolve_scenario_by_id(

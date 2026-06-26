@@ -6,6 +6,8 @@ import "./shared/styles/globals.css";
 import "./shared/styles/mobile-shell.css";
 import "./shared/styles/chat-desktop.css";
 import "./shared/styles/theme-mint-cute.css";
+import "./shared/styles/theme-rail.css";
+import "./shared/styles/theme-dark.css";
 
 const rootElement = document.getElementById("root");
 

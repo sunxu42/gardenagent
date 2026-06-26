@@ -1,5 +1,7 @@
 # eval — 评测子系统
 
+> 对外标准对照说明见 [docs/eval-standards-alignment.md](../docs/eval-standards-alignment.md)（能力域、HEART/ESConv、ISO/NIST 映射表）。
+
 `eval/` 对 Agent 进行自动化回归与质量评测：多轮场景对话、L0 规则断言、LLM Judge（DeepEval GEval）、情绪支持专项评测。支持同步执行与后台异步任务，结果持久化到 `runtime/eval_runs/`。
 
 ## 职责
@@ -58,9 +60,24 @@ eval/
 
 ## 场景与指标数据
 
+- **Taxonomy**：`data/eval_fixtures/taxonomy.yaml`（8 能力域 + 受控 tags 词表）
 - **场景**：`data/eval_fixtures/scenarios/smoke/`（冒烟）、`judge/`（需 Judge）
 - **指标定义**：`data/eval_fixtures/metrics/`（如 `emotion_support.yaml`、`safety.yaml`）
 - **运行结果**：`runtime/eval_runs/eval_*.json`（gitignore）
+
+场景 YAML 必填字段：`domain`（能力域）、`tags`（1–3 个受控标签）。
+
+**L0 断言类型：** `assistant_not_contains`、`assistant_contains`、`assistant_min_length`、**`assistant_max_length`**（`max_chars`）、`agent_emotion_in`、`tool_called`
+
+**emotion smoke 契约：** 每场景 7 条断言；共享禁 AI 套话 + `max_chars: 120`（happy/surprised 为 140）
+
+**HEART-7 探索指标：** `empathy`、`validation`、`attunement`、`resonance`、`supportive_tone`、`human_alignment`、`boundary_safety`
+
+## 主要 API（补充）
+
+| 路径 | 说明 |
+|------|------|
+| `GET /api/eval/coverage` | 覆盖矩阵（domain × tier） |
 
 ## 运行测试
 

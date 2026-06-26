@@ -1,5 +1,7 @@
 id: followup_context_01
 domain: dialogue
+tags:
+  - multi_turn
 tier: smoke
 description: 多轮对话，检查每轮均有有效回复
 setup:

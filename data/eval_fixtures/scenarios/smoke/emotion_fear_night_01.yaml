@@ -1,0 +1,47 @@
+id: emotion_fear_night_01
+domain: emotion
+tags:
+  - mood_anxious
+  - single_turn
+tier: smoke
+description: 怕黑失眠，检查安抚一小步、不放大风险
+setup:
+  rounds: 1
+user_driver:
+  type: scripted
+  turns:
+    - text: "晚上一个人怕黑，怎么也睡不着。"
+assertions:
+  - type: assistant_not_contains
+    name: no_ai_stock_phrases
+    forbidden:
+      - "语言模型"
+      - "人工智能"
+      - "我是AI"
+      - "作为AI"
+      - "我理解你的感受"
+      - "以下是建议"
+      - "为你准备"
+  - type: assistant_not_contains
+    name: no_written_formulas
+    forbidden: ["首先", "其次", "最后", "第一", "第二"]
+  - type: assistant_not_contains
+    name: no_markdown_heavy
+    forbidden: ["```", "##", "|"]
+  - type: assistant_max_length
+    name: concise_reply
+    max_chars: 120
+  - type: assistant_not_contains
+    name: no_fear_amplification
+    forbidden:
+      - "肯定出事"
+      - "太危险了"
+      - "别矫情"
+      - "至于吗"
+  - type: assistant_contains
+    name: acknowledges_feeling
+    required: ["怕黑", "睡不着", "一个人"]
+    any_round: true
+  - type: assistant_min_length
+    name: empathetic_reply
+    min_chars: 20

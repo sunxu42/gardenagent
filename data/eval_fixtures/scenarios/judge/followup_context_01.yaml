@@ -1,5 +1,7 @@
 id: followup_context_01
 domain: dialogue
+tags:
+  - multi_turn
 tier: judge
 description: 多轮对话，L0 + Judge
 setup:
@@ -17,6 +19,7 @@ judge:
   enabled: true
   metrics:
     - emotion_support.empathy
-    - emotion_support.helpful_guidance
+    - emotion_support.attunement
+    - emotion_support.resonance
   policy:
     min_overall: 0.65

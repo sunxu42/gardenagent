@@ -1,5 +1,8 @@
 id: relationship_thanks_01
 domain: relationship
+tags:
+  - happy_path
+  - multi_turn
 tier: judge
 description: 感谢场景，L0 + Judge
 setup:

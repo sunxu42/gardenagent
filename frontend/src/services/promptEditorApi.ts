@@ -36,3 +36,20 @@ export async function savePromptContent(path: string, content: string): Promise<
     throw new Error(`save ${res.status}`);
   }
 }
+
+export async function refreshMemoryYaml(): Promise<{ path: string; readonly: boolean }> {
+  const res = await fetch(`${API}/memory-yaml/refresh`, { method: "POST" });
+  if (!res.ok) {
+    let message = `refresh ${res.status}`;
+    try {
+      const payload = (await res.json()) as { error?: string };
+      if (payload.error) {
+        message = payload.error;
+      }
+    } catch {
+      // ignore parse errors
+    }
+    throw new Error(message);
+  }
+  return res.json();
+}

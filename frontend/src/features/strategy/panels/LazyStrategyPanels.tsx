@@ -1,8 +1,9 @@
 import { lazy, Suspense, type ComponentType } from "react";
-import { Brain } from "lucide-react";
+
+import { PanelLoading } from "@/components/panel/PanelLoading";
 import type { AffectDebugPanelProps } from "@/features/chat/components/AffectDebugPanel";
 import type { LogsPanelProps } from "@/features/logs/LogsPanel";
-import { StrategyPlaceholderPanel } from "./StrategyPlaceholderPanel";
+import type { StrategyPanelTab } from "@/features/strategy/types";
 
 const AffectStrategyPanel = lazy(() =>
   import("@/features/chat/components/AffectDebugPanel").then((m) => ({
@@ -28,19 +29,28 @@ const TestStrategyPanel = lazy(() =>
   })),
 );
 
-function PanelFallback() {
-  return (
-    <div className="strategy-panel-loading" role="status" aria-live="polite">
-      <span className="strategy-panel-loading__spinner" aria-hidden />
-      加载中…
-    </div>
-  );
+const MemoryStrategyPanel = lazy(() =>
+  import("@/features/memory/MemoryPanel").then((m) => ({
+    default: m.MemoryPanel,
+  })),
+);
+
+const PANEL_IMPORTS: Record<StrategyPanelTab, () => Promise<unknown>> = {
+  emotion: () => import("@/features/chat/components/AffectDebugPanel"),
+  prompt: () => import("@/features/config/PromptEditor"),
+  logs: () => import("@/features/logs/LogsPanel"),
+  memory: () => import("@/features/memory/MemoryPanel"),
+  test: () => import("@/features/test/TestPanel"),
+};
+
+export function prefetchStrategyPanel(tab: StrategyPanelTab): void {
+  void PANEL_IMPORTS[tab]();
 }
 
 function withSuspense<P extends object>(Component: ComponentType<P>) {
   return function SuspendedPanel(props: P) {
     return (
-      <Suspense fallback={<PanelFallback />}>
+      <Suspense fallback={<PanelLoading />}>
         <Component {...props} />
       </Suspense>
     );
@@ -59,12 +69,6 @@ export const LazyTestPanel = withSuspense(function TestPanel() {
   return <TestStrategyPanel />;
 });
 
-export function MemoryPanel() {
-  return (
-    <StrategyPlaceholderPanel
-      icon={Brain}
-      title="记忆"
-      description="长期记忆、情景记忆与检索结果将在此浏览与管理。功能开发中。"
-    />
-  );
-}
+export const LazyMemoryPanel = withSuspense(function MemoryPanelSuspended() {
+  return <MemoryStrategyPanel />;
+});

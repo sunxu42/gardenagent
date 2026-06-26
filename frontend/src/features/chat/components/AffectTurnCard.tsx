@@ -1,5 +1,7 @@
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
+
+import { RailListItemButton } from "@/components/rail/RailTabGroup";
 import type { AffectTurnRecord } from "../types";
 import { formatTimestamp } from "../lib/affectFormat";
 import { inferUserMood, resolveAttitudeSummary } from "../lib/affectPresentation";
@@ -45,15 +47,10 @@ export function AffectTurnCard({
 
   return (
     <li>
-      <button
-        type="button"
+      <RailListItemButton
+        size="rail-list-sm"
+        selected={selected}
         onClick={onSelect}
-        className={`w-full cursor-pointer rounded-md border px-3 py-2 text-left transition-colors duration-200 ${
-          selected
-            ? "border-border bg-muted/35"
-            : "border-transparent bg-transparent hover:bg-muted/25"
-        }`}
-        aria-pressed={selected}
         aria-label={`第 ${total - index} 轮情绪记录`}
       >
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
@@ -70,7 +67,7 @@ export function AffectTurnCard({
           ) : null}
         </div>
 
-        <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-muted-foreground">
+        <p className="mt-1 line-clamp-2 text-xs leading-snug text-muted-foreground">
           {record.userText || "（无文字内容）"}
         </p>
 
@@ -94,7 +91,7 @@ export function AffectTurnCard({
           <span className="text-muted-foreground">态度 </span>
           <span className="text-muted-foreground">{attitude}</span>
         </p>
-      </button>
+      </RailListItemButton>
 
       {devMode ? (
         <div className="mt-1 rounded-xl border border-dashed border-border/60 bg-muted/20 px-3 py-2">

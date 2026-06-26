@@ -27,6 +27,7 @@ export const initialChatState: ChatState = {
     fontSize: "normal",
     motion: "normal",
     theme: "mint-cute",
+    appearance: "light",
   },
 };
 

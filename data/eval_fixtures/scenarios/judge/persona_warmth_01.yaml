@@ -1,5 +1,7 @@
 id: persona_warmth_01
 domain: persona
+tags:
+  - happy_path
 tier: judge
 description: 用户感谢，检查温暖与支持语气
 setup:

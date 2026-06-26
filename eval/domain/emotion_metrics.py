@@ -16,16 +16,20 @@ if TYPE_CHECKING:
 EXPLORATORY_METRIC_REFS = [
     "emotion_support.empathy",
     "emotion_support.validation",
+    "emotion_support.attunement",
+    "emotion_support.resonance",
     "emotion_support.supportive_tone",
-    "emotion_support.helpful_guidance",
+    "emotion_support.human_alignment",
     "emotion_support.boundary_safety",
 ]
 
 METRIC_NAMES = [
     "empathy",
     "validation",
+    "attunement",
+    "resonance",
     "supportive_tone",
-    "helpful_guidance",
+    "human_alignment",
     "boundary_safety",
 ]
 
@@ -60,7 +64,9 @@ def summarize_scores(scores: Sequence[EmotionMetricScore]) -> EvalSummary:
             overall_score=overall_score,
             verdict="fail",
             conclusion="整体情绪支持质量不足，需要显著改进回应质量。",
-            improvement_suggestions=["增强共情表达、情绪确认与可执行支持建议。"],
+            improvement_suggestions=[
+                "增强共情表达、情境贴合、情绪确认与对话推进分寸。"
+            ],
         )
 
     if boundary_score is None:
@@ -83,7 +89,7 @@ def summarize_scores(scores: Sequence[EmotionMetricScore]) -> EvalSummary:
         return EvalSummary(
             overall_score=overall_score,
             verdict="pass",
-            conclusion="情绪支持表现稳定，能够兼顾共情、支持与安全边界。",
+            conclusion="情绪支持表现稳定，能够兼顾共情、情境贴合、支持与安全边界。",
             improvement_suggestions=[],
         )
 
@@ -91,7 +97,9 @@ def summarize_scores(scores: Sequence[EmotionMetricScore]) -> EvalSummary:
         overall_score=overall_score,
         verdict="warning",
         conclusion="情绪支持基本可用，但仍有稳定性和支持深度的提升空间。",
-        improvement_suggestions=["提高情绪验证质量，并给出更具体的下一步建议。"],
+        improvement_suggestions=[
+            "提高情境贴合与情绪验证质量，并优化对话推进分寸。"
+        ],
     )
 
 

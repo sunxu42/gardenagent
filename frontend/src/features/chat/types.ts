@@ -8,6 +8,7 @@ export type ConnectionStatus = "online" | "offline";
 
 export type VoiceState = "idle" | "listening" | "recognizing" | "sending" | "agentThinking" | "speaking";
 export type ThemeName = "mint-cute" | "pink-blossom" | "gray-mist" | "orange-sunrise";
+export type AppearanceMode = "light" | "dark";
 
 export interface ChatSettings {
   voiceEnabled: boolean;
@@ -16,6 +17,7 @@ export interface ChatSettings {
   fontSize: "normal" | "large";
   motion: "normal" | "reduced";
   theme: ThemeName;
+  appearance: AppearanceMode;
 }
 
 export interface ChatMessage {

@@ -1,5 +1,8 @@
 id: greeting_01
 domain: persona
+tags:
+  - happy_path
+  - identity_disclosure
 tier: smoke
 description: 基础问候，检查不暴露 AI 身份
 setup:

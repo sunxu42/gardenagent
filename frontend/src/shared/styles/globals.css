@@ -24,6 +24,36 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
     --radius: 0.5rem;
+
+    /* Rail toolbar — warm brown, slightly darker than panel surface */
+    --rail-track: 36 28% 92%;
+    --rail-btn: 32 26% 86%;
+    --rail-btn-hover: 32 28% 80%;
+    --rail-btn-active: 28 30% 72%;
+    --rail-btn-active-hover: 28 32% 66%;
+    --rail-list: 34 24% 90%;
+    --rail-list-hover: 32 26% 84%;
+    --rail-list-active: 30 28% 78%;
+    --rail-border: 30 16% 76%;
+    --rail-border-active: 28 22% 62%;
+    --rail-fg-muted: 30 12% 44%;
+    --rail-fg: 28 22% 18%;
+    --rail-check: 34 22% 86%;
+
+    /* Scenario checkbox rows — warmer tan */
+    --rail-pick: 38 32% 91%;
+    --rail-pick-hover: 36 30% 86%;
+    --rail-pick-active: 32 28% 80%;
+    --rail-pick-border: 34 20% 78%;
+    --rail-pick-border-active: 30 24% 68%;
+    --rail-pick-check: 36 28% 88%;
+
+    /* History listbox rows — deeper brown */
+    --rail-history: 28 22% 88%;
+    --rail-history-hover: 26 24% 82%;
+    --rail-history-active: 24 26% 74%;
+    --rail-history-border: 26 18% 70%;
+    --rail-history-border-active: 22 22% 58%;
   }
 
   * {

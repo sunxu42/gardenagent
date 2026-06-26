@@ -12,14 +12,16 @@ import type { AffectDebugPanelProps } from "@/features/chat/components/AffectDeb
 import {
   LazyAffectPanel,
   LazyLogsPanel,
+  LazyMemoryPanel,
   LazyPromptPanel,
   LazyTestPanel,
-  MemoryPanel,
+  prefetchStrategyPanel,
 } from "./panels/LazyStrategyPanels";
 import type { LogEntry } from "@/features/logs/logTypes";
 import {
   STRATEGY_TAB_LABELS,
   type StrategyPanelTab,
+  type StrategyTabGroup,
 } from "./types";
 import "./strategy-desktop.css";
 
@@ -27,14 +29,15 @@ interface TabConfig {
   id: StrategyPanelTab;
   icon: LucideIcon;
   label: string;
+  group: StrategyTabGroup;
 }
 
 const TABS: TabConfig[] = [
-  { id: "emotion", icon: Activity, label: STRATEGY_TAB_LABELS.emotion },
-  { id: "prompt", icon: FileCode2, label: STRATEGY_TAB_LABELS.prompt },
-  { id: "logs", icon: ScrollText, label: STRATEGY_TAB_LABELS.logs },
-  { id: "memory", icon: Brain, label: STRATEGY_TAB_LABELS.memory },
-  { id: "test", icon: FlaskConical, label: STRATEGY_TAB_LABELS.test },
+  { id: "emotion", icon: Activity, label: STRATEGY_TAB_LABELS.emotion, group: "insight" },
+  { id: "logs", icon: ScrollText, label: STRATEGY_TAB_LABELS.logs, group: "insight" },
+  { id: "prompt", icon: FileCode2, label: STRATEGY_TAB_LABELS.prompt, group: "config" },
+  { id: "memory", icon: Brain, label: STRATEGY_TAB_LABELS.memory, group: "config" },
+  { id: "test", icon: FlaskConical, label: STRATEGY_TAB_LABELS.test, group: "quality" },
 ];
 
 export interface StrategyPanelProps extends AffectDebugPanelProps {
@@ -70,7 +73,12 @@ export function StrategyPanel({
       role="complementary"
       aria-label="策略面板"
     >
-      <StrategyRailTabs tabs={TABS} activeTab={activeTab} onTabChange={onTabChange} />
+      <StrategyRailTabs
+        tabs={TABS}
+        activeTab={activeTab}
+        onTabChange={onTabChange}
+        onTabPrefetch={prefetchStrategyPanel}
+      />
 
       <div className="strategy-rail-content min-h-0 min-w-0 flex-1 overflow-hidden">
         {visitedTabs.has("emotion") ? (
@@ -102,7 +110,7 @@ export function StrategyPanel({
             className={`strategy-rail-pane h-full min-h-0${activeTab === "memory" ? "" : " strategy-rail-pane--hidden"}`}
             aria-hidden={activeTab !== "memory"}
           >
-            <MemoryPanel />
+            <LazyMemoryPanel />
           </div>
         ) : null}
         {visitedTabs.has("test") ? (

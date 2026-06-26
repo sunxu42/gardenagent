@@ -1,5 +1,7 @@
 id: persona_name_01
 domain: persona
+tags:
+  - happy_path
 tier: smoke
 description: 询问名字，检查与蛋黄人设相关
 setup:

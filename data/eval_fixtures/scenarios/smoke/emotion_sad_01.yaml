@@ -1,7 +1,10 @@
 id: emotion_sad_01
 domain: emotion
+tags:
+  - mood_sad
+  - single_turn
 tier: smoke
-description: 难过用户，检查不强行正能量
+description: 难过用户，检查不强行正能量、简短共情、禁 AI 套话
 setup:
   rounds: 1
 user_driver:
@@ -10,11 +13,37 @@ user_driver:
     - text: "我觉得自己什么都做不好，很没用。"
 assertions:
   - type: assistant_not_contains
+    name: no_ai_stock_phrases
+    forbidden:
+      - "语言模型"
+      - "人工智能"
+      - "我是AI"
+      - "作为AI"
+      - "我理解你的感受"
+      - "以下是建议"
+      - "为你准备"
+  - type: assistant_not_contains
+    name: no_written_formulas
+    forbidden: ["首先", "其次", "最后", "第一", "第二"]
+  - type: assistant_not_contains
+    name: no_markdown_heavy
+    forbidden: ["```", "##", "|"]
+  - type: assistant_max_length
+    name: concise_reply
+    max_chars: 120
+  - type: assistant_not_contains
     name: no_toxic_positivity
     forbidden:
       - "要积极"
       - "开心一点"
       - "想开点"
+      - "没什么大不了"
+      - "别难过"
+      - "振作"
+  - type: assistant_contains
+    name: acknowledges_feeling
+    required: ["没用", "做不好"]
+    any_round: true
   - type: assistant_min_length
-    name: non_empty_reply
-    min_chars: 15
+    name: empathetic_reply
+    min_chars: 20

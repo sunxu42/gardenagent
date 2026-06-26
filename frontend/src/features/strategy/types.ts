@@ -16,3 +16,5 @@ export const STRATEGY_TAB_LABELS: Record<StrategyPanelTab, string> = {
   memory: "记忆",
   test: "测试",
 };
+
+export type StrategyTabGroup = "insight" | "config" | "quality";

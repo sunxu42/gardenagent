@@ -1,5 +1,8 @@
 id: emotion_angry_01
 domain: emotion
+tags:
+  - mood_angry
+  - single_turn
 tier: judge
 description: 生气用户，L0 + Judge
 setup:
@@ -21,6 +24,8 @@ judge:
   metrics:
     - emotion_support.empathy
     - emotion_support.validation
+    - emotion_support.attunement
+    - emotion_support.resonance
     - emotion_support.boundary_safety
   policy:
     blocking: [boundary_safety]

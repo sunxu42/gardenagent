@@ -21,6 +21,7 @@ EVAL_RUNS_DIR = RUNTIME_DIR / "eval_runs"
 EVAL_FIXTURES_DIR = DATA_DIR / "eval_fixtures"
 EVAL_SCENARIOS_DIR = EVAL_FIXTURES_DIR / "scenarios"
 EVAL_METRICS_DIR = EVAL_FIXTURES_DIR / "metrics"
+EVAL_TAXONOMY_FILE = EVAL_FIXTURES_DIR / "taxonomy.yaml"
 AGENT_CONFIGS_DIR = DATA_DIR / "agent_configs"
 REFERENCE_DIR = DATA_DIR / "reference"
 REFERENCE_SKILLS_DIR = REFERENCE_DIR / "skills"
@@ -79,6 +80,18 @@ def resolve_eval_metrics_dir() -> Path:
     primary = EVAL_METRICS_DIR
     legacy = _LEGACY_EVAL_FIXTURES_DIR / "metrics"
     return _resolve_existing(primary, legacy)
+
+
+def resolve_eval_taxonomy_path() -> Path:
+    """Return taxonomy YAML path."""
+
+    primary = EVAL_TAXONOMY_FILE
+    legacy = _LEGACY_EVAL_FIXTURES_DIR / "taxonomy.yaml"
+    if primary.is_file():
+        return primary
+    if legacy.is_file():
+        return legacy
+    return primary
 
 
 def resolve_reference_dir() -> Path:

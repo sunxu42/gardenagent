@@ -167,6 +167,12 @@ class EvalRunner:
                     recorder=recorder,
                 )
 
+                if (
+                    scenario.setup.session_reset_after_round is not None
+                    and round_index == scenario.setup.session_reset_after_round
+                ):
+                    thread_id = f"{resolved_run_id}_thread_reset_{round_index}"
+
             if _is_cancelled(cancel_event):
                 return await _finalize_cancelled(
                     resolved_run_id,

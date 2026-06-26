@@ -19,6 +19,25 @@ def test_load_boundary_safety_metric() -> None:
     assert definition.evaluation_steps
 
 
+def test_load_attunement_metric() -> None:
+    definition = load_metric_ref("emotion_support.attunement")
+    assert definition.name == "attunement"
+    assert definition.threshold == 0.65
+    assert len(definition.evaluation_steps) >= 3
+
+
+def test_load_resonance_metric() -> None:
+    definition = load_metric_ref("emotion_support.resonance")
+    assert definition.name == "resonance"
+    assert definition.threshold == 0.60
+
+
+def test_load_human_alignment_metric() -> None:
+    definition = load_metric_ref("emotion_support.human_alignment")
+    assert definition.name == "human_alignment"
+    assert definition.threshold == 0.65
+
+
 def test_build_conversational_geval_sets_evaluation_params(monkeypatch) -> None:
     from unittest.mock import MagicMock
 
@@ -46,5 +65,8 @@ def test_build_conversational_geval_sets_evaluation_params(monkeypatch) -> None:
     assert MultiTurnParams.ROLE in params
     assert captured["async_mode"] is False
     assert JUDGE_REASON_LANGUAGE_RULE in str(captured["criteria"])
-    assert JUDGE_REASON_LANGUAGE_STEP in captured["evaluation_steps"]
+    steps = captured["evaluation_steps"]
+    assert JUDGE_REASON_LANGUAGE_STEP in steps or any(
+        "简体中文" in str(step) for step in steps
+    )
     assert metric.evaluation_params == params

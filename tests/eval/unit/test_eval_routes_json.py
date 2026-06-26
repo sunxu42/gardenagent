@@ -12,6 +12,7 @@ def test_json_serializes_scenario_summary_list() -> None:
                 description="基础问候",
                 domain="persona",
                 tier="smoke",
+                tags=["happy_path", "identity_disclosure"],
             )
         ]
     )
@@ -23,5 +24,6 @@ def test_json_serializes_scenario_summary_list() -> None:
             "description": "基础问候",
             "domain": "persona",
             "tier": "smoke",
+            "tags": ["happy_path", "identity_disclosure"],
         }
     ]

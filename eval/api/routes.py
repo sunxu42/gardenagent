@@ -12,6 +12,9 @@ from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
 
 from eval.api.schemas import (
+    CoverageCellDTO,
+    CoverageMatrixDTO,
+    CoverageScenarioRefDTO,
     EmotionEvalRequest,
     EmotionEvalResponse,
     EmotionSupportRunRequest,
@@ -27,7 +30,7 @@ from eval.api.schemas import (
 from eval.api.mapping import to_eval_run_response, to_eval_run_response_from_record
 from eval.application.job_manager import EvalJobConflictError, EvalJobManager
 from eval.infrastructure.persistence import list_run_summaries, load_run_record
-from eval.domain.scenario import load_scenario, resolve_scenario_by_id
+from eval.domain.scenario import load_scenario, list_scenarios_with_paths, resolve_scenario_by_id
 
 
 def _cors_headers() -> dict[str, str]:
@@ -156,9 +159,92 @@ def list_scenario_summaries(tier: str | None = None) -> list[ScenarioSummary]:
                 description=scenario.description,
                 domain=scenario.domain,
                 tier=scenario.tier,
+                tags=scenario.tags,
             )
         )
     return summaries
+
+
+def build_coverage_response(
+    *,
+    tier: str | None = None,
+    domain: str | None = None,
+) -> CoverageMatrixDTO:
+    """Build coverage matrix DTO from fixtures and persisted runs."""
+
+    from eval.domain.coverage import build_coverage_matrix, runs_from_summaries
+    from eval.domain.taxonomy import get_taxonomy_registry
+
+    root = resolve_eval_scenarios_dir()
+    loaded = list_scenarios_with_paths(root)
+    runs = runs_from_summaries(list_run_summaries(limit=200))
+    matrix = build_coverage_matrix(
+        loaded_scenarios=loaded,
+        runs=runs,
+        registry=get_taxonomy_registry(),
+    )
+
+    latest_runs: dict[tuple[str, str], ScenarioRunSnapshot] = {}
+    for run in runs:
+        key = (run.scenario_id.replace("\\", "/").strip("/"), run.tier)
+        existing = latest_runs.get(key)
+        if existing is None or (run.finished_at or "") >= (existing.finished_at or ""):
+            latest_runs[key] = run
+
+    cells: list[CoverageCellDTO] = []
+    for cell in matrix.cells:
+        if tier and cell.tier != tier:
+            continue
+        if domain and cell.domain != domain:
+            continue
+        scenario_rows: list[CoverageScenarioRefDTO] = []
+        for ref in cell.scenarios:
+            short_id = ref.id.split("/")[-1]
+            run = latest_runs.get((ref.id, cell.tier))
+            if run is None:
+                run = latest_runs.get((short_id, cell.tier))
+            scenario_rows.append(
+                CoverageScenarioRefDTO(
+                    id=ref.id,
+                    description=ref.description,
+                    tags=list(ref.tags),
+                    last_status=run.status if run is not None else None,
+                    last_passed=run.passed if run is not None else None,
+                )
+            )
+        cells.append(
+            CoverageCellDTO(
+                domain=cell.domain,
+                domain_label=cell.domain_label,
+                tier=cell.tier,
+                scenario_count=cell.scenario_count,
+                scenarios=scenario_rows,
+                tags_covered=list(cell.tags_covered),
+                tags_expected=list(cell.tags_expected),
+                tags_missing=list(cell.tags_missing),
+                last_run_at=cell.last_run_at,
+                pass_count=cell.pass_count,
+                fail_count=cell.fail_count,
+                pass_rate=cell.pass_rate,
+            )
+        )
+
+    return CoverageMatrixDTO(
+        generated_at=matrix.generated_at,
+        cells=cells,
+        tag_coverage=[
+            {"tag": row.tag, "scenario_count": row.scenario_count, "domains": list(row.domains)}
+            for row in matrix.tag_coverage
+        ],
+    )
+
+
+async def get_coverage(request: Request) -> JSONResponse:
+    """Return eval coverage matrix."""
+
+    tier = request.query_params.get("tier")
+    domain = request.query_params.get("domain")
+    return _json(build_coverage_response(tier=tier, domain=domain))
 
 
 async def get_scenarios(request: Request) -> JSONResponse:
@@ -362,6 +448,8 @@ def create_eval_routes(job_manager: EvalJobManager | None = None) -> list[Route]
         Route("/api/eval/run", _options, methods=["OPTIONS"]),
         Route("/api/eval/scenarios", get_scenarios, methods=["GET"]),
         Route("/api/eval/scenarios", _options, methods=["OPTIONS"]),
+        Route("/api/eval/coverage", get_coverage, methods=["GET"]),
+        Route("/api/eval/coverage", _options, methods=["OPTIONS"]),
         Route("/api/eval/scenario/run", scenario_run_endpoint, methods=["POST"]),
         Route("/api/eval/scenario/run", _options, methods=["OPTIONS"]),
         Route("/api/eval/runs/{run_id}/cancel", post_cancel_run, methods=["POST"]),

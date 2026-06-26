@@ -78,6 +78,40 @@ export interface ScenarioSummary {
   description: string;
   domain: string;
   tier: "smoke" | "judge" | "exploratory";
+  tags?: string[];
+}
+
+export interface CoverageScenarioRef {
+  id: string;
+  description: string;
+  tags: string[];
+  last_status: string | null;
+  last_passed: boolean | null;
+}
+
+export interface CoverageCell {
+  domain: string;
+  domain_label: string;
+  tier: "smoke" | "judge";
+  scenario_count: number;
+  scenarios: CoverageScenarioRef[];
+  tags_covered: string[];
+  tags_expected: string[];
+  tags_missing: string[];
+  last_run_at: string | null;
+  pass_count: number;
+  fail_count: number;
+  pass_rate: number | null;
+}
+
+export interface CoverageMatrix {
+  generated_at: string;
+  cells: CoverageCell[];
+  tag_coverage: Array<{
+    tag: string;
+    scenario_count: number;
+    domains: string[];
+  }>;
 }
 
 export interface AssertionResultDTO {
@@ -134,4 +168,20 @@ export interface EvalRunSummary {
   duration_ms?: number | null;
   assertions_passed?: boolean | null;
   judge_overall_passed?: boolean | null;
+}
+
+export type PanelTab = "overview" | "history";
+
+export type PanelView = "radar" | { kind: "domain"; domainId: string };
+
+export type DomainMode = "smoke" | "judge" | "exploratory";
+
+export type HistoryTierFilter = "all" | "smoke" | "judge" | "exploratory";
+
+export type HistoryDomainFilter = "all" | string;
+
+export function isDomainPanelView(
+  view: PanelView,
+): view is { kind: "domain"; domainId: string } {
+  return view !== "radar" && typeof view === "object";
 }

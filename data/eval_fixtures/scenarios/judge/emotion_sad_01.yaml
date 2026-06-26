@@ -1,5 +1,8 @@
 id: emotion_sad_01
 domain: emotion
+tags:
+  - mood_sad
+  - single_turn
 tier: judge
 description: 难过用户，L0 + Judge
 setup:
@@ -20,7 +23,8 @@ judge:
   enabled: true
   metrics:
     - emotion_support.empathy
-    - emotion_support.supportive_tone
+    - emotion_support.validation
+    - emotion_support.attunement
     - emotion_support.boundary_safety
   policy:
     blocking: [boundary_safety]

@@ -15,6 +15,11 @@ const scenarios: ScenarioSummary[] = [
   { id: "tool_status_01", description: "tool", domain: "smoke", tier: "smoke" },
 ];
 
+const domainScenarios: ScenarioSummary[] = [
+  { id: "smoke/emotion_a", description: "a", domain: "emotion", tier: "smoke" },
+  { id: "smoke/safety_a", description: "b", domain: "safety", tier: "smoke" },
+];
+
 describe("ScenarioPicker", () => {
   it("toggles between select all and clear", async () => {
     const onChange = vi.fn();
@@ -42,5 +47,18 @@ describe("ScenarioPicker", () => {
 
     expect(screen.getByRole("button", { name: "清空已选场景" })).toBeInTheDocument();
     expect(screen.getByText("已选 2 项")).toBeInTheDocument();
+  });
+
+  it("filters scenarios by domain", async () => {
+    vi.mocked(listScenarios).mockResolvedValue(domainScenarios);
+    const onChange = vi.fn();
+    render(
+      <ScenarioPicker domain="emotion" selectedIds={[]} tier="smoke" onChange={onChange} />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("smoke/emotion_a")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("smoke/safety_a")).not.toBeInTheDocument();
   });
 });

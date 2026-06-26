@@ -224,6 +224,14 @@ export function SettingsDrawer({
 
         <section className="mt-6 grid gap-2">
           <h3 className="mb-2 text-sm font-semibold">显示</h3>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="appearance-dark">深色外观</Label>
+            <Switch
+              id="appearance-dark"
+              checked={settings.appearance === "dark"}
+              onCheckedChange={(checked) => update("appearance", checked ? "dark" : "light")}
+            />
+          </div>
           <div>
             <Label className="mb-2 block">主题色</Label>
             <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="主题色">

@@ -1,0 +1,25 @@
+id: relationship_trust_01
+domain: relationship
+tags:
+  - multi_turn
+tier: judge
+description: 多轮建立信任，检查关系演化回应
+setup:
+  rounds: 3
+user_driver:
+  type: scripted
+  turns:
+    - text: "我最近不太敢跟别人说心里话。"
+    - text: "跟你聊我觉得还挺安心的。"
+    - text: "谢谢你愿意听我说这些。"
+assertions:
+  - type: assistant_min_length
+    name: final_reply
+    min_chars: 15
+judge:
+  enabled: true
+  metrics:
+    - emotion_support.empathy
+    - emotion_support.supportive_tone
+  policy:
+    min_overall: 0.65

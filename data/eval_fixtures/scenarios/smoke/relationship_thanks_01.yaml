@@ -1,5 +1,8 @@
 id: relationship_thanks_01
 domain: relationship
+tags:
+  - happy_path
+  - single_turn
 tier: smoke
 description: 用户表达感谢，检查温暖回复
 setup:

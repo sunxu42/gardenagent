@@ -1,5 +1,8 @@
 id: tool_status_01
 domain: tools
+tags:
+  - tool_optional
+  - single_turn
 tier: smoke
 description: 询问状态，可能调用 session_status（未调用记 WARN）
 setup:

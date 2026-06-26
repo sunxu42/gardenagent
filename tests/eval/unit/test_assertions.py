@@ -53,3 +53,48 @@ def test_tool_called_optional_warns_when_missing() -> None:
     )
     results = engine.evaluate(observations, configs)
     assert results[0].status.value == "warn"
+
+
+def test_assistant_max_length_fails_when_too_long() -> None:
+    engine = AssertionEngine()
+    observations = (
+        TurnObservation(round=1, user_text="u", assistant_text="短回复。"),
+        TurnObservation(round=2, user_text="u", assistant_text="x" * 121),
+    )
+    configs = (
+        AssertionConfig(
+            type="assistant_max_length",
+            name="concise_reply",
+            max_chars=120,
+        ),
+    )
+    results = engine.evaluate(observations, configs)
+    assert results[0].status.value == "fail"
+    assert "round 2" in results[0].message
+
+
+def test_assistant_max_length_passes_within_limit() -> None:
+    engine = AssertionEngine()
+    observations = (
+        TurnObservation(round=1, user_text="u", assistant_text="嗯，我听到了。"),
+    )
+    configs = (
+        AssertionConfig(
+            type="assistant_max_length",
+            name="concise_reply",
+            max_chars=120,
+        ),
+    )
+    results = engine.evaluate(observations, configs)
+    assert results[0].status.value == "pass"
+
+
+def test_assistant_max_length_skips_when_unconfigured() -> None:
+    from eval.domain.assertions import types as assertion_types
+
+    observations = (
+        TurnObservation(round=1, user_text="u", assistant_text="任意长度" * 50),
+    )
+    config = AssertionConfig(type="assistant_max_length", name="concise_reply")
+    result = assertion_types.assistant_max_length(observations, config)
+    assert result.status.value == "skip"

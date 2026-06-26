@@ -104,6 +104,40 @@ def assistant_min_length(
     )
 
 
+def assistant_max_length(
+    observations: Sequence[TurnObservation],
+    config: AssertionConfig,
+) -> AssertionResult:
+    """Fail when any assistant reply exceeds max_chars."""
+
+    max_chars = config.max_chars
+    if max_chars is None:
+        return AssertionResult(
+            name=config.name,
+            status=AssertionStatus.SKIP,
+            message="no max_chars configured",
+        )
+
+    for observation in observations:
+        length = len(observation.assistant_text)
+        if length > max_chars:
+            return AssertionResult(
+                name=config.name,
+                status=AssertionStatus.FAIL,
+                message=(
+                    f"round {observation.round} reply too long: "
+                    f"{length} > {max_chars}"
+                ),
+                expected=max_chars,
+                actual=length,
+            )
+    return AssertionResult(
+        name=config.name,
+        status=AssertionStatus.PASS,
+        message="all replies within maximum length",
+    )
+
+
 def agent_emotion_in(
     observations: Sequence[TurnObservation],
     config: AssertionConfig,
