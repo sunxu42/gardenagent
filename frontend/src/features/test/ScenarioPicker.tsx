@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
 import { PanelLoading } from "@/components/panel/PanelLoading";
+import { SyncStatusBadge } from "@/components/panel/SyncStatusBadge";
 import { RailCheckboxField } from "@/components/rail/RailCheckboxField";
 import { RailPanelScroll } from "@/components/rail/RailPanelShell";
 import { Button } from "@/components/ui/button";
 import type { ScenarioSummary } from "@/features/test/types";
+import { scenarioCacheKey } from "@/shared/cache/cacheKeys";
+import { useStaleCache } from "@/shared/cache/useStaleCache";
 import { listScenarios } from "@/services/eval/scenarioApi";
 
 interface ScenarioPickerProps {
@@ -38,39 +41,29 @@ export function ScenarioPicker({
   onChange,
   disabled = false,
 }: ScenarioPickerProps): JSX.Element {
-  const [scenarios, setScenarios] = useState<ScenarioSummary[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const cacheKey = scenarioCacheKey(tier);
+  const {
+    data: rawScenarios,
+    isInitialLoading,
+    isSyncing,
+    syncFailed,
+    error,
+  } = useStaleCache(cacheKey, () => listScenarios(tier));
+
+  const scenarios = useMemo(
+    () => filterScenarios(rawScenarios ?? [], tier, domain),
+    [rawScenarios, tier, domain],
+  );
 
   useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setError(null);
-    listScenarios(tier)
-      .then((items) => {
-        if (!active) {
-          return;
-        }
-        const filtered = filterScenarios(items, tier, domain);
-        setScenarios(filtered);
-        onChange(selectedIds.filter((id) => filtered.some((item) => item.id === id)));
-      })
-      .catch((loadError: unknown) => {
-        if (!active) {
-          return;
-        }
-        setError(loadError instanceof Error ? loadError.message : "加载场景失败");
-      })
-      .finally(() => {
-        if (active) {
-          setLoading(false);
-        }
-      });
-    return () => {
-      active = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tier, domain]);
+    if (isInitialLoading) {
+      return;
+    }
+    const validIds = selectedIds.filter((id) => scenarios.some((item) => item.id === id));
+    if (validIds.length !== selectedIds.length) {
+      onChange(validIds);
+    }
+  }, [isInitialLoading, onChange, scenarios, selectedIds]);
 
   const toggleScenario = useCallback(
     (scenarioId: string, checked: boolean): void => {
@@ -118,7 +111,13 @@ export function ScenarioPicker({
         </p>
       </div>
 
-      {loading ? <PanelLoading label="加载场景…" fill={false} className="py-4" /> : null}
+      {isInitialLoading ? <PanelLoading label="加载场景…" fill={false} className="py-4" /> : null}
+
+      {!isInitialLoading && (isSyncing || syncFailed) ? (
+        <div className="mb-2 px-1">
+          <SyncStatusBadge syncing={isSyncing} syncFailed={syncFailed} />
+        </div>
+      ) : null}
 
       {error ? <p className="px-1 text-xs text-destructive">{error}</p> : null}
 
@@ -161,7 +160,7 @@ export function ScenarioPicker({
             </li>
           );
         })}
-        {!loading && scenarios.length === 0 ? (
+        {!isInitialLoading && scenarios.length === 0 ? (
           <li className="py-8 text-center text-xs text-muted-foreground">暂无场景</li>
         ) : null}
       </ul>

@@ -17,6 +17,8 @@ import {
 } from "@/features/test/evalHistoryFilters";
 import { getErrorMessage } from "@/features/test/evalFormConstants";
 import { RailPanelHeader } from "@/components/rail/RailPanelHeader";
+import { CACHE_KEYS } from "@/shared/cache/cacheKeys";
+import { useStaleCache } from "@/shared/cache/useStaleCache";
 import {
   RailDetailPane,
   RailListPane,
@@ -54,25 +56,12 @@ export function EvalHistoryView(): JSX.Element {
   const [historyDomainFilter, setHistoryDomainFilter] = useState<HistoryDomainFilter>("all");
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [domainMap, setDomainMap] = useState<Map<string, string>>(new Map());
+  const { data: scenarios } = useStaleCache(CACHE_KEYS.scenarios, listScenarios);
 
-  useEffect(() => {
-    let active = true;
-    listScenarios()
-      .then((scenarios) => {
-        if (active) {
-          setDomainMap(buildScenarioDomainMap(scenarios));
-        }
-      })
-      .catch(() => {
-        if (active) {
-          setDomainMap(new Map());
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+  const domainMap = useMemo(
+    () => buildScenarioDomainMap(scenarios ?? []),
+    [scenarios],
+  );
 
   useEffect(() => {
     let active = true;

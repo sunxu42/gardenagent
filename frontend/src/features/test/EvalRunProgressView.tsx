@@ -76,16 +76,17 @@ export function EvalRunProgressView({
       <section className="rounded-lg border border-border/30 bg-muted/15 px-3.5 py-3">
         <div className="mb-3 flex flex-wrap items-center gap-2">
           {PHASE_STEPS.map((step, index) => {
+            const isTerminalStep = index === PHASE_STEPS.length - 1;
             const done = readOnly
               ? currentIndex >= index && state.phase !== "failed" && state.phase !== "cancelled"
-              : currentIndex > index;
+              : currentIndex > index ||
+                (isTerminalStep && state.phase === "completed");
             const active = !readOnly && currentIndex === index && isRunning;
-            const failed = state.phase === "failed" && index === 4;
-            const cancelled = state.phase === "cancelled" && index === 4;
-            const terminalDone = readOnly && state.phase === "completed" && index === 4;
+            const failed = state.phase === "failed" && isTerminalStep;
+            const cancelled = state.phase === "cancelled" && isTerminalStep;
             return (
               <div className="flex items-center gap-1.5" key={step.id}>
-                {done || terminalDone ? (
+                {done ? (
                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" aria-hidden />
                 ) : active ? (
                   <Loader2

@@ -2,8 +2,11 @@ import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { FileCode2, Save } from "lucide-react";
 
 import { PanelLoading } from "@/components/panel/PanelLoading";
+import { SyncStatusBadge } from "@/components/panel/SyncStatusBadge";
 import { RailPanelHeader } from "@/components/rail/RailPanelHeader";
 import { RailToolbarButton } from "@/components/rail/RailToolbarButton";
+import { CACHE_KEYS } from "@/shared/cache/cacheKeys";
+import { useStaleCache } from "@/shared/cache/useStaleCache";
 import { FileTree } from "./components/FileTree";
 import { PanelSection } from "./components/PanelSection";
 import { SoulTreeEditor } from "./components/SoulTreeEditor";
@@ -20,7 +23,6 @@ import {
   fetchPromptContent,
   fetchPromptTree,
   savePromptContent,
-  type TreeNode,
 } from "@/services/promptEditorApi";
 import "./config-desktop.css";
 
@@ -32,9 +34,20 @@ const YamlPreview = lazy(() =>
 
 export function PromptEditor() {
   const { containerRef, ratio, dragging, startDrag } = useConfigSplitPane(0.4);
-  const [tree, setTree] = useState<TreeNode[]>([]);
-  const [treeLoading, setTreeLoading] = useState(true);
-  const [treeError, setTreeError] = useState<string | null>(null);
+  const {
+    data: tree,
+    isInitialLoading: treeLoading,
+    isSyncing: treeSyncing,
+    syncFailed: treeSyncFailed,
+    error: treeError,
+  } = useStaleCache(CACHE_KEYS.promptTree, async () => {
+    try {
+      return await fetchPromptTree();
+    } catch {
+      throw new Error("无法加载文件树。请确认已运行：python src/server.py");
+    }
+  });
+  const treeNodes = tree ?? [];
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [preview, setPreview] = useState("");
   const [treeRoots, setTreeRoots] = useState<SoulTreeNode[]>([]);
@@ -50,23 +63,6 @@ export function PromptEditor() {
     setFocusedNodePath(path);
     setYamlFlashToken((t) => t + 1);
   }, []);
-
-  const loadTree = useCallback(async () => {
-    setTreeLoading(true);
-    try {
-      const children = await fetchPromptTree();
-      setTree(children);
-      setTreeError(null);
-    } catch {
-      setTreeError("无法加载文件树。请确认已运行：python src/server.py");
-    } finally {
-      setTreeLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadTree();
-  }, [loadTree]);
 
   useEffect(() => {
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -142,6 +138,9 @@ export function PromptEditor() {
       <RailPanelHeader
         icon={FileCode2}
         title="提示词"
+        titleTrailing={
+          <SyncStatusBadge syncing={treeSyncing} syncFailed={treeSyncFailed} />
+        }
         actions={
           <>
             {dirty ? <span className="config-desktop-badge config-desktop-badge--dirty">未保存</span> : null}
@@ -177,7 +176,7 @@ export function PromptEditor() {
             {treeLoading ? (
               <PanelLoading label="加载文件树…" fill={false} className="py-6" />
             ) : (
-              <FileTree nodes={tree} selectedPath={selectedPath} onSelect={handleSelectPath} />
+              <FileTree nodes={treeNodes} selectedPath={selectedPath} onSelect={handleSelectPath} />
             )}
           </PanelSection>
         </aside>

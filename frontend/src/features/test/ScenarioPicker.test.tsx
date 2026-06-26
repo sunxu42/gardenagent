@@ -1,7 +1,8 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ScenarioSummary } from "@/features/test/types";
+import { clearAllCaches } from "@/shared/cache/cacheStore";
 import { listScenarios } from "@/services/eval/scenarioApi";
 
 import { ScenarioPicker } from "./ScenarioPicker";
@@ -21,6 +22,11 @@ const domainScenarios: ScenarioSummary[] = [
 ];
 
 describe("ScenarioPicker", () => {
+  beforeEach(() => {
+    sessionStorage.clear();
+    clearAllCaches();
+  });
+
   it("toggles between select all and clear", async () => {
     const onChange = vi.fn();
     vi.mocked(listScenarios).mockResolvedValue(scenarios);
