@@ -5,6 +5,7 @@ import { RailTab, RailTabList } from "@/components/rail/RailTabGroup";
 import { EvalHistoryView } from "@/features/test/EvalHistoryView";
 import { EvalOverviewView } from "@/features/test/EvalOverviewView";
 import { useCoverageMatrix } from "@/features/test/useCoverageMatrix";
+import { useCoverageRefreshOnEvalComplete } from "@/features/test/useCoverageRefreshOnEvalComplete";
 import type { PanelTab, PanelView } from "@/features/test/types";
 
 import "./test-panel.css";
@@ -19,6 +20,7 @@ export function TestPanel(): JSX.Element {
   const [panelView, setPanelView] = useState<PanelView>("radar");
   const [selectedDomainId, setSelectedDomainId] = useState<string | null>(null);
   const coverage = useCoverageMatrix();
+  useCoverageRefreshOnEvalComplete(coverage.reload);
 
   return (
     <section className="test-panel-root flex h-full min-h-0 flex-col overflow-hidden">
