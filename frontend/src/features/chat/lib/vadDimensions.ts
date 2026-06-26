@@ -3,9 +3,10 @@ import { formatAffectNum } from "./affectFormat";
 
 export interface VadDimensionMeta {
   key: keyof VadPoint;
-  /** 英文全称，如 Valence */
+  /** 短标签 V / A / D，用于大部分界面 */
+  shortLabel: string;
+  /** 英文全称 Valence / Arousal / Dominance，用于情绪三维度引导页 */
   fullName: string;
-  label: string;
   hint: string;
   /** 轴两端语义标签 */
   poleLow: string;
@@ -20,8 +21,8 @@ export interface VadDimensionMeta {
 export const VAD_DIMENSIONS: VadDimensionMeta[] = [
   {
     key: "v",
-    fullName: "效价",
-    label: "愉悦度",
+    shortLabel: "V",
+    fullName: "Valence",
     hint: "消极 ← → 积极",
     poleLow: "消极",
     poleHigh: "积极",
@@ -32,8 +33,8 @@ export const VAD_DIMENSIONS: VadDimensionMeta[] = [
   },
   {
     key: "a",
-    fullName: "唤醒度",
-    label: "能量感",
+    shortLabel: "A",
+    fullName: "Arousal",
     hint: "平静 ← → 激动",
     poleLow: "平静",
     poleHigh: "激动",
@@ -44,8 +45,8 @@ export const VAD_DIMENSIONS: VadDimensionMeta[] = [
   },
   {
     key: "d",
-    fullName: "支配感",
-    label: "掌控感",
+    shortLabel: "D",
+    fullName: "Dominance",
     hint: "被动 ← → 强势",
     poleLow: "被动",
     poleHigh: "强势",

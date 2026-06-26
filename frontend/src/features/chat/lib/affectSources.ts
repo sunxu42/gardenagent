@@ -31,7 +31,7 @@ export function buildUserAffectSources(record: AffectTurnRecord): SourceItem[] {
   }
   const vadLines = VAD_DIMENSIONS.map((dim) => {
     const val = record.userAffectVad[dim.key];
-    return `${dim.label} ${formatVadValue(val, dim)}（${vadDimensionVerbal(dim.key, val)}）`;
+    return `${dim.shortLabel} ${formatVadValue(val, dim)}（${vadDimensionVerbal(dim.key, val)}）`;
   });
   items.push({
     label: "情绪维度",
@@ -40,7 +40,7 @@ export function buildUserAffectSources(record: AffectTurnRecord): SourceItem[] {
   const mood = inferUserMood(record.userAffectVad);
   items.push({
     label: "综合感受",
-    detail: `由愉悦度与能量感综合为「${mood.label}」`,
+    detail: `由 V 与 A 综合为「${mood.label}」`,
   });
   if (record.userWeight != null) {
     items.push({
@@ -67,7 +67,7 @@ export function buildAgentAffectSources(record: AffectTurnRecord): SourceItem[] 
     const t = record.agentVadTarget;
     items.push({
       label: "合成目标语气",
-      detail: `愉悦 ${formatAffectNum(t.v)} / 能量 ${formatAffectNum(t.a)} / 掌控 ${formatAffectNum(t.d)}${
+      detail: `V ${formatAffectNum(t.v)} / A ${formatAffectNum(t.a)} / D ${formatAffectNum(t.d)}${
         record.actuationWeight != null ? `（应用强度 ${formatAffectNum(record.actuationWeight * 100, 0)}%）` : ""
       }`,
     });
@@ -89,7 +89,7 @@ export function buildAgentAffectSources(record: AffectTurnRecord): SourceItem[] 
     const a = record.agentVadAfter;
     items.push({
       label: "状态机落地",
-      detail: `更新后助手语气：愉悦 ${formatAffectNum(a.v)} / 能量 ${formatAffectNum(a.a)} / 掌控 ${formatAffectNum(a.d)}`,
+      detail: `更新后助手语气：V ${formatAffectNum(a.v)} / A ${formatAffectNum(a.a)} / D ${formatAffectNum(a.d)}`,
     });
   }
 

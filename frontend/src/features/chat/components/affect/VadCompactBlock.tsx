@@ -1,6 +1,7 @@
 import type { VadPoint } from "../../types";
 import { computeVadDelta } from "../../lib/affectMerge";
 import { deltaToneClass, formatAffectNum } from "../../lib/affectFormat";
+import { VAD_DIMENSIONS } from "../../lib/vadDimensions";
 
 interface VadCompactBlockProps {
   title: string;
@@ -60,14 +61,14 @@ export function VadCompactBlock({
     <div className={`rounded-md px-2 py-1.5 ${accentClass}`}>
       <p className="text-[10px] font-medium text-muted-foreground">{title}</p>
       <p className="mt-0.5 font-mono text-[11px] leading-relaxed text-muted-foreground">
-        效价 {formatAffectNum(point.v)} · 唤醒 {formatAffectNum(point.a)} · 支配 {formatAffectNum(point.d)}
+        {VAD_DIMENSIONS.map((dim) => `${dim.shortLabel} ${formatAffectNum(point[dim.key])}`).join(" · ")}
       </p>
       {roundDelta ? (
         <p className="mt-0.5 flex flex-wrap gap-x-2 gap-y-0">
           <span className="text-[10px] text-muted-foreground">相对上轮</span>
-          <DeltaCell label="效价" value={roundDelta.v} subdued={subdued} />
-          <DeltaCell label="唤醒" value={roundDelta.a} subdued={subdued} />
-          <DeltaCell label="支配" value={roundDelta.d} subdued={subdued} />
+          {VAD_DIMENSIONS.map((dim) => (
+            <DeltaCell key={dim.key} label={dim.shortLabel} value={roundDelta[dim.key]} subdued={subdued} />
+          ))}
         </p>
       ) : footnote ? (
         <p className="mt-0.5 text-[10px] text-muted-foreground">{footnote}</p>

@@ -53,7 +53,7 @@ export function VadDimensionBars({ point, compare, compact }: VadDimensionBarsPr
           <div key={dim.key}>
             <div className="mb-1 flex items-baseline justify-between gap-2 text-xs">
               <span className="font-medium text-foreground">
-                {dim.label}
+                {dim.shortLabel}
                 <span className="ml-1.5 font-normal text-muted-foreground">{dim.hint}</span>
               </span>
               <span className="shrink-0 tabular-nums text-muted-foreground">
