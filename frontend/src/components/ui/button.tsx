@@ -24,7 +24,7 @@ const buttonVariants = cva(
         default: "h-10 px-4 py-2",
         icon: "h-10 w-10",
         sm: "h-9 rounded-md px-3",
-        rail: "h-auto shrink-0 rounded-md px-2.5 py-1.5 text-[11px] font-medium gap-1.5",
+        rail: "h-auto shrink-0 rounded-md px-2.5 py-1.5 text-[11px] font-medium leading-none gap-1.5",
         "rail-chip": "h-auto shrink-0 rounded-md px-2 py-1 text-[10px] font-medium",
         "rail-list": "h-auto w-full rounded-md px-3 py-2.5 text-left font-normal",
         "rail-list-sm": "h-auto w-full rounded-md px-3 py-2 text-left font-normal",

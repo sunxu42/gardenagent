@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 
 /** Segmented tab list container (pill group). */
 export const railTabListClass =
-  "inline-flex shrink-0 gap-0.5 rounded-md bg-rail-track p-0.5";
+  "inline-flex shrink-0 items-center gap-0.5 rounded-md bg-rail-track p-0.5";
 
 /** Shared interactive class for reduced-motion overrides. */
 export const railInteractiveClass = "rail-interactive";

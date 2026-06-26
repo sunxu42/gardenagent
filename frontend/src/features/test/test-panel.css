@@ -481,8 +481,11 @@
 }
 
 .eval-domain-workspace__toolbar {
+  display: flex;
   flex-shrink: 0;
-  padding: 0 1rem 0.5rem;
+  align-items: center;
+  min-height: 2.25rem;
+  padding: 0.5rem 1rem;
   border-bottom: 1px solid hsl(var(--border) / 0.15);
   background: hsl(var(--muted) / 0.08);
 }
