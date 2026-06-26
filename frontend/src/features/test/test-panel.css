@@ -505,3 +505,7 @@
 .eval-coverage-radar__vertex {
   cursor: pointer;
 }
+
+.test-panel-pane--hidden {
+  display: none;
+}

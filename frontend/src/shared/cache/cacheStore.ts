@@ -26,10 +26,38 @@ export function readCache<T>(key: string): T | null {
   }
 }
 
-export function writeCache<T>(key: string, data: T): void {
-  memoryCache.set(key, data);
+export function getCacheFetchedAt(key: string): number | null {
+  if (memoryCache.has(`__meta:${key}`)) {
+    return memoryCache.get(`__meta:${key}`) as number;
+  }
+
   try {
-    const entry: CacheEntry<T> = { data, fetchedAt: Date.now() };
+    const raw = sessionStorage.getItem(toStorageKey(key));
+    if (!raw) {
+      return null;
+    }
+    const entry = JSON.parse(raw) as CacheEntry<unknown>;
+    memoryCache.set(`__meta:${key}`, entry.fetchedAt);
+    return entry.fetchedAt;
+  } catch {
+    return null;
+  }
+}
+
+export function isCacheFresh(key: string, minIntervalMs: number): boolean {
+  const fetchedAt = getCacheFetchedAt(key);
+  if (fetchedAt === null) {
+    return false;
+  }
+  return Date.now() - fetchedAt < minIntervalMs;
+}
+
+export function writeCache<T>(key: string, data: T): void {
+  const fetchedAt = Date.now();
+  memoryCache.set(key, data);
+  memoryCache.set(`__meta:${key}`, fetchedAt);
+  try {
+    const entry: CacheEntry<T> = { data, fetchedAt };
     sessionStorage.setItem(toStorageKey(key), JSON.stringify(entry));
   } catch {
     // sessionStorage unavailable or quota exceeded
@@ -38,6 +66,7 @@ export function writeCache<T>(key: string, data: T): void {
 
 export function clearCache(key: string): void {
   memoryCache.delete(key);
+  memoryCache.delete(`__meta:${key}`);
   try {
     sessionStorage.removeItem(toStorageKey(key));
   } catch {

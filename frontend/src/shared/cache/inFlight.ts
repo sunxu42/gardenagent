@@ -17,3 +17,10 @@ export function dedupedFetch<T>(key: string, fetcher: () => Promise<T>): Promise
 export function clearInFlightRequests(): void {
   inFlightRequests.clear();
 }
+
+export function isAbortError(error: unknown): boolean {
+  if (error instanceof DOMException && error.name === "AbortError") {
+    return true;
+  }
+  return error instanceof Error && error.name === "AbortError";
+}

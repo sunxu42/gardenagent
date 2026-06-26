@@ -40,13 +40,15 @@ export function PromptEditor() {
     isSyncing: treeSyncing,
     syncFailed: treeSyncFailed,
     error: treeError,
-  } = useStaleCache(CACHE_KEYS.promptTree, async () => {
-    try {
-      return await fetchPromptTree();
-    } catch {
-      throw new Error("无法加载文件树。请确认已运行：python src/server.py");
-    }
-  });
+  } = useStaleCache(CACHE_KEYS.promptTree, ({ signal }) =>
+    (async () => {
+      try {
+        return await fetchPromptTree(signal);
+      } catch {
+        throw new Error("无法加载文件树。请确认已运行：python src/server.py");
+      }
+    })(),
+  );
   const treeNodes = tree ?? [];
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [preview, setPreview] = useState("");

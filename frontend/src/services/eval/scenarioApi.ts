@@ -5,9 +5,12 @@ import type {
   ScenarioSummary,
 } from "@/features/test/types";
 
-export async function listScenarios(tier?: "smoke" | "judge"): Promise<ScenarioSummary[]> {
+export async function listScenarios(
+  tier?: "smoke" | "judge",
+  signal?: AbortSignal,
+): Promise<ScenarioSummary[]> {
   const query = tier ? `?tier=${tier}` : "";
-  const response = await fetch(`/api/eval/scenarios${query}`);
+  const response = await fetch(`/api/eval/scenarios${query}`, { signal });
   if (!response.ok) {
     throw new Error("加载场景列表失败");
   }
@@ -63,13 +66,14 @@ export async function cancelEvalRun(runId: string): Promise<void> {
 
 export async function listEvalRuns(
   tier?: "smoke" | "judge" | "exploratory",
+  signal?: AbortSignal,
 ): Promise<EvalRunSummary[]> {
   const params = new URLSearchParams();
   if (tier) {
     params.set("tier", tier);
   }
   const query = params.toString();
-  const response = await fetch(`/api/eval/runs${query ? `?${query}` : ""}`);
+  const response = await fetch(`/api/eval/runs${query ? `?${query}` : ""}`, { signal });
   if (!response.ok) {
     throw new Error("加载运行历史失败");
   }

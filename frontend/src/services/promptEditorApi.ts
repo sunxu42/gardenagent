@@ -8,8 +8,8 @@ export type TreeNode = {
   children?: TreeNode[];
 };
 
-export async function fetchPromptTree(): Promise<TreeNode[]> {
-  const res = await fetch(`${API}/prompts-yaml/tree`);
+export async function fetchPromptTree(signal?: AbortSignal): Promise<TreeNode[]> {
+  const res = await fetch(`${API}/prompts-yaml/tree`, { signal });
   if (!res.ok) {
     throw new Error(`tree ${res.status}`);
   }

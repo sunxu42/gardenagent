@@ -1,5 +1,5 @@
 import { FlaskConical, History, LayoutGrid } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { RailPanelHeader } from "@/components/rail/RailPanelHeader";
 import { RailPanelBody, RailPanelRoot } from "@/components/rail/RailPanelShell";
@@ -19,10 +19,22 @@ const PANEL_TABS = [
 
 export function TestPanel(): JSX.Element {
   const [activeTab, setActiveTab] = useState<PanelTab>("overview");
+  const [visitedTabs, setVisitedTabs] = useState<Set<PanelTab>>(() => new Set([activeTab]));
   const [panelView, setPanelView] = useState<PanelView>("radar");
   const [selectedDomainId, setSelectedDomainId] = useState<string | null>(null);
   const coverage = useCoverageMatrix();
   useCoverageRefreshOnEvalComplete(coverage.reload);
+
+  useEffect(() => {
+    setVisitedTabs((prev) => {
+      if (prev.has(activeTab)) {
+        return prev;
+      }
+      const next = new Set(prev);
+      next.add(activeTab);
+      return next;
+    });
+  }, [activeTab]);
 
   return (
     <RailPanelRoot className="test-panel-root" aria-label="评测">
@@ -45,23 +57,35 @@ export function TestPanel(): JSX.Element {
       />
 
       <RailPanelBody>
-        {activeTab === "overview" ? (
-          <EvalOverviewView
-            panelView={panelView}
-            selectedDomainId={selectedDomainId}
-            coverage={coverage}
-            onBackToRadar={() => {
-              setPanelView("radar");
-            }}
-            onEnterDomain={(domainId) => {
-              setSelectedDomainId(domainId);
-              setPanelView({ kind: "domain", domainId });
-            }}
-            onSelectDomain={setSelectedDomainId}
-          />
+        {visitedTabs.has("overview") ? (
+          <div
+            className={`test-panel-pane h-full min-h-0${activeTab === "overview" ? "" : " test-panel-pane--hidden"}`}
+            aria-hidden={activeTab !== "overview"}
+          >
+            <EvalOverviewView
+              panelView={panelView}
+              selectedDomainId={selectedDomainId}
+              coverage={coverage}
+              onBackToRadar={() => {
+                setPanelView("radar");
+              }}
+              onEnterDomain={(domainId) => {
+                setSelectedDomainId(domainId);
+                setPanelView({ kind: "domain", domainId });
+              }}
+              onSelectDomain={setSelectedDomainId}
+            />
+          </div>
         ) : null}
 
-        {activeTab === "history" ? <EvalHistoryView /> : null}
+        {visitedTabs.has("history") ? (
+          <div
+            className={`test-panel-pane h-full min-h-0${activeTab === "history" ? "" : " test-panel-pane--hidden"}`}
+            aria-hidden={activeTab !== "history"}
+          >
+            <EvalHistoryView />
+          </div>
+        ) : null}
       </RailPanelBody>
     </RailPanelRoot>
   );

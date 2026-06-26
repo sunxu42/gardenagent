@@ -4,7 +4,8 @@ from collections.abc import Mapping, Sequence
 from json import JSONDecodeError
 from pathlib import Path
 
-from shared.config.paths import resolve_eval_scenarios_dir
+from eval.api.response_cache import StampCache, directory_content_stamp
+from shared.config.paths import resolve_eval_runs_dir, resolve_eval_scenarios_dir
 
 from pydantic import BaseModel, ValidationError
 from starlette.requests import Request
@@ -30,7 +31,12 @@ from eval.api.schemas import (
 from eval.api.mapping import to_eval_run_response, to_eval_run_response_from_record
 from eval.application.job_manager import EvalJobConflictError, EvalJobManager
 from eval.infrastructure.persistence import list_run_summaries, load_run_record
-from eval.domain.scenario import load_scenario, list_scenarios_with_paths, resolve_scenario_by_id
+from eval.domain.scenario import (
+    iter_scenario_yaml_paths,
+    load_scenario,
+    list_scenarios_with_paths,
+    resolve_scenario_by_id,
+)
 
 
 def _cors_headers() -> dict[str, str]:
@@ -144,15 +150,23 @@ async def run_eval(request: EvalRunRequest) -> EvalRunResponse:
     )
 
 
-def list_scenario_summaries(tier: str | None = None) -> list[ScenarioSummary]:
-    """List available scenario fixtures."""
+_scenario_summaries_cache: StampCache[list[ScenarioSummary]] = StampCache(ttl_seconds=30.0)
+_coverage_cache: StampCache[CoverageMatrixDTO] = StampCache(ttl_seconds=15.0)
+_run_summaries_cache: StampCache[list[dict[str, object]]] = StampCache(ttl_seconds=15.0)
 
-    root = resolve_eval_scenarios_dir()
+
+def _scenario_dir_stamp(root: Path) -> float:
+    return directory_content_stamp(root, "**/*.yaml")
+
+
+def _runs_dir_stamp() -> float:
+    return directory_content_stamp(resolve_eval_runs_dir(), "eval_*.json")
+
+
+def _build_all_scenario_summaries(root: Path) -> list[ScenarioSummary]:
     summaries: list[ScenarioSummary] = []
-    for path in sorted(root.glob("**/*.yaml")):
+    for path in iter_scenario_yaml_paths(root):
         scenario = load_scenario(path)
-        if tier and scenario.tier != tier:
-            continue
         summaries.append(
             ScenarioSummary(
                 id=str(path.relative_to(root)).replace("\\", "/").removesuffix(".yaml"),
@@ -165,6 +179,28 @@ def list_scenario_summaries(tier: str | None = None) -> list[ScenarioSummary]:
     return summaries
 
 
+def list_scenario_summaries(tier: str | None = None) -> list[ScenarioSummary]:
+    """List available scenario fixtures."""
+
+    root = resolve_eval_scenarios_dir()
+    stamp = _scenario_dir_stamp(root)
+    all_summaries = _scenario_summaries_cache.get(
+        (stamp,),
+        lambda: _build_all_scenario_summaries(root),
+    )
+    if not tier:
+        return all_summaries
+    return [item for item in all_summaries if item.tier == tier]
+
+
+def _cached_run_summary_rows() -> list[dict[str, object]]:
+    stamp = _runs_dir_stamp()
+    return _run_summaries_cache.get(
+        (stamp,),
+        lambda: list_run_summaries(limit=200),
+    )
+
+
 def build_coverage_response(
     *,
     tier: str | None = None,
@@ -172,12 +208,31 @@ def build_coverage_response(
 ) -> CoverageMatrixDTO:
     """Build coverage matrix DTO from fixtures and persisted runs."""
 
-    from eval.domain.coverage import build_coverage_matrix, runs_from_summaries
+    stamps = (
+        _scenario_dir_stamp(resolve_eval_scenarios_dir()),
+        _runs_dir_stamp(),
+        tier or "",
+        domain or "",
+    )
+    return _coverage_cache.get(
+        stamps,
+        lambda: _build_coverage_response_uncached(tier=tier, domain=domain),
+    )
+
+
+def _build_coverage_response_uncached(
+    *,
+    tier: str | None = None,
+    domain: str | None = None,
+) -> CoverageMatrixDTO:
+    """Build coverage matrix DTO without response caching."""
+
+    from eval.domain.coverage import ScenarioRunSnapshot, build_coverage_matrix, runs_from_summaries
     from eval.domain.taxonomy import get_taxonomy_registry
 
     root = resolve_eval_scenarios_dir()
     loaded = list_scenarios_with_paths(root)
-    runs = runs_from_summaries(list_run_summaries(limit=200))
+    runs = runs_from_summaries(_cached_run_summary_rows())
     matrix = build_coverage_matrix(
         loaded_scenarios=loaded,
         runs=runs,
@@ -352,9 +407,12 @@ async def get_runs(request: Request) -> JSONResponse:
 
     limit = int(request.query_params.get("limit", "50"))
     tier = request.query_params.get("tier")
+    rows = _cached_run_summary_rows()
+    if tier:
+        rows = [item for item in rows if item.get("tier") == tier]
     summaries = [
         EvalRunSummary.model_validate(item)
-        for item in list_run_summaries(limit=limit, tier=tier)
+        for item in rows[:limit]
     ]
     return _json(summaries)
 

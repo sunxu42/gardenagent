@@ -1,8 +1,9 @@
 import { History } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { PanelEmpty } from "@/components/panel/PanelEmpty";
 import { PanelLoading } from "@/components/panel/PanelLoading";
+import { SyncStatusBadge } from "@/components/panel/SyncStatusBadge";
 import { RailChipButton } from "@/components/rail/RailTabGroup";
 import { RailListbox, RailListboxOption } from "@/components/rail/RailListbox";
 
@@ -17,7 +18,7 @@ import {
 } from "@/features/test/evalHistoryFilters";
 import { getErrorMessage } from "@/features/test/evalFormConstants";
 import { RailPanelHeader } from "@/components/rail/RailPanelHeader";
-import { CACHE_KEYS } from "@/shared/cache/cacheKeys";
+import { CACHE_KEYS, evalRunsCacheKey } from "@/shared/cache/cacheKeys";
 import { useStaleCache } from "@/shared/cache/useStaleCache";
 import {
   RailDetailPane,
@@ -25,7 +26,7 @@ import {
   RailPanelScroll,
   RailSidebarGroup,
 } from "@/components/rail/RailPanelShell";
-import type { EvalRunSummary, HistoryDomainFilter, HistoryTierFilter } from "@/features/test/types";
+import type { HistoryDomainFilter, HistoryTierFilter } from "@/features/test/types";
 import { formatDurationZh, labelEvalTier, labelRunStatus } from "@/lib/uiLabels";
 import { getEvalRun, listEvalRuns, listScenarios } from "@/services/eval/scenarioApi";
 
@@ -41,7 +42,7 @@ const DOMAIN_FILTERS: Array<{ id: HistoryDomainFilter; label: string }> = [
   { id: "transport", label: "传输与性能" },
 ];
 
-function historyItemTitle(item: EvalRunSummary): string {
+function historyItemTitle(item: { mode?: string; tier: string; scenario_id: string }): string {
   if (item.mode === "exploratory" || item.tier === "exploratory") {
     return "情绪探索";
   }
@@ -50,63 +51,56 @@ function historyItemTitle(item: EvalRunSummary): string {
 
 export function EvalHistoryView(): JSX.Element {
   const { state: evalRunState, dispatch: dispatchEvalRun } = useEvalRun();
-  const [historyItems, setHistoryItems] = useState<EvalRunSummary[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
   const [historyTierFilter, setHistoryTierFilter] = useState<HistoryTierFilter>("all");
   const [historyDomainFilter, setHistoryDomainFilter] = useState<HistoryDomainFilter>("all");
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const { data: scenarios } = useStaleCache(CACHE_KEYS.scenarios, listScenarios);
+  const [detailError, setDetailError] = useState<string | null>(null);
+
+  const historyTier = historyTierFilter === "all" ? undefined : historyTierFilter;
+  const { data: scenarios } = useStaleCache(CACHE_KEYS.scenarios, ({ signal }) =>
+    listScenarios(undefined, signal),
+  );
+  const {
+    data: historyItems,
+    isInitialLoading: historyLoading,
+    isSyncing: historySyncing,
+    syncFailed: historySyncFailed,
+    error: historyError,
+  } = useStaleCache(evalRunsCacheKey(historyTier), ({ signal }) =>
+    listEvalRuns(historyTier, signal),
+  );
 
   const domainMap = useMemo(
     () => buildScenarioDomainMap(scenarios ?? []),
     [scenarios],
   );
 
-  useEffect(() => {
-    let active = true;
-    setHistoryLoading(true);
-    const tier = historyTierFilter === "all" ? undefined : historyTierFilter;
-    listEvalRuns(tier)
-      .then((items) => {
-        if (active) {
-          setHistoryItems(items);
-        }
-      })
-      .catch((loadError: unknown) => {
-        if (active) {
-          setError(getErrorMessage(loadError));
-        }
-      })
-      .finally(() => {
-        if (active) {
-          setHistoryLoading(false);
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, [historyTierFilter]);
-
   const filteredItems = useMemo(
-    () => filterHistoryItems(historyItems, historyTierFilter, historyDomainFilter, domainMap),
+    () =>
+      filterHistoryItems(
+        historyItems ?? [],
+        historyTierFilter,
+        historyDomainFilter,
+        domainMap,
+      ),
     [domainMap, historyDomainFilter, historyItems, historyTierFilter],
   );
 
   const handleHistorySelect = async (runId: string): Promise<void> => {
     setSelectedHistoryId(runId);
-    setError(null);
+    setDetailError(null);
     try {
       const result = await getEvalRun(runId);
       dispatchEvalRun({ type: "LOAD_RESULT", payload: result });
     } catch (runError) {
-      setError(getErrorMessage(runError));
+      setDetailError(getErrorMessage(runError));
     }
   };
 
   const focusedLive = getFocusedItem(evalRunState)?.live;
   const historyDetail = selectedHistoryId ? focusedLive?.liveResult : undefined;
-  const detailError = error ?? focusedLive?.error;
+  const listError = historyError;
+  const panelError = detailError ?? focusedLive?.error;
 
   return (
     <RailSidebarGroup>
@@ -116,6 +110,9 @@ export function EvalHistoryView(): JSX.Element {
           icon={History}
           subtitle="评测运行记录持久化存储"
           title="历史列表"
+          titleTrailing={
+            <SyncStatusBadge syncing={historySyncing} syncFailed={historySyncFailed} />
+          }
         />
 
         <div className="border-b border-border/25 bg-muted/10 px-2 py-2 space-y-2">
@@ -143,6 +140,10 @@ export function EvalHistoryView(): JSX.Element {
             ))}
           </div>
         </div>
+
+        {listError ? (
+          <p className="px-2 py-1 text-xs text-destructive">{listError}</p>
+        ) : null}
 
         {historyLoading ? (
           <RailPanelScroll padded className="py-4">
@@ -188,10 +189,10 @@ export function EvalHistoryView(): JSX.Element {
         <RailPanelHeader level={3} icon={History} subtitle="选中记录查看详情" title="历史详情" />
 
         <RailPanelScroll padded className="space-y-3">
-          {detailError ? (
+          {panelError ? (
             <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-xs text-destructive">
               <p className="font-medium">加载失败</p>
-              <p className="mt-1 leading-snug">{detailError}</p>
+              <p className="mt-1 leading-snug">{panelError}</p>
             </div>
           ) : null}
 
@@ -208,7 +209,7 @@ export function EvalHistoryView(): JSX.Element {
             </>
           ) : null}
 
-          {!detailError && !historyDetail ? (
+          {!panelError && !historyDetail ? (
             <PanelEmpty
               variant="compact"
               icon={History}

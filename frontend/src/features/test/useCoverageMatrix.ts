@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 
 import type { CoverageMatrix } from "@/features/test/types";
+import { CACHE_KEYS } from "@/shared/cache/cacheKeys";
+import { useStaleCache } from "@/shared/cache/useStaleCache";
 import { fetchCoverage } from "@/services/eval/coverageApi";
 
 export interface CoverageReloadOptions {
@@ -15,33 +17,22 @@ export interface CoverageMatrixState {
 }
 
 export function useCoverageMatrix(): CoverageMatrixState {
-  const [matrix, setMatrix] = useState<CoverageMatrix | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, isInitialLoading, error, reload } = useStaleCache(
+    CACHE_KEYS.coverage,
+    ({ signal }) => fetchCoverage(signal),
+  );
 
-  const reload = useCallback(async (options?: CoverageReloadOptions): Promise<void> => {
-    if (!options?.silent) {
-      setLoading(true);
-    }
-    setError(null);
-    try {
-      const data = await fetchCoverage();
-      setMatrix(data);
-    } catch (loadError: unknown) {
-      setError(loadError instanceof Error ? loadError.message : "加载覆盖数据失败");
-      if (!options?.silent) {
-        setMatrix(null);
-      }
-    } finally {
-      if (!options?.silent) {
-        setLoading(false);
-      }
-    }
-  }, []);
+  const reloadCoverage = useCallback(
+    async (_options?: CoverageReloadOptions): Promise<void> => {
+      await reload({ force: true });
+    },
+    [reload],
+  );
 
-  useEffect(() => {
-    void reload();
-  }, [reload]);
-
-  return { matrix, loading, error, reload };
+  return {
+    matrix: data,
+    loading: isInitialLoading,
+    error,
+    reload: reloadCoverage,
+  };
 }

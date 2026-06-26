@@ -85,8 +85,19 @@ def load_scenario(path: Path, *, validate: bool = True) -> ScenarioFixture:
 def list_scenarios(directory: Path) -> list[ScenarioFixture]:
     """Load all scenario fixtures under a directory."""
 
-    paths = sorted(directory.glob("**/*.yaml"))
-    return [load_scenario(path) for path in paths]
+    return [load_scenario(path) for path in iter_scenario_yaml_paths(directory)]
+
+
+def iter_scenario_yaml_paths(root: Path, tier: str | None = None) -> list[Path]:
+    """List scenario YAML paths, optionally scoped to one tier directory."""
+
+    if tier in {"smoke", "judge"}:
+        tier_root = root / tier
+        if not tier_root.is_dir():
+            return []
+        return sorted(tier_root.glob("**/*.yaml"))
+
+    return sorted(root.glob("**/*.yaml"))
 
 
 def list_scenarios_with_paths(root: Path | None = None) -> list[tuple[str, ScenarioFixture]]:
@@ -94,7 +105,7 @@ def list_scenarios_with_paths(root: Path | None = None) -> list[tuple[str, Scena
 
     scenario_root = root or resolve_eval_scenarios_dir()
     items: list[tuple[str, ScenarioFixture]] = []
-    for path in sorted(scenario_root.glob("**/*.yaml")):
+    for path in iter_scenario_yaml_paths(scenario_root):
         rel_id = str(path.relative_to(scenario_root)).replace("\\", "/").removesuffix(".yaml")
         items.append((rel_id, load_scenario(path)))
     return items

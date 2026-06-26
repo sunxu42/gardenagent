@@ -3,7 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { clearAllCaches, writeCache } from "@/shared/cache/cacheStore";
 import { clearInFlightRequests } from "@/shared/cache/inFlight";
-import { useStaleCache } from "@/shared/cache/useStaleCache";
+import {
+  DEFAULT_SYNC_MIN_INTERVAL_MS,
+  useStaleCache,
+} from "@/shared/cache/useStaleCache";
 
 describe("useStaleCache", () => {
   beforeEach(() => {
@@ -40,7 +43,9 @@ describe("useStaleCache", () => {
     writeCache("test-key", "stale");
     const fetcher = vi.fn().mockResolvedValue("fresh");
 
-    const { result } = renderHook(() => useStaleCache("test-key", fetcher));
+    const { result } = renderHook(() =>
+      useStaleCache("test-key", fetcher, { syncMinIntervalMs: 0 }),
+    );
 
     expect(result.current.isInitialLoading).toBe(false);
     expect(result.current.data).toBe("stale");
@@ -52,13 +57,35 @@ describe("useStaleCache", () => {
 
     expect(result.current.data).toBe("fresh");
     expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(result.current.syncFailed).toBe(false);
+  });
+
+  it("skips sync when cache is still fresh", async () => {
+    writeCache("test-key", "cached");
+    const fetcher = vi.fn().mockResolvedValue("fresh");
+
+    const { result } = renderHook(() =>
+      useStaleCache("test-key", fetcher, {
+        syncMinIntervalMs: DEFAULT_SYNC_MIN_INTERVAL_MS,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.isInitialLoading).toBe(false);
+    });
+
+    expect(result.current.data).toBe("cached");
+    expect(result.current.isSyncing).toBe(false);
+    expect(fetcher).not.toHaveBeenCalled();
   });
 
   it("keeps cached data when sync fails", async () => {
     writeCache("test-key", "stale");
     const fetcher = vi.fn().mockRejectedValue(new Error("network"));
 
-    const { result } = renderHook(() => useStaleCache("test-key", fetcher));
+    const { result } = renderHook(() =>
+      useStaleCache("test-key", fetcher, { syncMinIntervalMs: 0 }),
+    );
 
     await waitFor(() => {
       expect(result.current.isSyncing).toBe(false);
@@ -67,6 +94,40 @@ describe("useStaleCache", () => {
     expect(result.current.data).toBe("stale");
     expect(result.current.syncFailed).toBe(true);
     expect(result.current.error).toBeNull();
+  });
+
+  it("does not show sync failed for shared abort errors", async () => {
+    writeCache("dup-key", "stale");
+    let rejectFetch: (error: Error) => void = () => {};
+    const fetcher = vi.fn(
+      () =>
+        new Promise<string>((_resolve, reject) => {
+          rejectFetch = reject;
+        }),
+    );
+
+    const hookA = renderHook(() =>
+      useStaleCache("dup-key", fetcher, { syncMinIntervalMs: 0 }),
+    );
+    const hookB = renderHook(() =>
+      useStaleCache("dup-key", fetcher, { syncMinIntervalMs: 0 }),
+    );
+
+    expect(fetcher).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      rejectFetch(new DOMException("aborted", "AbortError"));
+    });
+
+    await waitFor(() => {
+      expect(hookA.result.current.isSyncing).toBe(false);
+      expect(hookB.result.current.isSyncing).toBe(false);
+    });
+
+    expect(hookA.result.current.syncFailed).toBe(false);
+    expect(hookB.result.current.syncFailed).toBe(false);
+    expect(hookA.result.current.data).toBe("stale");
+    expect(hookB.result.current.data).toBe("stale");
   });
 
   it("sets error when first load fails without cache", async () => {

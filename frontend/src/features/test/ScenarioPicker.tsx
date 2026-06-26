@@ -48,7 +48,7 @@ export function ScenarioPicker({
     isSyncing,
     syncFailed,
     error,
-  } = useStaleCache(cacheKey, () => listScenarios(tier));
+  } = useStaleCache(cacheKey, ({ signal }) => listScenarios(tier, signal));
 
   const scenarios = useMemo(
     () => filterScenarios(rawScenarios ?? [], tier, domain),
