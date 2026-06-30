@@ -13,7 +13,7 @@ from shared.config.server import load_settings
 from eval.api.routes import create_eval_routes
 from eval.application.job_manager import EvalJobManager
 from server.handler.handler_manager import HandlerManager
-from server.api.prompt_editor.prompt_editor_routes import create_prompt_editor_routes
+from prompt_editor.api.routes import create_prompt_editor_routes
 from server.transport import WebSocketTransport
 
 from shared.config.paths import resolve_prompts_dir

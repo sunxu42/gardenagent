@@ -9,7 +9,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
 
-from server.api.prompt_editor.prompt_editor_core import (
+from prompt_editor.api.core import (
     is_readonly_yaml,
     list_prompts_yaml_tree_children,
     normalize_rel_path,
