@@ -20,9 +20,10 @@
 
 | 模块 | 职责 | 文档 |
 |------|------|------|
-| **`server/`** | WebSocket 传输、Handler 编排、ASR/TTS/Session 多模态服务、HTTP API | [server/README.md](server/README.md) |
+| **`server/`** | WebSocket 传输、Handler 编排、ASR/TTS/Session 多模态服务 | [server/README.md](server/README.md) |
 | **`agent/`** | LangGraph 智能体内核、情绪、记忆、MCP 工具、中间件链 | [agent/README.md](agent/README.md) |
 | **`eval/`** | 场景评测、Judge、异步任务、结果持久化 | [eval/README.md](eval/README.md) |
+| **`prompt_editor/`** | 提示词 YAML HTTP 编辑、记忆导出 API | [prompt_editor/README.md](prompt_editor/README.md) |
 | **`shared/`** | 配置加载（`.config.yaml` + `.env`）、结构化日志 | [shared/README.md](shared/README.md) |
 | **`data/`** | 提示词、评测 fixture、Agent 配置（可版本管理） | [data/README.md](data/README.md) |
 | **`mcp_servers/`** | 庭院设备 MCP Server（独立进程） | [mcp_servers/README.md](mcp_servers/README.md) |
