@@ -344,8 +344,7 @@ async def post_scenario_run(request: Request, job_manager: EvalJobManager | None
         return _json(_failed_run_response("validation_error", str(exc.errors())), status=400)
 
     if eval_request.async_run:
-        manager = job_manager or getattr(request.app.state, "eval_job_manager", None)
-        if manager is None:
+        if job_manager is None:
             return _json(
                 _failed_run_response("eval_unavailable", "async eval is not configured"),
                 status=500,
@@ -357,7 +356,7 @@ async def post_scenario_run(request: Request, job_manager: EvalJobManager | None
             )
         try:
             scenario = resolve_scenario_by_id(eval_request.scenario_id)
-            run_id = await manager.start_scenario(
+            run_id = await job_manager.start_scenario(
                 eval_request.scenario_id,
                 eval_request.client_id,
             )
@@ -386,17 +385,19 @@ async def post_scenario_run(request: Request, job_manager: EvalJobManager | None
     return _json(result, status=200 if result.status == "completed" else 500)
 
 
-async def post_cancel_run(request: Request) -> JSONResponse:
+async def post_cancel_run(
+    request: Request,
+    job_manager: EvalJobManager | None = None,
+) -> JSONResponse:
     """Cancel one async eval run."""
 
-    manager = getattr(request.app.state, "eval_job_manager", None)
-    if manager is None:
+    if job_manager is None:
         return _json(
             _failed_run_response("eval_unavailable", "async eval is not configured"),
             status=500,
         )
     run_id = request.path_params["run_id"]
-    cancelled = await manager.cancel(run_id)
+    cancelled = await job_manager.cancel(run_id)
     if not cancelled:
         return _json(_failed_run_response("not_found", f"run not found: {run_id}"), status=404)
     return _json(EvalRunCancelResponse(run_id=run_id))
@@ -427,7 +428,10 @@ async def get_run(request: Request) -> JSONResponse:
     return _json(to_eval_run_response_from_record(record))
 
 
-async def post_emotion_support_run(request: Request) -> JSONResponse:
+async def post_emotion_support_run(
+    request: Request,
+    job_manager: EvalJobManager | None = None,
+) -> JSONResponse:
     """Validate an evaluation request and run the emotion-support session."""
 
     try:
@@ -454,8 +458,7 @@ async def post_emotion_support_run(request: Request) -> JSONResponse:
     )
 
     if run_request.async_run:
-        manager = getattr(request.app.state, "eval_job_manager", None)
-        if manager is None:
+        if job_manager is None:
             return _json(
                 _failed_emotion_response("eval_unavailable", "async eval is not configured"),
                 status=500,
@@ -466,7 +469,7 @@ async def post_emotion_support_run(request: Request) -> JSONResponse:
                 status=400,
             )
         try:
-            run_id = await manager.start_exploratory(eval_request, run_request.client_id)
+            run_id = await job_manager.start_exploratory(eval_request, run_request.client_id)
         except EvalJobConflictError as exc:
             return _json(
                 _failed_emotion_response("eval_already_running", str(exc)),
@@ -501,6 +504,12 @@ def create_eval_routes(job_manager: EvalJobManager | None = None) -> list[Route]
     async def scenario_run_endpoint(request: Request) -> JSONResponse:
         return await post_scenario_run(request, job_manager=job_manager)
 
+    async def cancel_run_endpoint(request: Request) -> JSONResponse:
+        return await post_cancel_run(request, job_manager=job_manager)
+
+    async def emotion_support_run_endpoint(request: Request) -> JSONResponse:
+        return await post_emotion_support_run(request, job_manager=job_manager)
+
     return [
         Route("/api/eval/run", post_eval_run, methods=["POST"]),
         Route("/api/eval/run", _options, methods=["OPTIONS"]),
@@ -510,13 +519,13 @@ def create_eval_routes(job_manager: EvalJobManager | None = None) -> list[Route]
         Route("/api/eval/coverage", _options, methods=["OPTIONS"]),
         Route("/api/eval/scenario/run", scenario_run_endpoint, methods=["POST"]),
         Route("/api/eval/scenario/run", _options, methods=["OPTIONS"]),
-        Route("/api/eval/runs/{run_id}/cancel", post_cancel_run, methods=["POST"]),
+        Route("/api/eval/runs/{run_id}/cancel", cancel_run_endpoint, methods=["POST"]),
         Route("/api/eval/runs/{run_id}/cancel", _options, methods=["OPTIONS"]),
         Route("/api/eval/runs/{run_id}", get_run, methods=["GET"]),
         Route("/api/eval/runs/{run_id}", _options, methods=["OPTIONS"]),
         Route("/api/eval/runs", get_runs, methods=["GET"]),
         Route("/api/eval/runs", _options, methods=["OPTIONS"]),
-        Route("/api/eval/emotion-support/run", post_emotion_support_run, methods=["POST"]),
+        Route("/api/eval/emotion-support/run", emotion_support_run_endpoint, methods=["POST"]),
         Route("/api/eval/emotion-support/run", _options, methods=["OPTIONS"]),
     ]
 

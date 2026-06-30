@@ -14,7 +14,6 @@ from eval.api.routes import create_eval_routes
 from eval.application.job_manager import EvalJobManager
 from server.handler.handler_manager import HandlerManager
 from server.api.prompt_editor.prompt_editor_routes import create_prompt_editor_routes
-from server.adapters.eval_progress import as_eval_progress_notifier
 from server.transport import WebSocketTransport
 
 from shared.config.paths import resolve_prompts_dir
@@ -28,7 +27,7 @@ def create_app() -> Starlette:
     settings = load_settings()
     cfg = resolve_server_runtime(settings)
     transport = WebSocketTransport(host=cfg.host, port=cfg.port)
-    job_manager = EvalJobManager(as_eval_progress_notifier(transport))
+    job_manager = EvalJobManager(transport)
     handler_manager = HandlerManager(transport, cfg.handler_type, cfg)
 
     transport.register_connection_handler(
@@ -56,7 +55,6 @@ def create_app() -> Starlette:
         WebSocketRoute("/ws", ws_endpoint),
     ]
     app = Starlette(routes=routes, lifespan=lifespan)
-    app.state.eval_job_manager = job_manager
     return app
 
 

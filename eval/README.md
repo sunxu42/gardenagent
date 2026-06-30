@@ -30,7 +30,7 @@ flowchart TB
     Pool --> AM["agent/AgentManager.achat()"]
     Runner --> Assert["L0 assertions"]
     Runner --> Judge["DeepEval Judge"]
-    JM -->|进度| WS["server WebSocket<br/>eval_progress adapter"]
+    JM -->|进度| WS["server WebSocket transport"]
     Runner --> Disk[("runtime/eval_runs/*.json")]
     Scenarios["data/eval_fixtures/scenarios/"] --> Runner
     Metrics["data/eval_fixtures/metrics/"] --> Judge
@@ -56,7 +56,7 @@ eval/
 | `GET /api/eval/runs/{id}` | 查询任务状态与结果 |
 | `POST /api/eval/emotion-support/run` | 情绪支持专项评测 |
 
-进度事件通过 `server/adapters/eval_progress.py` 经 WebSocket 推送到前端 Test Panel。
+进度事件在 `server/app.py` 装配时将 `transport` 注入 `EvalJobManager`，经 WebSocket 推送到前端 Test Panel。
 
 ## 场景与指标数据
 

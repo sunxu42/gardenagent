@@ -14,7 +14,7 @@
 | 语音合成 (TTS) | `multimodal/tts/` |
 | Agent 会话桥接 | `multimodal/session/` |
 | Prompt / 记忆管理 API | `api/prompt_editor/` |
-| Eval 进度推送 | `adapters/eval_progress.py` |
+| Eval 进度推送 | `server/app.py` 将 `transport` 注入 `EvalJobManager` |
 
 ## 架构
 
