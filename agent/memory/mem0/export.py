@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from agent.observability.logging import LogModule, get_logger
+from shared.observability.logging import LogModule, get_logger
 
 _log = get_logger(LogModule.SYSTEM)
 

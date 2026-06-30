@@ -43,11 +43,11 @@ from agent.memory.bootstrap import (
 from agent.emotion.bootstrap import setup_emotion_subsystem
 from agent.timer import LocalSchedulerService, create_cron_tool
 from agent.system_tools import create_session_status_tool
-from agent.observability.logging import LogModule, bind_session, get_logger, set_turn_id
+from shared.observability.logging import LogModule, bind_session, get_logger, set_turn_id
 
 _log = get_logger(LogModule.AGENT)
 
-from agent.observability.langfuse_safe import init_langfuse, safe_flush
+from shared.observability.langfuse_safe import init_langfuse, safe_flush
 
 
 def create_glm_model(config):

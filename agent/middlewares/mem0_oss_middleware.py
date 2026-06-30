@@ -11,8 +11,8 @@ from typing import Any, Dict, List, NotRequired
 
 from langchain.agents.middleware.types import AgentMiddleware, AgentState, ModelRequest
 from deepagents.middleware._utils import append_to_system_message
-from agent.observability.logging import LogModule, get_logger
-from agent.observability.logging.turn_log import log_memory_event
+from shared.observability.logging import LogModule, get_logger
+from shared.observability.logging.turn_log import log_memory_event
 
 _log = get_logger(LogModule.AGENT)
 from typing_extensions import TypedDict
