@@ -29,7 +29,6 @@ from shared.observability.logging.turn_log import (
     log_tts_first_chunk,
     log_user_to_agent,
 )
-from server.adapters.ws_log_bridge import attach_session_logging, detach_session_logging
 from server.multimodal.audio.opus import OpusCodecUtils
 from server.transport.base import TransportBase
 from agent.emotion.llm.appraisal import user_text_digest
@@ -183,11 +182,6 @@ class Handler:
             and self.transport.is_client_connected(self.client_id)
         )
 
-    async def _ws_send_log(self, raw: str) -> None:
-        if not self._can_send_to_client():
-            return
-        await self.transport.send_to_client(self.client_id, raw)
-
     @contextmanager
     def _session_context(self) -> Iterator[None]:
         with bind_session(self.session_id or self.client_id):
@@ -279,7 +273,6 @@ class Handler:
         if self.tts_service:
             await self.tts_service.stop()
 
-        detach_session_logging(self.session_id or self.client_id)
         self._log.info(f"客户端 {self.client_id} 的服务实例已清理")
 
     async def rebind_connection(self):
@@ -449,7 +442,6 @@ class Handler:
         }
 
         await self.transport.send_to_client(self.client_id, json.dumps(response))
-        attach_session_logging(self.session_id, self._ws_send_log)
         self._log.info(f"发送 hello 响应到客户端")
 
     async def handle_timestamp(self):
