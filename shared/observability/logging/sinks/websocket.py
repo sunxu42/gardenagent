@@ -6,24 +6,42 @@ from typing import Awaitable, Callable, Deque
 
 from shared.observability.logging.record import LogLevel, LogRecord
 
-Emitter = Callable[[dict], Awaitable[None]]
+Deliver = Callable[[dict], Awaitable[bool]]
 
 
 class WebSessionSink:
+    """Route session-scoped logs to a single deliver callback (Strategy B lazy flush)."""
+
     def __init__(self, min_level: LogLevel = LogLevel.INFO, buffer_size: int = 500) -> None:
         self._min = min_level
-        self._emitters: dict[str, Emitter] = {}
+        self._deliver: Deliver | None = None
         self._buffers: dict[str, Deque[dict]] = {}
         self._buffer_size = buffer_size
 
-    def register(self, session_id: str, emitter: Emitter) -> None:
-        self._emitters[session_id] = emitter
-        buf = self._buffers.setdefault(session_id, deque(maxlen=self._buffer_size))
-        for item in buf:
-            asyncio.create_task(emitter(item))
+    def set_deliver(self, deliver: Deliver) -> None:
+        self._deliver = deliver
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return
+        for sid in list(self._buffers.keys()):
+            loop.create_task(self._flush_session(sid))
 
-    def unregister(self, session_id: str) -> None:
-        self._emitters.pop(session_id, None)
+    async def _flush_session(self, session_id: str) -> None:
+        if self._deliver is None:
+            return
+        buf = self._buffers.get(session_id)
+        if not buf:
+            return
+        while buf:
+            item = buf[0]
+            try:
+                delivered = await self._deliver(item)
+            except Exception:
+                return
+            if not delivered:
+                return
+            buf.popleft()
 
     async def emit_async(self, record: LogRecord) -> None:
         if record.level.rank() < self._min.rank():
@@ -34,9 +52,7 @@ class WebSessionSink:
         payload = record.to_ws_dict()
         buf = self._buffers.setdefault(sid, deque(maxlen=self._buffer_size))
         buf.append(payload)
-        emitter = self._emitters.get(sid)
-        if emitter:
-            await emitter(payload)
+        await self._flush_session(sid)
 
     def emit(self, record: LogRecord) -> None:
         try:

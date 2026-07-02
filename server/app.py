@@ -15,6 +15,7 @@ from eval.application.job_manager import EvalJobManager
 from server.handler.handler_manager import HandlerManager
 from prompt_editor.api.routes import create_prompt_editor_routes
 from server.transport import WebSocketTransport
+from shared.observability.logging import set_session_log_deliver
 
 from shared.config.paths import resolve_prompts_dir
 
@@ -29,6 +30,16 @@ def create_app() -> Starlette:
     transport = WebSocketTransport(host=cfg.host, port=cfg.port)
     job_manager = EvalJobManager(transport)
     handler_manager = HandlerManager(transport, cfg.handler_type, cfg)
+
+    async def deliver_session_log(payload: dict) -> bool:
+        session_id = payload.get("session_id")
+        if not isinstance(session_id, str) or not session_id:
+            return False
+        if not transport.is_client_connected(session_id):
+            return False
+        return await transport.send_to_client(session_id, payload)
+
+    set_session_log_deliver(deliver_session_log)
 
     transport.register_connection_handler(
         on_connect=handler_manager.create_or_reuse_handler,

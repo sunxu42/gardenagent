@@ -74,6 +74,6 @@ from shared.observability.logging import configure_logging, get_logger, LogModul
 
 - Console 彩色输出
 - JSONL 文件（`runtime/logs/` 或项目根 `logs/`）
-- WebSocket sink（经 `server/adapters/ws_log_bridge.py` 推送到前端）
+- WebSocket sink（`set_session_log_deliver` 注入全局 deliver，按 `payload.session_id` 路由到在线连接）
 
 使用 `get_logger(LogModule.AGENT)` 等按模块分类，配合 `bind_session()` 绑定会话上下文。

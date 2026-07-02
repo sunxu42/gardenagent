@@ -45,14 +45,9 @@ def get_web_session_sink() -> WebSessionSink | None:
     return _web_sink
 
 
-def register_session_emitter(session_id: str, emitter) -> None:
+def set_session_log_deliver(deliver) -> None:
     if _web_sink:
-        _web_sink.register(session_id, emitter)
-
-
-def unregister_session_emitter(session_id: str) -> None:
-    if _web_sink:
-        _web_sink.unregister(session_id)
+        _web_sink.set_deliver(deliver)
 
 
 __all__ = [
@@ -68,7 +63,6 @@ __all__ = [
     "get_web_session_sink",
     "module_color",
     "module_short_name",
-    "register_session_emitter",
+    "set_session_log_deliver",
     "set_turn_id",
-    "unregister_session_emitter",
 ]
