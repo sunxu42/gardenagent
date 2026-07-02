@@ -8,8 +8,8 @@ from typing import Any
 from langchain.agents.middleware.types import AgentMiddleware, AgentState, ModelRequest
 from agent.emotion.llm.appraisal import EmotionAppraiser, user_text_digest
 from agent.emotion.core.service import EmotionService
-from agent.observability.logging import LogModule, get_logger
-from agent.observability.logging.turn_log import (
+from shared.observability.logging import LogModule, get_logger
+from shared.observability.logging.turn_log import (
     log_emotion_appraisal_done,
     log_emotion_appraisal_start,
 )

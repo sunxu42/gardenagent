@@ -9,7 +9,7 @@ from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
-from agent.observability.logging import LogModule, get_logger
+from shared.observability.logging import LogModule, get_logger
 
 _log = get_logger(LogModule.EMOTION)
 from agent.configs.settings import Config

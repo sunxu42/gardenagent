@@ -7,7 +7,7 @@ from typing import Any
 from deepagents.middleware._utils import append_to_system_message
 from langchain.agents.middleware.types import AgentMiddleware, AgentState, ModelRequest
 from langchain_core.messages import SystemMessage
-from agent.observability.logging import LogModule, get_logger
+from shared.observability.logging import LogModule, get_logger
 
 _log = get_logger(LogModule.AGENT)
 

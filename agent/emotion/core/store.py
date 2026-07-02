@@ -7,7 +7,7 @@ import os
 import tempfile
 from typing import Any, Optional
 
-from agent.observability.logging import LogModule, get_logger
+from shared.observability.logging import LogModule, get_logger
 
 _log = get_logger(LogModule.EMOTION)
 

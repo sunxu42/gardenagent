@@ -6,7 +6,7 @@ import time
 from collections import OrderedDict
 from typing import Callable
 
-from agent.observability.logging import LogModule, get_logger
+from shared.observability.logging import LogModule, get_logger
 
 _log = get_logger(LogModule.EMOTION)
 

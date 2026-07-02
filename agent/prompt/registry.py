@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from agent.observability.logging import LogModule, get_logger
+from shared.observability.logging import LogModule, get_logger
 
 _log = get_logger(LogModule.AGENT)
 

@@ -1,7 +1,7 @@
 import asyncio
 import uuid
 from typing import Any
-from agent.observability.logging import LogModule, get_logger
+from shared.observability.logging import LogModule, get_logger
 
 _log = get_logger(LogModule.SYSTEM)
 

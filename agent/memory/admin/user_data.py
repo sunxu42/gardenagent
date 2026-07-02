@@ -6,8 +6,8 @@ import asyncio
 from typing import Any
 from weakref import WeakSet
 
-from agent.observability.logging import LogModule, get_logger
-from agent.observability.logging.context import bind_session
+from shared.observability.logging import LogModule, get_logger
+from shared.observability.logging.context import bind_session
 
 _log = get_logger(LogModule.SYSTEM)
 

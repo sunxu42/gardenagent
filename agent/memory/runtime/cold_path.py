@@ -6,8 +6,8 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from agent.observability.logging import LogModule, get_logger
-from agent.observability.logging.turn_log import log_memory_event
+from shared.observability.logging import LogModule, get_logger
+from shared.observability.logging.turn_log import log_memory_event
 
 _log = get_logger(LogModule.SYSTEM)
 
