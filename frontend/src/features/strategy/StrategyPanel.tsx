@@ -3,6 +3,7 @@ import {
   Brain,
   FileCode2,
   FlaskConical,
+  LayoutTemplate,
   ScrollText,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -11,6 +12,7 @@ import { StrategyRailTabs } from "./StrategyRailTabs";
 import type { AffectDebugPanelProps } from "@/features/chat/components/AffectDebugPanel";
 import {
   LazyAffectPanel,
+  LazyA2UIPanel,
   LazyLogsPanel,
   LazyMemoryPanel,
   LazyPromptPanel,
@@ -33,11 +35,12 @@ interface TabConfig {
 }
 
 const TABS: TabConfig[] = [
-  { id: "emotion", icon: Activity, label: STRATEGY_TAB_LABELS.emotion, group: "insight" },
-  { id: "logs", icon: ScrollText, label: STRATEGY_TAB_LABELS.logs, group: "insight" },
-  { id: "prompt", icon: FileCode2, label: STRATEGY_TAB_LABELS.prompt, group: "config" },
-  { id: "memory", icon: Brain, label: STRATEGY_TAB_LABELS.memory, group: "config" },
-  { id: "test", icon: FlaskConical, label: STRATEGY_TAB_LABELS.test, group: "quality" },
+  { id: "prompt", icon: FileCode2, label: STRATEGY_TAB_LABELS.prompt, group: "prompt" },
+  { id: "memory", icon: Brain, label: STRATEGY_TAB_LABELS.memory, group: "context" },
+  { id: "emotion", icon: Activity, label: STRATEGY_TAB_LABELS.emotion, group: "context" },
+  { id: "a2ui", icon: LayoutTemplate, label: STRATEGY_TAB_LABELS.a2ui, group: "interaction" },
+  { id: "test", icon: FlaskConical, label: STRATEGY_TAB_LABELS.test, group: "devtools" },
+  { id: "logs", icon: ScrollText, label: STRATEGY_TAB_LABELS.logs, group: "devtools" },
 ];
 
 export interface StrategyPanelProps extends AffectDebugPanelProps {
@@ -111,6 +114,14 @@ export function StrategyPanel({
             aria-hidden={activeTab !== "memory"}
           >
             <LazyMemoryPanel />
+          </div>
+        ) : null}
+        {visitedTabs.has("a2ui") ? (
+          <div
+            className={`strategy-rail-pane h-full min-h-0${activeTab === "a2ui" ? "" : " strategy-rail-pane--hidden"}`}
+            aria-hidden={activeTab !== "a2ui"}
+          >
+            <LazyA2UIPanel />
           </div>
         ) : null}
         {visitedTabs.has("test") ? (

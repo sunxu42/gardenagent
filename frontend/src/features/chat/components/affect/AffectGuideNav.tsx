@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   AFFECT_GUIDE_MOTION_EASE_CSS,
   AFFECT_GUIDE_MOTION_MS,
@@ -45,15 +46,8 @@ export function AffectGuideNav({ items, activeId, onSelect }: AffectGuideNavProp
   }, [activeId, measureIndicator]);
 
   return (
-    <nav
-      className="affect-guide-nav shrink-0 border-b border-border/30 px-4 pb-3 pt-2"
-      aria-label="说明分区导航"
-    >
-      <div
-        ref={trackRef}
-        className="relative flex rounded-lg border border-border/40 bg-muted/20"
-        role="tablist"
-      >
+    <nav className="affect-guide-nav shrink-0 px-4 pb-3 pt-2" aria-label="说明分区导航">
+      <div ref={trackRef} className="affect-guide-nav__track relative flex" role="tablist">
         <div
           className="affect-guide-nav-indicator pointer-events-none absolute top-0.5 bottom-0.5 rounded-[5px] bg-primary/25 shadow-sm"
           style={{
@@ -66,23 +60,25 @@ export function AffectGuideNav({ items, activeId, onSelect }: AffectGuideNavProp
         {items.map((item, i) => {
           const selected = activeId === item.id;
           return (
-            <button
+            <Button
               key={item.id}
               ref={(el) => {
                 if (el) tabRefs.current.set(item.id, el);
                 else tabRefs.current.delete(item.id);
               }}
               type="button"
+              variant="ghost"
               role="tab"
               aria-selected={selected}
               aria-current={selected ? "true" : undefined}
               onClick={() => onSelect(item.id)}
-              className={`relative z-[1] flex min-w-0 flex-1 cursor-pointer items-center justify-center gap-1 whitespace-nowrap rounded-md px-1.5 py-1.5 text-[10px] font-medium transition-colors duration-200 ${selected ? "text-primary" : "text-muted-foreground hover:text-foreground"
-                }`}
+              className={`relative z-[1] flex h-auto min-w-0 flex-1 cursor-pointer items-center justify-center gap-1 whitespace-nowrap rounded-md px-1.5 py-1.5 text-[10px] font-medium shadow-none hover:bg-transparent ${
+                selected ? "text-primary hover:text-primary" : "text-muted-foreground hover:text-foreground"
+              }`}
             >
               <span className="shrink-0 tabular-nums font-semibold">{i + 1}</span>
               <span className="truncate">{item.label}</span>
-            </button>
+            </Button>
           );
         })}
       </div>

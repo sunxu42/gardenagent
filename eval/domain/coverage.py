@@ -43,6 +43,7 @@ class CoverageCell:
     tags_covered: tuple[str, ...]
     tags_expected: tuple[str, ...]
     tags_missing: tuple[str, ...]
+    tier_expected: bool
     last_run_at: str | None
     pass_count: int
     fail_count: int
@@ -183,8 +184,14 @@ def build_coverage_matrix(
                     tag_counts[tag] = tag_counts.get(tag, 0) + 1
                     tag_to_domains.setdefault(tag, set()).add(domain.id)
             tags_covered = tuple(sorted(tags_covered_set))
-            tags_expected = registry.recommended_tags_for(domain.id)
-            tags_missing = tuple(sorted(set(tags_expected) - tags_covered_set))
+            tier_expected = True
+            if tier == "judge" and not registry.judge_expected_for(domain.id):
+                tier_expected = False
+                tags_expected = ()
+                tags_missing = ()
+            else:
+                tags_expected = registry.recommended_tags_for(domain.id)
+                tags_missing = tuple(sorted(set(tags_expected) - tags_covered_set))
 
             pass_count = 0
             fail_count = 0
@@ -218,6 +225,7 @@ def build_coverage_matrix(
                     tags_covered=tags_covered,
                     tags_expected=tags_expected,
                     tags_missing=tags_missing,
+                    tier_expected=tier_expected,
                     last_run_at=last_run_at,
                     pass_count=pass_count,
                     fail_count=fail_count,

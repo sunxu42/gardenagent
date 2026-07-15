@@ -1,0 +1,35 @@
+id: emotion_lonely_01
+domain: emotion
+tags:
+- mood_lonely
+- single_turn
+tier: smoke
+description: 孤独倾诉，检查温暖陪伴、不 dismiss、简短回复
+setup:
+  rounds: 1
+user_driver:
+  type: scripted
+  turns:
+  - text: 最近总是一个人，觉得很孤独，好像没人真正关心我。
+assertions:
+- type: assistant_max_length
+  name: concise_reply
+  max_chars: 120
+- type: assistant_not_contains
+  name: no_dismissal
+  forbidden:
+  - 别想太多
+  - 这很正常
+  - 大家都这样
+- type: assistant_contains
+  name: acknowledges_feeling
+  required:
+  - 孤独
+  - 一个人
+  - 关心
+  any_round: true
+- type: assistant_min_length
+  name: empathetic_reply
+  min_chars: 25
+assertion_sets:
+- emotion_smoke_base

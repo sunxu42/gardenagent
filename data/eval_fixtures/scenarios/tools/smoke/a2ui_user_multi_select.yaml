@@ -1,0 +1,16 @@
+id: a2ui_user_multi_select
+domain: tools
+tags:
+- tool_required
+tier: smoke
+description: 多选兴趣，应调用 show_multi_select
+setup:
+  rounds: 1
+user_driver:
+  type: scripted
+  turns:
+  - text: 我喜欢猫、狗、兔子、鸟，帮我勾选喜欢的。
+assertions:
+- type: tool_called
+  name: show_multi_select_called
+  tool_name: show_multi_select

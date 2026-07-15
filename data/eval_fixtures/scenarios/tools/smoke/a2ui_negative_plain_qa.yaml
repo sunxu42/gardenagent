@@ -1,0 +1,25 @@
+id: a2ui_negative_plain_qa
+domain: tools
+tags:
+- tool_optional
+tier: smoke
+description: 普通问答，不应调用 A2UI 选择工具
+setup:
+  rounds: 1
+user_driver:
+  type: scripted
+  turns:
+  - text: 今天天气怎么样？
+assertions:
+- type: tool_not_called
+  name: show_single_select_not_called
+  tool_name: show_single_select
+- type: tool_not_called
+  name: show_multi_select_not_called
+  tool_name: show_multi_select
+- type: tool_not_called
+  name: show_data_table_not_called
+  tool_name: show_data_table
+- type: tool_not_called
+  name: show_date_picker_not_called
+  tool_name: show_date_picker

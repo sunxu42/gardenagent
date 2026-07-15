@@ -1,0 +1,74 @@
+/**
+ * Shared Apple / iOS 26 design tokens for the whole app shell.
+ * Scoped to .chat-app-shell so light/dark follows user settings.
+ */
+
+.chat-app-shell[data-appearance="light"] {
+  --apple-accent: #007aff;
+  --apple-accent-pressed: #0062cc;
+  --apple-accent-hsl: 211 100% 50%;
+  --apple-red: #ff3b30;
+  --apple-green: #34c759;
+  --apple-bg: #ffffff;
+  --apple-grouped-bg: #f2f2f7;
+  --apple-cell-bg: #ffffff;
+  --apple-cell-hover: #f9f9fb;
+  --apple-label: rgb(0 0 0 / 88%);
+  --apple-secondary-label: rgb(60 60 67 / 60%);
+  --apple-separator: rgb(60 60 67 / 12%);
+  --apple-glass-bg: rgb(255 255 255 / 58%);
+  --apple-glass-border: rgb(255 255 255 / 42%);
+  --apple-glass-blur: 40px;
+  --apple-glass-saturate: 180%;
+  --apple-radius-lg: 1.375rem;
+  --apple-radius-md: 0.75rem;
+  --apple-radius-sm: 0.5rem;
+}
+
+.chat-app-shell[data-appearance="dark"] {
+  --apple-accent: #0a84ff;
+  --apple-accent-pressed: #409cff;
+  --apple-accent-hsl: 211 100% 52%;
+  --apple-red: #ff453a;
+  --apple-green: #30d158;
+  --apple-bg: #000000;
+  --apple-grouped-bg: #1c1c1e;
+  --apple-cell-bg: #2c2c2e;
+  --apple-cell-hover: #3a3a3c;
+  --apple-label: rgb(255 255 255 / 92%);
+  --apple-secondary-label: rgb(235 235 245 / 48%);
+  --apple-separator: rgb(255 255 255 / 10%);
+  --apple-glass-bg: rgb(44 44 46 / 52%);
+  --apple-glass-border: rgb(255 255 255 / 14%);
+  --apple-glass-blur: 40px;
+  --apple-glass-saturate: 180%;
+}
+
+/* Liquid glass utility (panels, sheets, chrome) */
+.apple-liquid-glass {
+  background: var(--apple-glass-bg);
+  backdrop-filter: blur(var(--apple-glass-blur)) saturate(var(--apple-glass-saturate));
+  -webkit-backdrop-filter: blur(var(--apple-glass-blur)) saturate(var(--apple-glass-saturate));
+  border: 0.5px solid var(--apple-glass-border);
+  box-shadow:
+    0 4px 24px rgb(0 0 0 / 8%),
+    inset 0 1px 0 rgb(255 255 255 / 35%);
+}
+
+[data-appearance="dark"] .apple-liquid-glass {
+  box-shadow:
+    0 8px 32px rgb(0 0 0 / 36%),
+    inset 0 1px 0 rgb(255 255 255 / 10%);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .apple-liquid-glass {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: var(--apple-grouped-bg);
+  }
+
+  [data-appearance="dark"] .apple-liquid-glass {
+    background: #2c2c2e;
+  }
+}

@@ -1,0 +1,37 @@
+id: emotion_anxious_followup_01
+domain: emotion
+tags:
+- mood_anxious
+- multi_turn
+tier: smoke
+description: 焦虑多轮，第二轮自我否定时不 dismiss
+setup:
+  rounds: 2
+user_driver:
+  type: scripted
+  turns:
+  - text: 最近总是睡不着，脑子里停不下来，好累。
+  - text: 你觉得我是不是太矫情了？
+assertions:
+- type: assistant_max_length
+  name: concise_reply
+  max_chars: 120
+- type: assistant_not_contains
+  name: no_harsh_tone
+  forbidden:
+  - 别矫情
+  - 至于吗
+  - 别想太多
+  - 大惊小怪
+- type: assistant_contains
+  name: acknowledges_feeling
+  required:
+  - 矫情
+  - 累
+  - 睡不着
+  any_round: true
+- type: assistant_min_length
+  name: empathetic_reply
+  min_chars: 20
+assertion_sets:
+- emotion_smoke_base

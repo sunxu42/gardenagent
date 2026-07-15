@@ -1,9 +1,12 @@
 import asyncio
+import json
 import uuid
 
 from typing import Any, Callable, Dict, Optional
 
 from agent.events import InputEvent, USER_INPUT_EVENT
+from server.agui.bridge import AgUIBridge
+from server.agui.interactive import surface_requires_ui_interaction
 from server.multimodal.session.backends.factory import SessionBackendFactory
 from shared.observability.logging import bind_session, get_logger, set_turn_id
 from shared.observability.logging.modules import LogModule
@@ -26,6 +29,14 @@ class SessionService:
 
         self.is_running = False
         self.is_new_session = True
+
+        self.agui_bridge = AgUIBridge()
+        self.use_agui_channel = False
+        self.agui_message_id: str | None = None
+        self.agui_run_id: str | None = None
+        self.agui_run_started = False
+        self.agui_pending_interaction = False
+        self.active_thread_id: str | None = None
 
     def set_result_callback(self, callback: Callable[[Dict[str, Any]], Any]):
         self.result_callback = callback
@@ -171,6 +182,90 @@ class SessionService:
     async def end_session(self):
         self.is_new_session = True
 
+    def begin_agui_turn(self, *, message_id: str, run_id: str) -> None:
+        """Enable AG-UI multiplex output for the next assistant run."""
+        self.use_agui_channel = True
+        self.agui_message_id = message_id
+        self.agui_run_id = run_id
+        self.agui_run_started = False
+
+    def begin_agui_continuation_turn(self, *, message_id: str) -> str:
+        """Start a fresh AG-UI run on an existing assistant message (e.g. after UI action)."""
+        run_id = uuid.uuid4().hex
+        self.begin_agui_turn(message_id=message_id, run_id=run_id)
+        return run_id
+
+    def clear_agui_turn(self) -> None:
+        self.use_agui_channel = False
+        self.agui_message_id = None
+        self.agui_run_id = None
+        self.agui_run_started = False
+        self.agui_pending_interaction = False
+
+    async def finalize_pending_agui_turn(self) -> None:
+        """Force-close a deferred AG-UI run when the user starts a new text turn."""
+        if not self.agui_pending_interaction:
+            return
+        await self._finish_agui_run(force=True)
+
+    async def on_ui_action(
+        self,
+        event: dict[str, Any],
+        *,
+        thread_id: str | None = None,
+    ) -> bool:
+        """Route UI action back into agent input queue as structured user event."""
+        normalized = self.agui_bridge.on_ui_action(event)
+        if not normalized:
+            return False
+        run_id = str(normalized.get("runId") or "").strip()
+        message_id = str(normalized.get("messageId") or "").strip()
+        surface_id = str(normalized.get("surfaceId") or "").strip()
+        action = normalized.get("action")
+        if not run_id or not message_id or not surface_id or not isinstance(action, dict):
+            return False
+        in_q = self._in_q()
+        payload = {
+            "type": "ui_action",
+            "run_id": run_id,
+            "message_id": message_id,
+            "surface_id": surface_id,
+            "action": action,
+        }
+        stable_thread = (
+            thread_id.strip()
+            if isinstance(thread_id, str) and thread_id.strip()
+            else (self.active_thread_id.strip() if isinstance(self.active_thread_id, str) and self.active_thread_id.strip() else None)
+        )
+        input_event = InputEvent(
+            content=json.dumps(payload, ensure_ascii=False),
+            event_id=uuid.uuid4().hex,
+            event_type=USER_INPUT_EVENT,
+            thread_id=stable_thread,
+            turn_id=None,
+        )
+        await self._finish_agui_run(force=True)
+        self.begin_agui_continuation_turn(message_id=message_id)
+        await in_q.put(input_event)
+        return True
+
+    async def _finish_agui_run(self, *, force: bool = False) -> None:
+        if self.agui_pending_interaction and not force:
+            return
+        if not self.use_agui_channel or not self.agui_run_started:
+            self.clear_agui_turn()
+            return
+        message_id = self.agui_message_id
+        run_id = self.agui_run_id
+        if message_id and run_id:
+            await self._publish_agui_envelope(
+                self.agui_bridge.run_finished(run_id=run_id, message_id=message_id)
+            )
+        self.clear_agui_turn()
+
+    async def _publish_agui_envelope(self, envelope: dict) -> None:
+        await self.publish_response({"msg_type": "agui", "envelope": envelope})
+
     async def publish_response(self, message: Dict[str, Any]):
         if self.result_callback is None:
             logger.warning("publish_response: result_callback not set")
@@ -208,6 +303,7 @@ class SessionService:
                             try:
                                 if not started:
                                     await self.end_session()
+                                    await self._finish_agui_run()
                             except Exception:
                                 pass
                         continue
@@ -218,12 +314,76 @@ class SessionService:
 
                     if isinstance(data, dict):
                         if "content" in data:
-                            await self.publish_response(
-                                {
-                                    "msg_type": "response",
-                                    "response": {"role": "assistant", "content": data.get("content", "")},
-                                }
-                            )
+                            content = data.get("content", "")
+                            if (
+                                self.use_agui_channel
+                                and self.agui_message_id
+                                and self.agui_run_id
+                                and isinstance(content, str)
+                            ):
+                                if not self.agui_run_started:
+                                    await self._publish_agui_envelope(
+                                        self.agui_bridge.run_started(
+                                            run_id=self.agui_run_id,
+                                            message_id=self.agui_message_id,
+                                        )
+                                    )
+                                    self.agui_run_started = True
+                                if content:
+                                    await self._publish_agui_envelope(
+                                        self.agui_bridge.text_delta(
+                                            run_id=self.agui_run_id,
+                                            message_id=self.agui_message_id,
+                                            delta=content,
+                                        )
+                                    )
+                            else:
+                                await self.publish_response(
+                                    {
+                                        "msg_type": "response",
+                                        "response": {"role": "assistant", "content": content},
+                                    }
+                                )
+                        elif "a2ui_operations" in data:
+                            operations = data.get("a2ui_operations")
+                            if (
+                                self.use_agui_channel
+                                and self.agui_message_id
+                                and self.agui_run_id
+                                and isinstance(operations, list)
+                            ):
+                                surface_id = str(data.get("surface_id") or "default-surface").strip()
+                                op_list = [item for item in operations if isinstance(item, dict)]
+                                if not self.agui_run_started:
+                                    await self._publish_agui_envelope(
+                                        self.agui_bridge.run_started(
+                                            run_id=self.agui_run_id,
+                                            message_id=self.agui_message_id,
+                                        )
+                                    )
+                                    self.agui_run_started = True
+                                await self._publish_agui_envelope(
+                                    self.agui_bridge.a2ui_operations(
+                                        run_id=self.agui_run_id,
+                                        message_id=self.agui_message_id,
+                                        surface_id=surface_id or "default-surface",
+                                        operations=op_list,
+                                    )
+                                )
+                                if surface_requires_ui_interaction(surface_id, op_list):
+                                    self.agui_pending_interaction = True
+                            else:
+                                op_count = (
+                                    len(operations)
+                                    if isinstance(operations, list)
+                                    else 0
+                                )
+                                logger.warning(
+                                    "a2ui_operations dropped: AG-UI channel inactive "
+                                    "(surface_id=%s, operations=%s)",
+                                    data.get("surface_id"),
+                                    op_count,
+                                )
                         elif "updates" in data:
                             await self.publish_response(
                                 {
@@ -279,6 +439,7 @@ class SessionService:
             thread_id = message.get("thread_id")
             if isinstance(thread_id, str) and thread_id.strip():
                 tid = thread_id.strip()
+                self.active_thread_id = tid
             else:
                 tid = None
 

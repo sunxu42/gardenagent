@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from collections.abc import Sequence
 
 from eval.domain.models import AssertionResult, AssertionStatus, TurnObservation
@@ -210,4 +211,65 @@ def tool_called(
         message=f"tool not called: {tool_name}",
         expected=tool_name,
         actual=[update for item in observations for update in item.raw_updates],
+    )
+
+
+def tool_not_called(
+    observations: Sequence[TurnObservation],
+    config: AssertionConfig,
+) -> AssertionResult:
+    """Fail when the configured tool name appears in raw updates."""
+
+    tool_name = config.tool_name
+    if not tool_name:
+        return AssertionResult(
+            name=config.name,
+            status=AssertionStatus.SKIP,
+            message="no tool_name configured",
+        )
+
+    for observation in observations:
+        if any(tool_name in update for update in observation.raw_updates):
+            return AssertionResult(
+                name=config.name,
+                status=AssertionStatus.FAIL,
+                message=f"tool was called but should not be: {tool_name}",
+                expected=f"not {tool_name}",
+                actual=list(observation.raw_updates),
+            )
+
+    return AssertionResult(
+        name=config.name,
+        status=AssertionStatus.PASS,
+        message=f"tool not called: {tool_name}",
+    )
+
+
+def text_not_matches(
+    observations: Sequence[TurnObservation],
+    config: AssertionConfig,
+) -> AssertionResult:
+    """Fail when assistant reply matches a forbidden regex pattern."""
+
+    if not config.pattern:
+        return AssertionResult(
+            name=config.name,
+            status=AssertionStatus.SKIP,
+            message="no pattern configured",
+        )
+
+    regex = re.compile(config.pattern, re.MULTILINE)
+    for observation in observations:
+        if regex.search(observation.assistant_text):
+            return AssertionResult(
+                name=config.name,
+                status=AssertionStatus.FAIL,
+                message=f"round {observation.round} matched forbidden pattern",
+                expected=config.pattern,
+                actual=observation.assistant_text,
+            )
+    return AssertionResult(
+        name=config.name,
+        status=AssertionStatus.PASS,
+        message="pattern not matched",
     )

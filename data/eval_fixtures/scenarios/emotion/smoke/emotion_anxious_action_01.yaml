@@ -1,0 +1,36 @@
+id: emotion_anxious_action_01
+domain: emotion
+tags:
+- mood_anxious
+- stage_action
+- single_turn
+tier: smoke
+description: 行动阶段求助，允许一小步建议
+setup:
+  rounds: 1
+user_driver:
+  type: scripted
+  turns:
+  - text: 我明天要上台讲故事，好紧张，你能告诉我怎么办吗？
+assertions:
+- type: assistant_max_length
+  name: concise_reply
+  max_chars: 120
+- type: assistant_not_contains
+  name: no_harsh_tone
+  forbidden:
+  - 别矫情
+  - 至于吗
+  - 没什么好怕
+- type: assistant_contains
+  name: acknowledges_situation
+  required:
+  - 上台
+  - 紧张
+  - 讲故事
+  any_round: true
+- type: assistant_min_length
+  name: empathetic_reply
+  min_chars: 20
+assertion_sets:
+- emotion_smoke_base

@@ -118,7 +118,7 @@ export function AffectStatusOverview({
           {displayAgentVad ? (
             <VadCompactBlock
               title="情绪维度"
-              accentClass="bg-sky-500/[0.05]"
+              accentClass="affect-status-accent"
               point={displayAgentVad}
               roundDelta={agentRoundDeltaValue}
             />

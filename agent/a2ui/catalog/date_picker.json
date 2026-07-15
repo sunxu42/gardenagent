@@ -1,0 +1,53 @@
+{
+  "id": "date_picker",
+  "name": "日期选择",
+  "surface_id": "date-picker",
+  "tool_name": "show_date_picker",
+  "catalog_id": "shadcn",
+  "scenario": "用户需要选择具体年月日时使用，例如生日、出行日期、纪念日、预约日期。",
+  "anti_patterns": [
+    "禁止让用户在正文里手打「2026年7月10日」",
+    "禁止用 show_data_table 代替日期选择"
+  ],
+  "trigger_examples": [
+    "帮我选一个日期",
+    "你的生日是哪天？",
+    "我们哪天出发？"
+  ],
+  "agent_initiated_triggers": [
+    "Agent 主动询问用户生日或纪念日",
+    "安排行程前 Agent 主动让用户选出发日期"
+  ],
+  "selection_intent_signals": [
+    "选日期",
+    "哪天",
+    "生日",
+    "出发日",
+    "纪念日",
+    "预约"
+  ],
+  "sample_variants": [
+    {
+      "id": "birthday",
+      "label": "生日",
+      "params": {
+        "title": "你的生日是哪天？",
+        "description": "选一个年月日就行。",
+        "max_date": "2026-07-10",
+        "confirm_label": "确认生日"
+      }
+    },
+    {
+      "id": "travel",
+      "label": "出行日期",
+      "params": {
+        "title": "打算哪天出发？",
+        "description": "可以选今天之后的日期。",
+        "min_date": "2026-07-10",
+        "max_date": "2027-12-31",
+        "default_date": "2026-07-15",
+        "confirm_label": "确认出发日"
+      }
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 import { RefreshCw } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 export interface SyncStatusBadgeProps {
@@ -18,10 +19,14 @@ export function SyncStatusBadge({
   }
 
   return (
-    <span
-      className={cn("inline-flex items-center gap-1", className)}
+    <Badge
+      variant="outline"
       role="status"
       aria-live="polite"
+      className={cn(
+        "gap-1 rounded-md border-0 bg-transparent px-0 py-0 text-xs font-normal shadow-none",
+        className,
+      )}
     >
       {syncing ? (
         <>
@@ -34,6 +39,6 @@ export function SyncStatusBadge({
       ) : (
         <span className="text-destructive/80">同步失败</span>
       )}
-    </span>
+    </Badge>
   );
 }

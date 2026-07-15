@@ -100,9 +100,10 @@ describe("EvalCoverageMatrix", () => {
 
     expect(screen.getByLabelText("评测能力域雷达图")).toBeInTheDocument();
 
-    const sectors = document.querySelectorAll(".eval-coverage-radar__sector");
+    const sectors = document.querySelectorAll(".eval-coverage-radar__sector-hit");
     expect(sectors.length).toBeGreaterThan(0);
-    fireEvent.mouseEnter(sectors[0]!, { clientX: 120, clientY: 140 });
+    fireEvent.pointerEnter(sectors[0]!);
+    fireEvent.pointerMove(sectors[0]!);
 
     const tooltip = await screen.findByRole("tooltip");
     expect(tooltip).toHaveTextContent("情感支持");

@@ -1,6 +1,6 @@
-"""Prompt Composer: declarative module registration and system prompt composition."""
+"""Declarative system-prompt composition."""
 
-from agent.prompt.context import PromptContext
-from agent.prompt.registry import PromptRegistry
+from agent.prompt.compose.composer import PromptComposer
+from agent.prompt.compose.context import PromptContext
 
-__all__ = ["PromptContext", "PromptRegistry"]
+__all__ = ["PromptComposer", "PromptContext"]

@@ -49,6 +49,7 @@
   flex-direction: column;
   overflow: hidden;
   background: var(--rail-panel-surface-list);
+  box-shadow: inset -1px 0 0 hsl(var(--panel-divider) / 0.45);
 }
 
 .rail-detail-pane {
@@ -60,12 +61,14 @@
   overflow: hidden;
   border-left: 1px solid var(--rail-panel-divider);
   background: var(--rail-panel-surface-detail);
+  box-shadow:
+    inset 1px 0 0 hsl(var(--panel-divider-highlight) / 0.45),
+    -2px 0 8px hsl(var(--foreground) / 0.03);
 }
 
 .rail-panel-scroll {
   min-height: 0;
   flex: 1 1 auto;
-  overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
 }

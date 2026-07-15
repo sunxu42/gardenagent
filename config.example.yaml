@@ -119,10 +119,10 @@
 
 # 评测 API Key 写在 .env 的 EVAL_LLM_API_KEY；不填则复用 GLM_OPENAI_API_KEY
 
-# --- Prompt Composer（动态拼装 system prompt 块）---
+# --- System Prompt / Prompt Composer ---
 
-# 是否启用 Prompt Composer 中间件
-# prompt_composer_enabled: false
+# 是否启用唯一 system prompt 拼装中间件（默认 true；关闭后将无人格/情绪注入）
+# prompt_composer_enabled: true
 
 # 是否对 stable / volatile 块做字符预算裁剪
 # prompt_budget_enabled: false

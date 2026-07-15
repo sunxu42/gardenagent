@@ -1,4 +1,5 @@
 import { ChevronRight, FileCode2, Folder } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import type { TreeNode } from "@/services/promptEditorApi";
 import { cn } from "@/lib/utils";
 
@@ -38,14 +39,15 @@ export function FileTree({ nodes, selectedPath, onSelect, depth = 0 }: FileTreeP
         const isSoul = node.path.replace(/\\/g, "/") === "soul.yaml";
         return (
           <li key={node.path} role="none">
-            <button
+            <Button
               type="button"
+              variant="ghost"
               role="treeitem"
               aria-selected={selected}
               className={cn(
-                "flex w-full cursor-pointer items-center gap-2 truncate rounded-md py-2 pr-2 text-left text-sm transition-colors",
+                "h-auto w-full justify-start truncate rounded-md py-2 pr-2 text-left text-sm font-normal shadow-none",
                 "hover:bg-background/80",
-                selected && "bg-white font-medium text-foreground shadow-sm"
+                selected && "bg-white font-medium text-foreground shadow-sm hover:bg-white",
               )}
               style={{ paddingLeft: depth * 14 + 4 }}
               onClick={() => onSelect(node.path)}
@@ -59,7 +61,7 @@ export function FileTree({ nodes, selectedPath, onSelect, depth = 0 }: FileTreeP
                 <span className="shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground">只读</span>
               ) : null}
               {selected ? <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden /> : null}
-            </button>
+            </Button>
           </li>
         );
       })}

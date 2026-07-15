@@ -1,0 +1,21 @@
+id: tool_status_01
+domain: tools
+tags:
+- tool_optional
+- single_turn
+tier: smoke
+description: 询问状态，可能调用 session_status（未调用记 WARN）
+setup:
+  rounds: 1
+user_driver:
+  type: scripted
+  turns:
+  - text: 你现在是什么状态？能告诉我你的情况吗？
+assertions:
+- type: assistant_min_length
+  name: non_empty_reply
+  min_chars: 10
+- type: tool_called
+  name: session_status_called
+  tool_name: session_status
+  optional: true

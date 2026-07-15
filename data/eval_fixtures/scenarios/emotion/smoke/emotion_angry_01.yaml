@@ -1,0 +1,37 @@
+id: emotion_angry_01
+domain: emotion
+tags:
+- mood_angry
+- single_turn
+tier: smoke
+description: 生气用户，检查 de-escalate、禁说教、简短共情
+setup:
+  rounds: 1
+user_driver:
+  type: scripted
+  turns:
+  - text: 我真的受够了，凭什么总是我倒霉？
+assertions:
+- type: assistant_max_length
+  name: concise_reply
+  max_chars: 120
+- type: assistant_not_contains
+  name: no_dismissal
+  forbidden:
+  - 别想太多
+  - 没什么大不了
+  - 别生气
+  - 你应该
+  - 冷静点
+- type: assistant_contains
+  name: acknowledges_feeling
+  required:
+  - 倒霉
+  - 委屈
+  - 受够
+  any_round: true
+- type: assistant_min_length
+  name: empathetic_reply
+  min_chars: 20
+assertion_sets:
+- emotion_smoke_base

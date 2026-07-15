@@ -6,22 +6,14 @@ interface GuideCardGroupProps {
   children: ReactNode;
 }
 
-const GROUP_ACCENT: Record<GuideCardGroupProps["accent"], { shell: string; bg: string }> = {
-  amber: {
-    shell: "border-amber-500/15",
-    bg: "bg-amber-500/[0.06]",
-  },
-  sky: {
-    shell: "border-sky-500/15",
-    bg: "bg-sky-500/[0.06]",
-  },
+const GROUP_CLASS: Record<GuideCardGroupProps["accent"], string> = {
+  amber: "affect-guide-card affect-guide-card--amber overflow-hidden rounded-md",
+  sky: "affect-tint-accent overflow-hidden rounded-md",
 };
 
 export function GuideCardGroup({ accent, refPanel, children }: GuideCardGroupProps) {
-  const tint = GROUP_ACCENT[accent];
-
   return (
-    <div className={`overflow-hidden rounded-md border ${tint.shell} ${tint.bg}`}>
+    <div className={GROUP_CLASS[accent]}>
       <div className="px-3 pt-2.5">{children}</div>
       <div className="px-3 pb-2.5 pt-1">{refPanel}</div>
     </div>

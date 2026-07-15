@@ -277,6 +277,7 @@ def _build_coverage_response_uncached(
                 tags_covered=list(cell.tags_covered),
                 tags_expected=list(cell.tags_expected),
                 tags_missing=list(cell.tags_missing),
+                tier_expected=cell.tier_expected,
                 last_run_at=cell.last_run_at,
                 pass_count=cell.pass_count,
                 fail_count=cell.fail_count,

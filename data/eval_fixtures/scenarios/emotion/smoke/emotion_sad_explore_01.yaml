@@ -1,0 +1,38 @@
+id: emotion_sad_explore_01
+domain: emotion
+tags:
+- mood_sad
+- stage_exploration
+- multi_turn
+tier: smoke
+description: 探索阶段倾诉，检查不急于给建议
+setup:
+  rounds: 2
+user_driver:
+  type: scripted
+  turns:
+  - text: 我今天被同学排挤了，心里很难过。
+  - text: 我不想谈怎么办，就是心里堵得慌。
+assertions:
+- type: assistant_max_length
+  name: concise_reply
+  max_chars: 120
+- type: assistant_not_contains
+  name: no_premature_advice
+  forbidden:
+  - 你应该
+  - 建议你试试
+  - 要积极
+  - 开心一点
+- type: assistant_contains
+  name: acknowledges_feeling
+  required:
+  - 排挤
+  - 难过
+  - 堵
+  any_round: true
+- type: assistant_min_length
+  name: empathetic_reply
+  min_chars: 20
+assertion_sets:
+- emotion_smoke_base

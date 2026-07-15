@@ -7,7 +7,7 @@
 | 能力 | 实现位置 |
 |------|----------|
 | LangGraph 对话与工具循环 | `manager.py`、`graph.py` |
-| 人设 / 系统 Prompt 注入 | `middlewares/persona_prompt_middleware.py`、`prompt/` |
+| 人设 / 系统 Prompt 注入 | `middlewares/system_prompt.py`、`prompt/compose`、`prompt/persona`、`prompt/turn_plan` |
 | 情绪评估与 VAD 状态 | `emotion/` |
 | Mem0 长期记忆与会话 flush | `memory/` |
 | MCP 工具加载 | `manager.load_mcp_tools()` |
@@ -23,7 +23,7 @@ flowchart TB
     end
 
     subgraph core [AgentManager]
-        MW["中间件链<br/>Mem0 / Emotion / Persona"]
+        MW["中间件链<br/>Memory / Emotion / SystemPrompt"]
         Agent["LangGraph deep agent<br/>graph.create_deep_agent"]
         Tools["内置工具 + MCP 工具"]
     end
@@ -41,11 +41,11 @@ flowchart TB
 
 ### 中间件装配顺序
 
-1. `Mem0OssMiddleware` — 检索并注入长期记忆
-2. `Mem0SummarizationFlushMiddleware` — 对话摘要后 flush 会话到 Mem0
-3. `EmotionAppraisalMiddleware` — LLM 评估用户情绪
-4. `PersonaPromptMiddleware` / `PromptComposerMiddleware` — 渲染 `data/prompts/soul.yaml`
-5. `AffectiveContextMiddleware` / `EmotionMoodMiddleware` — 情绪上下文写入 prompt
+1. `MemoryRecallMiddleware` — 检索长期记忆（及显式 remember）
+2. `MemoryFlushOnSummarizeMiddleware` — 对话摘要后 flush 会话到 Mem0
+3. `ToolLoopGuardMiddleware` — 拦截重复工具调用
+4. `EmotionAppraisalMiddleware` — LLM 评估用户情绪
+5. `SystemPromptMiddleware` — 唯一 system prompt 拼装入口（soul / A2UI / mood / affective / memory）
 
 ### 关键入口
 

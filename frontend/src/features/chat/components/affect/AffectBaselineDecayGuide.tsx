@@ -30,7 +30,7 @@ export function AffectBaselineDecayGuide({
         助手情绪维度与关系持久化并各有基线：每轮对话走情绪评估更新，长时间无对话则按时间常数向基线回落。用户情绪每轮单独评估，不参与此状态机。
       </p>
 
-      <div className="flex flex-col items-center rounded-md border border-border/30 bg-muted/20 px-4 py-3.5 text-center">
+      <div className="affect-guide-inset affect-guide-inset--sky flex flex-col items-center px-4 py-3.5 text-center">
         <p className="text-[10px] font-medium text-foreground">助手情绪基线</p>
         <VadRadarChart
           size={84}

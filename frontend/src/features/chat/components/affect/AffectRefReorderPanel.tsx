@@ -1,5 +1,6 @@
 import { ChevronDown } from "lucide-react";
 import { useCallback, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Button } from "@/components/ui/button";
 import type { AffectLockSlice } from "../../types";
 import {
   AFFECT_GUIDE_MOTION_MS,
@@ -114,13 +115,15 @@ export function AffectRefReorderPanel<T extends AffectRefReorderItem>({
   return (
     <div ref={flipRef} className="text-[11px]">
       <div className="grid grid-cols-[1.75rem_1fr] items-start gap-x-4">
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
           onClick={toggleExpand}
           aria-expanded={open}
           aria-controls={panelId}
           aria-label={open ? "收起其它项" : "展开其它项"}
-          className="mt-2 flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          className="mt-2 h-7 w-7 shrink-0 rounded-md shadow-none hover:bg-transparent"
         >
           <ChevronDown
             className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ease-out motion-reduce:transition-none ${
@@ -128,7 +131,7 @@ export function AffectRefReorderPanel<T extends AffectRefReorderItem>({
             }`}
             aria-hidden
           />
-        </button>
+        </Button>
 
         <div className="min-w-0 space-y-1 pt-0.5">{renderFlipRow(head, true)}</div>
       </div>

@@ -1,7 +1,9 @@
 import { waitForOpusModule } from "./opus/loadOpus";
+import { createAguiClient } from "../agui/client";
 import {
   buildAffectLock,
   buildHello,
+  buildUiAction,
   buildUserText,
   buildVoiceSession,
   type WsMappedEvent,
@@ -15,8 +17,19 @@ import { createVoiceClient } from "./voiceClient";
 export interface ChatApi {
   connect: () => void;
   disconnect: () => void;
-  sendText: (text: string) => void;
+  sendText: (text: string, agui?: { messageId: string; runId: string }) => void;
   sendAffectLock: (dimension: "relationship" | "agent_vad", refId: string | null) => void;
+  sendUiAction: (payload: {
+    runId: string;
+    surfaceId: string;
+    messageId: string;
+    action: {
+      name: string;
+      context?: Record<string, unknown>;
+      sourceComponentId?: string;
+      dataModel?: Record<string, unknown>;
+    };
+  }) => boolean;
   syncVoiceType: () => void;
   startVoice: () => Promise<void>;
   stopVoice: () => Promise<void>;
@@ -40,6 +53,18 @@ export function createChatApi(options: CreateChatApiOptions): ChatApi {
   let fallbackAssistantMessageId: string | null = null;
   let voiceActive = false;
   const voiceClient = createVoiceClient();
+  const aguiClient = createAguiClient({
+    onAction: options.onAction,
+    getAssistantMessageId: options.getAssistantMessageId,
+    setAssistantMessageId: options.setAssistantMessageId,
+    sendEnvelope: (payload) => {
+      if (!socket || socket.readyState !== WebSocket.OPEN) {
+        return false;
+      }
+      socket.send(JSON.stringify(payload));
+      return true;
+    },
+  });
 
   const ensureFallbackAssistantMessage = (): string => {
     if (!fallbackAssistantMessageId) {
@@ -192,6 +217,10 @@ export function createChatApi(options: CreateChatApiOptions): ChatApi {
       }
 
       const raw = parsed as Record<string, unknown>;
+      if (aguiClient.handleEnvelope(raw)) {
+        return;
+      }
+
       const wsEvent = mapServerMessage(raw);
       applyMappedEvent(wsEvent);
     };
@@ -203,7 +232,7 @@ export function createChatApi(options: CreateChatApiOptions): ChatApi {
     socket = null;
   };
 
-  const sendText = (text: string) => {
+  const sendText = (text: string, agui?: { messageId: string; runId: string }) => {
     if (!socket || socket.readyState !== WebSocket.OPEN) {
       options.onAction({
         type: "connectionChanged",
@@ -211,7 +240,7 @@ export function createChatApi(options: CreateChatApiOptions): ChatApi {
       });
       return;
     }
-    socket.send(JSON.stringify(buildUserText(text)));
+    socket.send(JSON.stringify(buildUserText(text, agui)));
   };
 
   const sendAffectLock = (dimension: "relationship" | "agent_vad", refId: string | null) => {
@@ -223,6 +252,19 @@ export function createChatApi(options: CreateChatApiOptions): ChatApi {
       return;
     }
     socket.send(JSON.stringify(buildAffectLock(dimension, refId)));
+  };
+
+  const sendUiAction: ChatApi["sendUiAction"] = (payload) => {
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      options.onAction({
+        type: "connectionChanged",
+        payload: { status: "offline" },
+      });
+      return false;
+    }
+    options.setAssistantMessageId(payload.messageId);
+    socket.send(JSON.stringify(buildUiAction(payload)));
+    return true;
   };
 
   const sendVoiceSession = (state: "start" | "stop") => {
@@ -286,5 +328,14 @@ export function createChatApi(options: CreateChatApiOptions): ChatApi {
     options.onAction({ type: "voiceCallEnded" });
   };
 
-  return { connect, disconnect, sendText, sendAffectLock, syncVoiceType, startVoice, stopVoice };
+  return {
+    connect,
+    disconnect,
+    sendText,
+    sendAffectLock,
+    sendUiAction,
+    syncVoiceType,
+    startVoice,
+    stopVoice,
+  };
 }

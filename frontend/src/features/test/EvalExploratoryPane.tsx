@@ -1,18 +1,33 @@
 import { Play, Sparkles, Square } from "lucide-react";
 import { useState } from "react";
 
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import {
   DEFAULT_EXPLORATORY_FORM,
   MOOD_OPTIONS,
   clampRounds,
 } from "@/features/test/evalFormConstants";
 import type { EmotionEvalRequest, InitialMood } from "@/features/test/types";
+import { cn } from "@/lib/utils";
 
 interface EvalExploratoryPaneProps {
   running: boolean;
   onRun: (request: EmotionEvalRequest) => void;
   onCancel: () => void;
 }
+
+const fieldClassName =
+  "border-border/50 bg-background/60 text-[11px] transition-colors duration-200 focus-visible:border-border";
 
 export function EvalExploratoryPane({
   running,
@@ -49,37 +64,49 @@ export function EvalExploratoryPane({
       </div>
 
       <div className="space-y-3">
-        <label className="flex flex-col gap-1.5">
-          <span className="text-[11px] font-medium text-muted-foreground">用户背景</span>
-          <textarea
-            className="min-h-28 rounded-md border border-border/50 bg-background/60 px-3 py-2 text-[11px] leading-relaxed text-foreground outline-none transition-colors duration-200 focus:border-border"
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="exploratory-background" className="text-[11px] text-muted-foreground">
+            用户背景
+          </Label>
+          <Textarea
+            id="exploratory-background"
+            className={cn("min-h-28 leading-relaxed", fieldClassName)}
             disabled={running}
             value={form.background}
             onChange={(event) => updateForm("background", event.target.value)}
           />
-        </label>
+        </div>
 
-        <label className="flex flex-col gap-1.5">
-          <span className="text-[11px] font-medium text-muted-foreground">初始心情</span>
-          <select
-            className="rounded-md border border-border/50 bg-background/60 px-3 py-2 text-[11px] text-foreground outline-none transition-colors duration-200 focus:border-border"
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="exploratory-mood" className="text-[11px] text-muted-foreground">
+            初始心情
+          </Label>
+          <Select
             disabled={running}
             value={form.initial_mood}
-            onChange={(event) => updateForm("initial_mood", event.target.value as InitialMood)}
+            onValueChange={(value) => updateForm("initial_mood", value as InitialMood)}
           >
-            {MOOD_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
+            <SelectTrigger id="exploratory-mood" className={cn("h-9", fieldClassName)}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {MOOD_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value} className="text-[11px]">
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <label className="flex flex-col gap-1.5">
-            <span className="text-[11px] font-medium text-muted-foreground">测试轮次</span>
-            <input
-              className="rounded-md border border-border/50 bg-background/60 px-3 py-2 text-[11px] text-foreground outline-none transition-colors duration-200 focus:border-border"
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="exploratory-rounds" className="text-[11px] text-muted-foreground">
+              测试轮次
+            </Label>
+            <Input
+              id="exploratory-rounds"
+              className={cn("h-9", fieldClassName)}
               disabled={running}
               max={8}
               min={1}
@@ -93,22 +120,29 @@ export function EvalExploratoryPane({
                 updateRounds(Number(raw));
               }}
             />
-          </label>
+          </div>
 
-          <label className="flex flex-col gap-1.5">
-            <span className="text-[11px] font-medium text-muted-foreground">测试目标</span>
-            <input
-              className="rounded-md border border-border/50 bg-background/60 px-3 py-2 text-[11px] text-foreground outline-none transition-colors duration-200 focus:border-border"
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="exploratory-goal" className="text-[11px] text-muted-foreground">
+              测试目标
+            </Label>
+            <Input
+              id="exploratory-goal"
+              className={cn("h-9", fieldClassName)}
               disabled={running}
               value={form.goal}
               onChange={(event) => updateForm("goal", event.target.value)}
             />
-          </label>
+          </div>
         </div>
 
-        <button
-          className={`test-action-btn ${running ? "test-action-btn--cancel" : "test-action-btn--run"}`}
+        <Button
           type="button"
+          variant={running ? "secondary" : "default"}
+          className={cn(
+            "test-action-btn h-auto w-full",
+            running ? "test-action-btn--cancel" : "test-action-btn--run",
+          )}
           onClick={running ? onCancel : handleRun}
         >
           <span className="inline-flex items-center justify-center gap-1.5">
@@ -119,7 +153,7 @@ export function EvalExploratoryPane({
             )}
             {running ? "取消测试" : "开始测试"}
           </span>
-        </button>
+        </Button>
       </div>
     </div>
   );

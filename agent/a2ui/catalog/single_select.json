@@ -1,0 +1,83 @@
+{
+  "id": "single_select",
+  "name": "单选",
+  "surface_id": "single-select",
+  "tool_name": "show_single_select",
+  "catalog_id": "shadcn",
+  "scenario": "用户需要从多个选项中恰好选择一项时使用。通过 variant 选择外观：default / binary / emoji / cards。",
+  "anti_patterns": [
+    "禁止在正文用「第一/第二」或 A/B/C 罗列选项代替本工具",
+    "禁止需要多选时使用本工具"
+  ],
+  "trigger_examples": [
+    "选一个出游方案",
+    "要不要继续玩下去？",
+    "用表情让我选现在心情"
+  ],
+  "agent_initiated_triggers": [
+    "Agent 主动抛出多个互斥方案让用户选一个",
+    "Agent 主动问继续还是休息",
+    "游戏开始前 Agent 提供带 emoji 的类型选项"
+  ],
+  "selection_intent_signals": [
+    "选一个",
+    "选哪个",
+    "你更想",
+    "要不要继续",
+    "选心情"
+  ],
+  "sample_variants": [
+    {
+      "id": "default_list",
+      "label": "默认列表",
+      "params": {
+        "title": "选一个主题",
+        "variant": "default",
+        "options": [
+          { "id": "space", "label": "太空" },
+          { "id": "ocean", "label": "海洋" },
+          { "id": "forest", "label": "森林" }
+        ]
+      }
+    },
+    {
+      "id": "binary_continue",
+      "label": "二选一",
+      "params": {
+        "title": "还要继续吗？",
+        "description": "我们可以再玩一轮，也可以先休息。",
+        "variant": "binary",
+        "options": [
+          { "id": "continue", "label": "继续玩" },
+          { "id": "stop", "label": "先算了" }
+        ]
+      }
+    },
+    {
+      "id": "emoji_mood",
+      "label": "表情心情",
+      "params": {
+        "title": "你现在心情怎么样？",
+        "variant": "emoji",
+        "options": [
+          { "id": "happy", "emoji": "😊", "label": "开心" },
+          { "id": "calm", "emoji": "😌", "label": "平静" },
+          { "id": "sad", "emoji": "😢", "label": "难过" }
+        ]
+      }
+    },
+    {
+      "id": "cards_plans",
+      "label": "方案卡片",
+      "params": {
+        "title": "选一个出游方案",
+        "variant": "cards",
+        "options": [
+          { "id": "beach", "label": "海边散步", "description": "轻松、适合放空" },
+          { "id": "museum", "label": "博物馆一日游", "description": "室内、涨知识" },
+          { "id": "hike", "label": "郊外徒步", "description": "运动、吸氧" }
+        ]
+      }
+    }
+  ]
+}

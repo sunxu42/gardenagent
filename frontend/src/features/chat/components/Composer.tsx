@@ -1,5 +1,5 @@
 import { FormEvent, KeyboardEvent, useRef } from "react";
-import { Phone, SendHorizontal } from "lucide-react";
+import { ArrowUp, Mic, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -55,65 +55,70 @@ export function Composer({
 
   if (inCall) {
     return (
-      <div className="flex justify-center py-1">
+      <div className="flex justify-center py-2">
         <Button
           type="button"
+          variant="ghost"
+          size="icon"
           className={cn(
-            "h-14 w-14 rounded-full bg-red-500 p-0 text-white hover:bg-red-600",
-            voiceState === "speaking" && "ring-2 ring-red-300/80"
+            "chat-ios-voice-end h-auto w-auto rounded-full",
+            voiceState === "speaking" && "chat-ios-voice-end--speaking",
           )}
           aria-label="结束通话"
           onClick={onEndVoiceCall}
         >
-          <Phone className="h-6 w-6" />
+          <Phone className="h-6 w-6" strokeWidth={2} />
         </Button>
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="m-0">
+    <div className="w-full">
       {voiceError ? (
-        <p className="mb-1.5 text-xs text-destructive" role="alert">
+        <p className="mb-1.5 text-xs text-[var(--ios-red)]" role="alert">
           {voiceError}
         </p>
       ) : null}
-      <Label htmlFor="chat-input" className="sr-only">
-        消息输入框
-      </Label>
-      <div className="grid grid-cols-[1fr_auto] items-end gap-1.5 md:gap-2">
-        <Textarea
-          id="chat-input"
-          ref={inputRef}
-          rows={1}
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="输入消息"
-          className="composer-textarea min-h-10 resize-none break-words md:min-h-11 md:rounded-xl md:px-3.5 md:py-2.5 md:placeholder:text-muted-foreground/80"
-        />
-        {hasText ? (
-          <Button
-            type="submit"
-            size="icon"
-            className="h-10 w-10 shrink-0 cursor-pointer transition-colors duration-200 md:h-11 md:w-11"
-            aria-label="发送"
-          >
-            <SendHorizontal className="h-5 w-5" />
-          </Button>
-        ) : (
-          <Button
-            type="button"
-            size="icon"
-            variant="outline"
-            className="h-10 w-10 shrink-0 cursor-pointer transition-colors duration-200 hover:bg-background md:h-11 md:w-11"
-            aria-label="语音通话"
-            onClick={onStartVoiceCall}
-          >
-            <Phone className="h-5 w-5 text-primary" />
-          </Button>
-        )}
-      </div>
-    </form>
+      <form onSubmit={handleSubmit} className="chat-ios-composer">
+        <Label htmlFor="chat-input" className="sr-only">
+          消息输入框
+        </Label>
+        <div className="chat-ios-composer__field liquid-glass">
+          <Textarea
+            id="chat-input"
+            ref={inputRef}
+            rows={1}
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="输入消息"
+            className="composer-textarea resize-none break-words border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+          />
+          {hasText ? (
+            <Button
+              type="submit"
+              variant="ghost"
+              size="icon"
+              className="chat-ios-send-btn h-auto w-auto shrink-0 rounded-full"
+              aria-label="发送"
+            >
+              <ArrowUp className="h-4 w-4" strokeWidth={2.5} />
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="chat-ios-action-btn h-auto w-auto shrink-0 rounded-full"
+              aria-label="语音通话"
+              onClick={onStartVoiceCall}
+            >
+              <Mic className="h-5 w-5" strokeWidth={2} />
+            </Button>
+          )}
+        </div>
+      </form>
+    </div>
   );
 }

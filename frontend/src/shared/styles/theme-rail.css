@@ -1,120 +1,89 @@
 /**
- * Rail control tokens derived from each chat theme.
- * Scoped to .chat-app-shell so strategy / test / config panels follow the active theme.
+ * Panel / rail tokens — iOS 26 grouped surfaces (bright cells, cool grouped canvas).
+ * Borders stay visible; backgrounds use white / airy tints instead of muddy gray.
  */
 
-[data-theme="mint-cute"] {
-  --rail-track: 158 32% 93%;
-  --rail-btn: 158 28% 88%;
-  --rail-btn-hover: 158 30% 82%;
-  --rail-btn-active: 158 38% 74%;
-  --rail-btn-active-hover: 158 40% 68%;
-  --rail-list: 158 26% 91%;
-  --rail-list-hover: 158 28% 85%;
-  --rail-list-active: 158 34% 78%;
-  --rail-border: 158 22% 78%;
-  --rail-border-active: 158 35% 58%;
-  --rail-fg-muted: 167 20% 36%;
-  --rail-fg: 170 49% 17%;
-  --rail-check: 158 26% 88%;
-  --rail-pick: 158 30% 92%;
-  --rail-pick-hover: 158 32% 87%;
-  --rail-pick-active: 158 36% 80%;
-  --rail-pick-border: 158 24% 80%;
-  --rail-pick-border-active: 158 38% 65%;
-  --rail-pick-check: 158 28% 90%;
-  --rail-history: 158 24% 89%;
-  --rail-history-hover: 158 26% 83%;
-  --rail-history-active: 158 32% 75%;
-  --rail-history-border: 158 20% 72%;
-  --rail-history-border-active: 158 35% 55%;
-  --strategy-surface-a: 158 40% 96%;
-  --strategy-surface-b: 158 28% 92%;
+.chat-app-shell[data-appearance="light"] {
+  /* Canvas: iOS grouped background (#f2f2f7) */
+  --panel-surface: 240 6% 96%;
+  /* Tab rail: cool airy tint */
+  --panel-surface-tabs: 214 68% 99%;
+  /* Content cells: pure white */
+  --panel-surface-list: 0 0% 100%;
+  --panel-surface-detail: 0 0% 100%;
+  /* Subtle zebra / inset fills */
+  --panel-surface-tint: 214 72% 98%;
+  --panel-surface-muted: 228 55% 99%;
+  /* Visible separators (unchanged strength) */
+  --panel-divider: 220 14% 86%;
+  --panel-divider-highlight: 0 0% 100%;
+
+  --rail-track: 0 0% 100%;
+  --rail-btn: 0 0% 100%;
+  --rail-btn-hover: 214 80% 97%;
+  --rail-btn-active: 211 100% 50% / 0.12;
+  --rail-btn-active-hover: 211 100% 50% / 0.16;
+  --rail-list: 0 0% 100%;
+  --rail-list-hover: 214 72% 98%;
+  --rail-list-active: 211 100% 50% / 0.1;
+  --rail-border: 220 14% 86%;
+  --rail-border-active: 211 100% 50%;
+  --rail-fg-muted: 240 4% 44%;
+  --rail-fg: 0 0% 5%;
+  --rail-check: 214 60% 98%;
+  --rail-pick: 0 0% 100%;
+  --rail-pick-hover: 214 72% 98%;
+  --rail-pick-active: 211 100% 50% / 0.1;
+  --rail-pick-border: 220 14% 86%;
+  --rail-pick-border-active: 211 100% 50%;
+  --rail-pick-check: 214 60% 98%;
+  --rail-history: 0 0% 100%;
+  --rail-history-hover: 214 72% 98%;
+  --rail-history-active: 211 100% 50% / 0.1;
+  --rail-history-border: 220 14% 86%;
+  --rail-history-border-active: 211 100% 50%;
+  --strategy-surface-a: 240 6% 96%;
+  --strategy-surface-b: 0 0% 100%;
 }
 
-[data-theme="pink-blossom"] {
-  --rail-track: 335 38% 93%;
-  --rail-btn: 335 34% 88%;
-  --rail-btn-hover: 335 36% 82%;
-  --rail-btn-active: 335 42% 74%;
-  --rail-btn-active-hover: 335 44% 68%;
-  --rail-list: 335 32% 91%;
-  --rail-list-hover: 335 34% 85%;
-  --rail-list-active: 335 40% 78%;
-  --rail-border: 335 28% 78%;
-  --rail-border-active: 333 50% 58%;
-  --rail-fg-muted: 336 20% 42%;
-  --rail-fg: 336 38% 21%;
-  --rail-check: 335 32% 88%;
-  --rail-pick: 335 36% 92%;
-  --rail-pick-hover: 335 38% 87%;
-  --rail-pick-active: 335 42% 80%;
-  --rail-pick-border: 335 30% 80%;
-  --rail-pick-border-active: 333 48% 65%;
-  --rail-pick-check: 335 34% 90%;
-  --rail-history: 335 30% 89%;
-  --rail-history-hover: 335 32% 83%;
-  --rail-history-active: 335 38% 75%;
-  --rail-history-border: 335 26% 72%;
-  --rail-history-border-active: 333 45% 55%;
-  --strategy-surface-a: 335 45% 97%;
-  --strategy-surface-b: 335 32% 93%;
-}
+.chat-app-shell[data-appearance="dark"] {
+  /* Canvas: iOS dark grouped (#1c1c1e) */
+  --panel-surface: 240 3% 11%;
+  /* Tab rail: slightly elevated cool surface */
+  --panel-surface-tabs: 240 4% 15%;
+  /* Content cells: elevated (#2c2c2e) */
+  --panel-surface-list: 240 3% 18%;
+  --panel-surface-detail: 240 3% 21%;
+  /* Subtle zebra / inset fills */
+  --panel-surface-tint: 214 22% 17%;
+  --panel-surface-muted: 240 4% 16%;
+  --panel-divider: 240 4% 30%;
+  --panel-divider-highlight: 0 0% 100%;
 
-[data-theme="gray-mist"] {
-  --rail-track: 220 16% 93%;
-  --rail-btn: 220 14% 88%;
-  --rail-btn-hover: 220 15% 82%;
-  --rail-btn-active: 220 18% 74%;
-  --rail-btn-active-hover: 220 20% 68%;
-  --rail-list: 220 13% 91%;
-  --rail-list-hover: 220 14% 85%;
-  --rail-list-active: 220 17% 78%;
-  --rail-border: 220 12% 78%;
-  --rail-border-active: 221 18% 52%;
-  --rail-fg-muted: 220 10% 42%;
-  --rail-fg: 222 18% 20%;
-  --rail-check: 220 13% 88%;
-  --rail-pick: 220 15% 92%;
-  --rail-pick-hover: 220 16% 87%;
-  --rail-pick-active: 220 18% 80%;
-  --rail-pick-border: 220 13% 80%;
-  --rail-pick-border-active: 221 16% 62%;
-  --rail-pick-check: 220 14% 90%;
-  --rail-history: 220 12% 89%;
-  --rail-history-hover: 220 13% 83%;
-  --rail-history-active: 220 16% 75%;
-  --rail-history-border: 220 11% 72%;
-  --rail-history-border-active: 221 15% 52%;
-  --strategy-surface-a: 220 18% 97%;
-  --strategy-surface-b: 220 14% 93%;
-}
-
-[data-theme="orange-sunrise"] {
-  --rail-track: 32 42% 93%;
-  --rail-btn: 32 38% 88%;
-  --rail-btn-hover: 32 40% 82%;
-  --rail-btn-active: 28 44% 74%;
-  --rail-btn-active-hover: 28 46% 68%;
-  --rail-list: 32 36% 91%;
-  --rail-list-hover: 32 38% 85%;
-  --rail-list-active: 28 42% 78%;
-  --rail-border: 32 32% 78%;
-  --rail-border-active: 24 55% 55%;
-  --rail-fg-muted: 28 20% 40%;
-  --rail-fg: 24 46% 22%;
-  --rail-check: 32 36% 88%;
-  --rail-pick: 34 40% 92%;
-  --rail-pick-hover: 34 42% 87%;
-  --rail-pick-active: 30 44% 80%;
-  --rail-pick-border: 32 34% 80%;
-  --rail-pick-border-active: 24 50% 62%;
-  --rail-pick-check: 34 38% 90%;
-  --rail-history: 30 34% 89%;
-  --rail-history-hover: 30 36% 83%;
-  --rail-history-active: 28 40% 75%;
-  --rail-history-border: 30 30% 72%;
-  --rail-history-border-active: 24 48% 52%;
-  --strategy-surface-a: 36 55% 97%;
-  --strategy-surface-b: 32 38% 93%;
+  --rail-track: 240 3% 20%;
+  --rail-btn: 240 3% 20%;
+  --rail-btn-hover: 214 24% 24%;
+  --rail-btn-active: 211 100% 52% / 0.18;
+  --rail-btn-active-hover: 211 100% 52% / 0.24;
+  --rail-list: 240 3% 18%;
+  --rail-list-hover: 214 22% 22%;
+  --rail-list-active: 211 100% 52% / 0.14;
+  --rail-border: 240 4% 30%;
+  --rail-border-active: 211 100% 52%;
+  --rail-fg-muted: 240 5% 64%;
+  --rail-fg: 0 0% 93%;
+  --rail-check: 240 4% 22%;
+  --rail-pick: 240 3% 18%;
+  --rail-pick-hover: 214 22% 22%;
+  --rail-pick-active: 211 100% 52% / 0.14;
+  --rail-pick-border: 240 4% 30%;
+  --rail-pick-border-active: 211 100% 52%;
+  --rail-pick-check: 240 4% 21%;
+  --rail-history: 240 3% 18%;
+  --rail-history-hover: 214 22% 22%;
+  --rail-history-active: 211 100% 52% / 0.14;
+  --rail-history-border: 240 4% 30%;
+  --rail-history-border-active: 211 100% 52%;
+  --strategy-surface-a: 240 3% 11%;
+  --strategy-surface-b: 240 3% 18%;
 }

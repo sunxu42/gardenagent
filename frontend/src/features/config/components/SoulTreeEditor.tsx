@@ -162,9 +162,11 @@ function TreeRow({
         style={{ paddingLeft: indent }}
       >
         {isBranch ? (
-          <button
+          <Button
             type="button"
-            className="config-tree-toggle cursor-pointer"
+            variant="ghost"
+            size="icon"
+            className="config-tree-toggle h-auto w-auto cursor-pointer shadow-none hover:bg-transparent"
             aria-expanded={isOpen}
             onClick={() => {
               handleFocusNode();
@@ -172,16 +174,18 @@ function TreeRow({
             }}
           >
             {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </button>
+          </Button>
         ) : (
-          <button
+          <Button
             type="button"
-            className="config-tree-toggle cursor-pointer"
+            variant="ghost"
+            size="icon"
+            className="config-tree-toggle h-auto w-auto cursor-pointer shadow-none hover:bg-transparent"
             aria-expanded={isValueOpen}
             onClick={handleRowActivate}
           >
             {isValueOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </button>
+          </Button>
         )}
 
         <NodeTypeIcon nodeType={node.nodeType} />
@@ -206,38 +210,43 @@ function TreeRow({
             aria-label="字段名"
           />
         ) : (
-          <button
+          <Button
             type="button"
-            className="config-tree-key-btn cursor-pointer font-mono text-xs"
+            variant="link"
+            className="config-tree-key-btn h-auto cursor-pointer p-0 font-mono text-xs"
             title={node.path.join(".")}
             onClick={handleRowActivate}
           >
             {node.key}
-          </button>
+          </Button>
         )}
 
         {canEditKey ? (
           <div className="config-tree-key-actions">
             {isEditingKey ? (
-              <button
+              <Button
                 type="button"
-                className="config-tree-icon-btn config-tree-icon-btn--save"
+                variant="ghost"
+                size="icon"
+                className="config-tree-icon-btn config-tree-icon-btn--save h-auto w-auto shadow-none"
                 title="保存字段名"
                 aria-label="保存字段名"
                 onClick={() => onSaveEditKey(node.id)}
               >
                 <Check className="h-3.5 w-3.5" />
-              </button>
+              </Button>
             ) : (
-              <button
+              <Button
                 type="button"
-                className="config-tree-icon-btn"
+                variant="ghost"
+                size="icon"
+                className="config-tree-icon-btn h-auto w-auto shadow-none"
                 title="修改字段名"
                 aria-label="修改字段名"
                 onClick={() => onStartEditKey(node)}
               >
                 <Pencil className="h-3.5 w-3.5" />
-              </button>
+              </Button>
             )}
           </div>
         ) : null}
@@ -249,58 +258,68 @@ function TreeRow({
           <div className="config-tree-row-actions">
             {showRootInsertActions ? (
               <>
-                <button
+                <Button
                   type="button"
-                  className="config-tree-text-btn"
+                  variant="ghost"
+                  size="sm"
+                  className="config-tree-text-btn h-auto px-0 shadow-none"
                   title="前添字段"
                   onClick={() => onInsertBefore(node.id)}
                 >
                   前添
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
-                  className="config-tree-text-btn"
+                  variant="ghost"
+                  size="sm"
+                  className="config-tree-text-btn h-auto px-0 shadow-none"
                   title="后加字段"
                   onClick={() => onInsertAfter(node.id)}
                 >
                   后加
-                </button>
+                </Button>
                 {canAddChild ? (
-                  <button
+                  <Button
                     type="button"
-                    className="config-tree-text-btn"
+                    variant="ghost"
+                    size="sm"
+                    className="config-tree-text-btn h-auto px-0 shadow-none"
                     title="新增子字段"
                     onClick={() => onAddChild(node.id)}
                   >
                     <Plus className="mr-0.5 h-3 w-3" />
                     子字段
-                  </button>
+                  </Button>
                 ) : null}
               </>
             ) : null}
 
             {depth === 1 && canAddChild && !showRootInsertActions ? (
-              <button
+              <Button
                 type="button"
-                className="config-tree-text-btn"
+                variant="ghost"
+                size="sm"
+                className="config-tree-text-btn h-auto px-0 shadow-none"
                 title="新增子字段"
                 onClick={() => onAddChild(node.id)}
               >
                 <Plus className="mr-0.5 h-3 w-3" />
                 子字段
-              </button>
+              </Button>
             ) : null}
 
             {canDelete && !isEditingKey ? (
-              <button
+              <Button
                 type="button"
-                className="config-tree-icon-btn config-tree-icon-btn--danger"
+                variant="ghost"
+                size="icon"
+                className="config-tree-icon-btn config-tree-icon-btn--danger h-auto w-auto shadow-none"
                 title="删除字段及子字段"
                 aria-label="删除字段"
                 onClick={() => onDelete(node.id)}
               >
                 <Trash2 className="h-3.5 w-3.5" />
-              </button>
+              </Button>
             ) : null}
           </div>
         ) : null}

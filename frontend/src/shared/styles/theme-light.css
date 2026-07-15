@@ -1,0 +1,30 @@
+/* Light — iOS system palette */
+
+[data-appearance="light"] {
+  --background: 0 0% 100%;
+  --foreground: 0 0% 5%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 5%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 5%;
+  --primary: 211 100% 50%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 214 68% 98%;
+  --secondary-foreground: 0 0% 5%;
+  --muted: 228 45% 98%;
+  --muted-foreground: 240 4% 44%;
+  --accent: 214 72% 97%;
+  --accent-foreground: 0 0% 5%;
+  --destructive: 4 90% 58%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 240 6% 90%;
+  --input: 240 6% 90%;
+  --ring: 211 100% 50%;
+  --app-bg-start: #f2f2f7;
+  --app-bg-mid: #ffffff;
+  --app-bg-end: #f2f2f7;
+}
+
+.mobile-chat-page {
+  background: #ffffff;
+}

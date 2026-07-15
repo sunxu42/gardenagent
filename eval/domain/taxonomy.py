@@ -21,6 +21,8 @@ class DomainDef(BaseModel):
     description: str = ""
     priority: int = 1
     recommended_tags: list[str] = Field(default_factory=list)
+    # When false, empty judge tier is intentional (smoke_only domain).
+    judge_expected: bool = True
 
 
 class TagGroupDef(BaseModel):
@@ -61,6 +63,12 @@ class TaxonomyRegistry:
         if domain is None:
             return ()
         return tuple(domain.recommended_tags)
+
+    def judge_expected_for(self, domain_id: str) -> bool:
+        domain = self.domain_by_id(domain_id)
+        if domain is None:
+            return True
+        return bool(domain.judge_expected)
 
     def validate_scenario(self, *, domain: str, tags: list[str]) -> None:
         """Validate scenario domain and tags against the taxonomy."""

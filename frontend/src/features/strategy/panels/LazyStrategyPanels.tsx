@@ -35,11 +35,18 @@ const MemoryStrategyPanel = lazy(() =>
   })),
 );
 
+const A2UIStrategyPanel = lazy(() =>
+  import("@/features/a2ui/A2UIPanel").then((m) => ({
+    default: m.A2UIPanel,
+  })),
+);
+
 const PANEL_IMPORTS: Record<StrategyPanelTab, () => Promise<unknown>> = {
   emotion: () => import("@/features/chat/components/AffectDebugPanel"),
   prompt: () => import("@/features/config/PromptEditor"),
   logs: () => import("@/features/logs/LogsPanel"),
   memory: () => import("@/features/memory/MemoryPanel"),
+  a2ui: () => import("@/features/a2ui/A2UIPanel"),
   test: () => import("@/features/test/TestPanel"),
 };
 
@@ -71,4 +78,8 @@ export const LazyTestPanel = withSuspense(function TestPanel() {
 
 export const LazyMemoryPanel = withSuspense(function MemoryPanelSuspended() {
   return <MemoryStrategyPanel />;
+});
+
+export const LazyA2UIPanel = withSuspense(function A2UIPanelSuspended() {
+  return <A2UIStrategyPanel />;
 });

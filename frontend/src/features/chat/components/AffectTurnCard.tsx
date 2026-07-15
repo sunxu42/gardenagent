@@ -72,7 +72,7 @@ export function AffectTurnCard({
           />
           <VadCompactBlock
             title="助手"
-            accentClass="bg-sky-500/[0.06]"
+            accentClass="affect-status-accent"
             point={agentVad}
             roundDelta={agentDelta}
             pending={!agentVad && isPending}

@@ -1,59 +1,102 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@plugin "tailwindcss-animate";
+
+@theme {
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-rail-track: hsl(var(--rail-track));
+  --color-rail-btn: hsl(var(--rail-btn));
+  --color-rail-btn-hover: hsl(var(--rail-btn-hover));
+  --color-rail-btn-active: hsl(var(--rail-btn-active));
+  --color-rail-btn-active-hover: hsl(var(--rail-btn-active-hover));
+  --color-rail-list: hsl(var(--rail-list));
+  --color-rail-list-hover: hsl(var(--rail-list-hover));
+  --color-rail-list-active: hsl(var(--rail-list-active));
+  --color-rail-border: hsl(var(--rail-border));
+  --color-rail-border-active: hsl(var(--rail-border-active));
+  --color-rail-fg-muted: hsl(var(--rail-fg-muted));
+  --color-rail-fg: hsl(var(--rail-fg));
+  --color-rail-check: hsl(var(--rail-check));
+  --color-rail-pick: hsl(var(--rail-pick));
+  --color-rail-pick-hover: hsl(var(--rail-pick-hover));
+  --color-rail-pick-active: hsl(var(--rail-pick-active));
+  --color-rail-pick-border: hsl(var(--rail-pick-border));
+  --color-rail-pick-border-active: hsl(var(--rail-pick-border-active));
+  --color-rail-pick-check: hsl(var(--rail-pick-check));
+  --color-rail-history: hsl(var(--rail-history));
+  --color-rail-history-hover: hsl(var(--rail-history-hover));
+  --color-rail-history-active: hsl(var(--rail-history-active));
+  --color-rail-history-border: hsl(var(--rail-history-border));
+  --color-rail-history-border-active: hsl(var(--rail-history-border-active));
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+}
 
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --foreground: 0 0% 5%;
+    --card: 0 0% 97%;
+    --card-foreground: 0 0% 5%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --popover-foreground: 0 0% 5%;
+    --primary: 211 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 5%;
+    --muted: 0 0% 97%;
+    --muted-foreground: 240 5% 47%;
+    --accent: 0 0% 96%;
+    --accent-foreground: 0 0% 5%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 211 100% 50%;
     --radius: 0.5rem;
 
-    /* Rail toolbar — warm brown, slightly darker than panel surface */
-    --rail-track: 36 28% 92%;
-    --rail-btn: 32 26% 86%;
-    --rail-btn-hover: 32 28% 80%;
-    --rail-btn-active: 28 30% 72%;
-    --rail-btn-active-hover: 28 32% 66%;
-    --rail-list: 34 24% 90%;
-    --rail-list-hover: 32 26% 84%;
-    --rail-list-active: 30 28% 78%;
-    --rail-border: 30 16% 76%;
-    --rail-border-active: 28 22% 62%;
-    --rail-fg-muted: 30 12% 44%;
-    --rail-fg: 28 22% 18%;
-    --rail-check: 34 22% 86%;
-
-    /* Scenario checkbox rows — warmer tan */
-    --rail-pick: 38 32% 91%;
-    --rail-pick-hover: 36 30% 86%;
-    --rail-pick-active: 32 28% 80%;
-    --rail-pick-border: 34 20% 78%;
-    --rail-pick-border-active: 30 24% 68%;
-    --rail-pick-check: 36 28% 88%;
-
-    /* History listbox rows — deeper brown */
-    --rail-history: 28 22% 88%;
-    --rail-history-hover: 26 24% 82%;
-    --rail-history-active: 24 26% 74%;
-    --rail-history-border: 26 18% 70%;
-    --rail-history-border-active: 22 22% 58%;
+    --rail-track: 0 0% 96%;
+    --rail-btn: 0 0% 93%;
+    --rail-btn-hover: 0 0% 89%;
+    --rail-btn-active: 0 0% 85%;
+    --rail-btn-active-hover: 0 0% 81%;
+    --rail-list: 0 0% 95%;
+    --rail-list-hover: 0 0% 91%;
+    --rail-list-active: 0 0% 87%;
+    --rail-border: 0 0% 88%;
+    --rail-border-active: 211 100% 50%;
+    --rail-fg-muted: 240 5% 47%;
+    --rail-fg: 0 0% 5%;
+    --rail-check: 0 0% 92%;
+    --rail-pick: 0 0% 96%;
+    --rail-pick-hover: 0 0% 92%;
+    --rail-pick-active: 0 0% 88%;
+    --rail-pick-border: 0 0% 88%;
+    --rail-pick-border-active: 211 100% 50%;
+    --rail-pick-check: 0 0% 93%;
+    --rail-history: 0 0% 94%;
+    --rail-history-hover: 0 0% 90%;
+    --rail-history-active: 0 0% 86%;
+    --rail-history-border: 0 0% 86%;
+    --rail-history-border-active: 211 100% 50%;
   }
 
   * {
@@ -67,7 +110,6 @@
   }
 }
 
-/* WebKit 滚动条（Chrome / Edge）：放在 layer 外，避免 Windows 仍渲染箭头按钮 */
 *::-webkit-scrollbar {
   width: 4px;
   height: 4px;

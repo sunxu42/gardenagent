@@ -1,0 +1,119 @@
+{
+  "id": "data_table",
+  "name": "数据表格",
+  "surface_id": "data-table",
+  "tool_name": "show_data_table",
+  "catalog_id": "shadcn",
+  "scenario": "多行多列对比、时间线或结构化事实列举。interactive=false 只读展示；interactive=true 点选一行。当用户要求列举/整理/汇总多条结构化记录（如历年事件、按年清单）时，必须用本工具，禁止在正文逐条罗列。",
+  "anti_patterns": [
+    "禁止用 Markdown 表格或正文「2015年…2016年…」逐条罗列代替本工具",
+    "列数过多（>4）或行数过多（>8）时应改用其他展示方式"
+  ],
+  "trigger_examples": [
+    "把这几个方案对比一下，列成表给我看",
+    "帮我看看这周每天做了什么，用表格展示",
+    "从表里选一天我们细聊",
+    "帮我列举一下近10年的台风",
+    "整理一份近五年的重大事件时间线"
+  ],
+  "agent_initiated_triggers": [
+    "Agent 主动对比多个方案的多维属性",
+    "Agent 主动展示结构化记录并邀请点选一行",
+    "Agent 准备按年份/类别列举 ≥3 条结构化事实（如历年台风、赛事记录）"
+  ],
+  "selection_intent_signals": [
+    "对比一下",
+    "列成表",
+    "从表里选",
+    "哪个更好"
+  ],
+  "structured_list_signals": [
+    "列举",
+    "列出",
+    "整理",
+    "汇总",
+    "盘点",
+    "按年",
+    "历年",
+    "近10年",
+    "近十年",
+    "时间线",
+    "表格"
+  ],
+  "sample_variants": [
+    {
+      "id": "compare_readonly",
+      "label": "只读对比",
+      "params": {
+        "title": "出游方案对比",
+        "interactive": false,
+        "columns": [
+          { "key": "name", "header": "方案" },
+          { "key": "cost", "header": "花费" },
+          { "key": "fun", "header": "好玩" }
+        ],
+        "rows": [
+          { "id": "beach", "name": "海边", "cost": "低", "fun": "⭐⭐⭐" },
+          { "id": "museum", "name": "博物馆", "cost": "中", "fun": "⭐⭐⭐⭐" },
+          { "id": "hike", "name": "徒步", "cost": "低", "fun": "⭐⭐⭐⭐⭐" }
+        ]
+      }
+    },
+    {
+      "id": "week_log",
+      "label": "每日记录",
+      "params": {
+        "title": "这周做了什么",
+        "interactive": false,
+        "footnote": "想聊哪一天可以直接跟我说",
+        "columns": [
+          { "key": "day", "header": "日期" },
+          { "key": "study", "header": "学习" },
+          { "key": "play", "header": "玩耍" }
+        ],
+        "rows": [
+          { "id": "mon", "day": "周一", "study": "数学练习", "play": "乐高" },
+          { "id": "tue", "day": "周二", "study": "阅读", "play": "猜谜" },
+          { "id": "wed", "day": "周三", "study": "写字", "play": "户外" }
+        ]
+      }
+    },
+    {
+      "id": "typhoon_timeline",
+      "label": "历年台风时间线",
+      "params": {
+        "title": "近十年登陆中国的主要台风",
+        "interactive": false,
+        "footnote": "想细聊哪一年可以直接跟我说",
+        "columns": [
+          { "key": "year", "header": "年份" },
+          { "key": "name", "header": "台风" },
+          { "key": "impact", "header": "主要影响" }
+        ],
+        "rows": [
+          { "id": "2015", "year": "2015", "name": "彩虹", "impact": "登陆广东湛江" },
+          { "id": "2016", "year": "2016", "name": "莫兰蒂", "impact": "登陆福建厦门" },
+          { "id": "2018", "year": "2018", "name": "山竹", "impact": "登陆广东台山" }
+        ]
+      }
+    },
+    {
+      "id": "pick_day",
+      "label": "点选一行",
+      "params": {
+        "title": "选一天我们细聊",
+        "interactive": true,
+        "footnote": "点选一行即可",
+        "columns": [
+          { "key": "day", "header": "日期" },
+          { "key": "highlight", "header": "亮点" }
+        ],
+        "rows": [
+          { "id": "mon", "day": "周一", "highlight": "拼完城堡" },
+          { "id": "tue", "day": "周二", "highlight": "考了满分" },
+          { "id": "wed", "day": "周三", "highlight": "学会跳绳" }
+        ]
+      }
+    }
+  ]
+}

@@ -53,13 +53,3 @@ gardenai-server = "server.server:main"
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "pytest-asyncio>=0.24"]
-
-[tool.pytest.ini_options]
-pythonpath = ["."]
-asyncio_mode = "auto"
-testpaths = ["tests"]
-markers = [
-    "smoke: PR smoke eval scenarios (L0 only)",
-    "judge: DeepEval judge scenarios (Nightly)",
-    "integration: requires live AgentManager and LLM",
-]

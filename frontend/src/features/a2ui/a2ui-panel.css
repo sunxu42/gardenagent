@@ -1,0 +1,114 @@
+/* A2UI gallery — layout & chat canvas chrome */
+/* iPhone 17 Pro Max logical viewport: 440 × 956 CSS px */
+
+.a2ui-panel-preview {
+  --a2ui-preview-device-width: 440px;
+  --a2ui-preview-device-height: 956px;
+
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  padding: 1rem;
+  overflow: hidden;
+  background: hsl(var(--panel-surface-detail, var(--strategy-surface-b)));
+}
+
+.a2ui-panel-preview__label {
+  flex-shrink: 0;
+  margin-bottom: 0.5rem;
+  padding-inline: 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--apple-secondary-label, rgb(60 60 67 / 60%));
+}
+
+.a2ui-panel-preview__frame {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  justify-content: center;
+  overflow: auto;
+  padding-bottom: 0.25rem;
+}
+
+.a2ui-panel-preview__canvas {
+  width: var(--a2ui-preview-device-width);
+  max-width: 100%;
+  min-height: min(28rem, var(--a2ui-preview-device-height));
+  max-height: min(var(--a2ui-preview-device-height), 100%);
+  flex-shrink: 0;
+  overflow: auto;
+  border: 1px solid hsl(var(--panel-divider));
+  border-radius: var(--apple-radius-lg, 1.125rem);
+  padding: 0.75rem;
+  box-shadow:
+    inset 0 1px 0 hsl(var(--panel-divider-highlight) / 0.45),
+    0 8px 32px rgb(0 0 0 / 8%);
+}
+
+.a2ui-panel-preview__canvas.chat-ios {
+  background:
+    radial-gradient(ellipse 90% 55% at 8% -8%, rgb(0 122 255 / 10%), transparent 52%),
+    radial-gradient(ellipse 72% 48% at 96% 102%, rgb(88 86 214 / 8%), transparent 48%),
+    linear-gradient(180deg, #f6f7fb 0%, var(--ios-grouped-bg, #f2f2f7) 42%, #eaeaef 100%);
+}
+
+[data-appearance="dark"] .a2ui-panel-preview__canvas.chat-ios {
+  background:
+    radial-gradient(ellipse 80% 55% at 15% -5%, rgb(10 132 255 / 12%), transparent 55%),
+    radial-gradient(ellipse 65% 45% at 90% 100%, rgb(94 92 230 / 10%), transparent 50%),
+    var(--ios-bg, #000000);
+}
+
+.a2ui-panel-preview__canvas .chat-message-list {
+  gap: 0.375rem;
+  padding-inline: 0;
+}
+
+/* Template meta — rail surface, separated from chat canvas by border */
+.a2ui-panel-meta {
+  flex-shrink: 0;
+  border-bottom: 1px solid hsl(var(--panel-divider));
+  background: hsl(var(--panel-surface, var(--strategy-surface-a)));
+  padding: 0.75rem 1rem;
+}
+
+.a2ui-panel-meta__card {
+  border-radius: var(--apple-radius-md, 0.75rem);
+  background: hsl(var(--rail-track));
+  padding: 0.625rem 0.75rem;
+}
+
+.a2ui-panel-meta__variants {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.a2ui-panel-meta__variant {
+  cursor: pointer;
+  border: none;
+  border-radius: 9999px;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.a2ui-panel-meta__variant--active {
+  background: var(--apple-accent, #007aff);
+  color: #ffffff;
+}
+
+.a2ui-panel-meta__variant--idle {
+  background: hsl(var(--rail-track));
+  color: var(--apple-secondary-label, rgb(60 60 67 / 60%));
+}
+
+.a2ui-panel-meta__variant--idle:hover {
+  background: hsl(var(--rail-btn-hover));
+  color: var(--apple-label, rgb(0 0 0 / 88%));
+}

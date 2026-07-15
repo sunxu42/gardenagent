@@ -89,7 +89,7 @@ class AgentConfig(BaseModel):
     eval_llm_model: Optional[str] = Field(default=None)
     eval_llm_base_url: Optional[str] = None
 
-    prompt_composer_enabled: bool = False
+    prompt_composer_enabled: bool = True
     prompt_budget_enabled: bool = False
     prompt_stable_max_chars: int = 3000
     prompt_volatile_max_chars: int = 1500

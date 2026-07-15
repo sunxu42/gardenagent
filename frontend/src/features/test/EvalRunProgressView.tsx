@@ -1,8 +1,9 @@
 import { CheckCircle2, Circle, Loader2, XCircle } from "lucide-react";
 
+import { TestPanelCollapsibleSection } from "@/features/test/TestPanelCollapsibleSection";
 import type { EvalRunPhase, EvalTimelineEntry } from "@/features/test/evalProgress";
 import type { LiveEvalRunState } from "@/features/test/evalRunStore";
-import { labelEvalTier } from "@/lib/uiLabels";
+import { cn } from "@/lib/utils";
 
 const PHASE_STEPS: Array<{ id: EvalRunPhase; label: string }> = [
   { id: "starting", label: "启动" },
@@ -33,15 +34,15 @@ function phaseIndex(phase: EvalRunPhase): number {
 
 function toneClassName(tone: EvalTimelineEntry["tone"]): string {
   if (tone === "success") {
-    return "border-emerald-500/30 bg-emerald-500/[0.06]";
+    return "test-panel-timeline-item test-panel-timeline-item--success";
   }
   if (tone === "warning") {
-    return "border-amber-500/30 bg-amber-500/[0.06]";
+    return "test-panel-timeline-item test-panel-timeline-item--warning";
   }
   if (tone === "error") {
-    return "border-destructive/30 bg-destructive/5";
+    return "test-panel-timeline-item test-panel-timeline-item--error";
   }
-  return "border-border/25 bg-background/40";
+  return "test-panel-timeline-item";
 }
 
 interface EvalRunProgressViewProps {
@@ -57,118 +58,161 @@ interface EvalRunProgressViewProps {
     | "tier"
   >;
   readOnly?: boolean;
+  /** compact: dock 内嵌 — 完成后仅保留可折叠日志，运行中仅步骤条 */
+  variant?: "full" | "compact";
 }
 
 export function EvalRunProgressView({
   state,
   readOnly = false,
+  variant = "full",
 }: EvalRunProgressViewProps): JSX.Element | null {
   const isRunning = !readOnly && state.status === "running";
-  const currentIndex = phaseIndex(state.phase);
-  const hasActivity = isRunning || state.timeline.length > 0;
+  const isTerminal =
+    state.phase === "completed" || state.phase === "failed" || state.phase === "cancelled";
+  const hasTimeline = state.timeline.length > 0;
+  const hasActivity = isRunning || hasTimeline;
 
   if (!hasActivity) {
     return null;
   }
 
+  if (variant === "compact" && isTerminal && hasTimeline) {
+    return (
+      <TestPanelCollapsibleSection defaultOpen={false} title="运行日志">
+        <ul className="max-h-48 space-y-2 overflow-y-auto pr-1">
+          {[...state.timeline].reverse().map((entry) => (
+            <li className={toneClassName(entry.tone)} key={entry.id}>
+              <p className="text-[11px] font-medium text-foreground/90">{entry.title}</p>
+              {entry.detail ? (
+                <p className="mt-1 whitespace-pre-wrap text-[10px] leading-snug text-muted-foreground">
+                  {entry.detail}
+                </p>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      </TestPanelCollapsibleSection>
+    );
+  }
+
+  if (variant === "compact" && isTerminal && !hasTimeline) {
+    return null;
+  }
+
+  const currentIndex = phaseIndex(state.phase);
+  const showLivePanel = isRunning || variant === "full";
+  const timelineTitle = readOnly ? "过程记录" : isRunning ? "实时日志" : "运行日志";
+  const timelineDefaultOpen = variant === "compact" ? isRunning : !isTerminal;
+
   return (
     <div className="space-y-3">
-      <section className="rounded-lg border border-border/30 bg-muted/15 px-3.5 py-3">
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          {PHASE_STEPS.map((step, index) => {
-            const isTerminalStep = index === PHASE_STEPS.length - 1;
-            const done = readOnly
-              ? currentIndex >= index && state.phase !== "failed" && state.phase !== "cancelled"
-              : currentIndex > index ||
-                (isTerminalStep && state.phase === "completed");
-            const active = !readOnly && currentIndex === index && isRunning;
-            const failed = state.phase === "failed" && isTerminalStep;
-            const cancelled = state.phase === "cancelled" && isTerminalStep;
-            return (
-              <div className="flex items-center gap-1.5" key={step.id}>
-                {done ? (
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" aria-hidden />
-                ) : active ? (
-                  <Loader2
-                    className="h-3.5 w-3.5 animate-spin text-primary motion-reduce:animate-none"
-                    aria-hidden
-                  />
-                ) : failed || cancelled ? (
-                  <XCircle className="h-3.5 w-3.5 text-destructive" aria-hidden />
-                ) : (
-                  <Circle className="h-3.5 w-3.5 text-muted-foreground/50" aria-hidden />
-                )}
-                <span
-                  className={`text-[10px] font-medium ${
-                    active ? "text-foreground" : "text-muted-foreground"
-                  }`}
-                >
-                  {step.label}
-                </span>
-                {index < PHASE_STEPS.length - 1 ? (
-                  <span className="mx-0.5 text-[10px] text-border">›</span>
+      {showLivePanel ? (
+        <section className="test-panel-section">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            {PHASE_STEPS.map((step, index) => {
+              const isTerminalStep = index === PHASE_STEPS.length - 1;
+              const done = readOnly
+                ? currentIndex >= index && state.phase !== "failed" && state.phase !== "cancelled"
+                : currentIndex > index || (isTerminalStep && state.phase === "completed");
+              const active = !readOnly && currentIndex === index && isRunning;
+              const failed = state.phase === "failed" && isTerminalStep;
+              const cancelled = state.phase === "cancelled" && isTerminalStep;
+              return (
+                <div className="flex items-center gap-1.5" key={step.id}>
+                  {done ? (
+                    <CheckCircle2 className="test-text-pass h-3.5 w-3.5" aria-hidden />
+                  ) : active ? (
+                    <Loader2
+                      className="test-text-run h-3.5 w-3.5 animate-spin motion-reduce:animate-none"
+                      aria-hidden
+                    />
+                  ) : failed || cancelled ? (
+                    <XCircle className="test-text-fail h-3.5 w-3.5" aria-hidden />
+                  ) : (
+                    <Circle className="h-3.5 w-3.5 text-muted-foreground/50" aria-hidden />
+                  )}
+                  <span
+                    className={`text-[10px] font-medium ${
+                      active ? "text-foreground" : "text-muted-foreground"
+                    }`}
+                  >
+                    {step.label}
+                  </span>
+                  {index < PHASE_STEPS.length - 1 ? (
+                    <span className="mx-0.5 text-[10px] text-border">›</span>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+
+          {variant === "full" ? (
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="test-panel-section__eyebrow">当前状态</p>
+                <p className="mt-0.5 text-[12px] font-medium text-foreground">
+                  {state.progressMessage ?? "等待进度…"}
+                </p>
+                {state.scenarioId ? (
+                  <p className="mt-1 truncate text-[10px] text-muted-foreground">{state.scenarioId}</p>
                 ) : null}
               </div>
-            );
-          })}
-        </div>
-
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div className="min-w-0">
-            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-              当前状态
-            </p>
-            <p className="mt-0.5 text-[12px] font-medium text-foreground">
-              {state.progressMessage ?? "等待进度…"}
-            </p>
-            {state.scenarioId ? (
-              <p className="mt-1 truncate text-[10px] text-muted-foreground">
-                {state.scenarioId}
-                {state.tier ? ` · ${labelEvalTier(state.tier)}` : ""}
-              </p>
-            ) : null}
-          </div>
-          {isRunning ? (
-            <Loader2
-              className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-primary motion-reduce:animate-none"
-              aria-hidden
-            />
+              {isRunning ? (
+                <Loader2
+                  className="test-text-run mt-0.5 h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none"
+                  aria-hidden
+                />
+              ) : null}
+            </div>
           ) : null}
-        </div>
 
-        {state.agentProgress ? (
-          <p className="mt-2 text-[10px] text-muted-foreground">
-            对话进度 {state.agentProgress.current}/{state.agentProgress.total}
-          </p>
-        ) : null}
-        {state.judgeProgress ? (
-          <p className="mt-1 text-[10px] text-muted-foreground">
-            评判进度 {state.judgeProgress.current}/{state.judgeProgress.total}
-          </p>
-        ) : null}
-      </section>
-
-      {state.timeline.length > 0 ? (
-        <section className="rounded-lg border border-border/30 border-l-[3px] border-l-sky-500/45 bg-sky-500/[0.04] px-3.5 py-3">
-          <h4 className="mb-2 text-[13px] font-medium text-foreground">
-            {readOnly ? "过程记录" : "实时日志"}
-          </h4>
-          <ul className="max-h-56 space-y-2 overflow-y-auto pr-1">
-            {[...state.timeline].reverse().map((entry) => (
-              <li
-                className={`rounded-md border px-2.5 py-2 ${toneClassName(entry.tone)}`}
-                key={entry.id}
-              >
-                <p className="text-[11px] font-medium text-foreground/90">{entry.title}</p>
-                {entry.detail ? (
-                  <p className="mt-1 whitespace-pre-wrap text-[10px] leading-snug text-muted-foreground">
-                    {entry.detail}
-                  </p>
-                ) : null}
-              </li>
-            ))}
-          </ul>
+          {state.agentProgress ? (
+            <p className={cn("text-[10px] text-muted-foreground", variant === "full" ? "mt-2" : "")}>
+              对话进度 {state.agentProgress.current}/{state.agentProgress.total}
+            </p>
+          ) : null}
+          {state.judgeProgress ? (
+            <p className="mt-1 text-[10px] text-muted-foreground">
+              评判进度 {state.judgeProgress.current}/{state.judgeProgress.total}
+            </p>
+          ) : null}
         </section>
+      ) : null}
+
+      {hasTimeline ? (
+        variant === "compact" ? (
+          <TestPanelCollapsibleSection defaultOpen={timelineDefaultOpen} title={timelineTitle}>
+            <ul className="max-h-48 space-y-2 overflow-y-auto pr-1">
+              {[...state.timeline].reverse().map((entry) => (
+                <li className={toneClassName(entry.tone)} key={entry.id}>
+                  <p className="text-[11px] font-medium text-foreground/90">{entry.title}</p>
+                  {entry.detail ? (
+                    <p className="mt-1 whitespace-pre-wrap text-[10px] leading-snug text-muted-foreground">
+                      {entry.detail}
+                    </p>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </TestPanelCollapsibleSection>
+        ) : (
+          <section className="test-panel-section">
+            <h4 className="test-panel-section__title">{timelineTitle}</h4>
+            <ul className="max-h-56 space-y-2 overflow-y-auto pr-1">
+              {[...state.timeline].reverse().map((entry) => (
+                <li className={toneClassName(entry.tone)} key={entry.id}>
+                  <p className="text-[11px] font-medium text-foreground/90">{entry.title}</p>
+                  {entry.detail ? (
+                    <p className="mt-1 whitespace-pre-wrap text-[10px] leading-snug text-muted-foreground">
+                      {entry.detail}
+                    </p>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )
       ) : null}
     </div>
   );

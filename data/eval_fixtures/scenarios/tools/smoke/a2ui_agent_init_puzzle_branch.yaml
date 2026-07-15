@@ -1,0 +1,17 @@
+id: a2ui_agent_init_puzzle_branch
+domain: tools
+tags:
+- tool_required
+- a2ui_agent_init
+tier: smoke
+description: 用户要谜题，Agent 应主动用 UI 提供类型/难度选项
+setup:
+  rounds: 1
+user_driver:
+  type: scripted
+  turns:
+  - text: 再出一道谜题
+assertions:
+- type: tool_called
+  name: show_single_select_called
+  tool_name: show_single_select

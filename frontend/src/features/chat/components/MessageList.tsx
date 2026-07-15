@@ -1,24 +1,39 @@
 import { cn } from "@/lib/utils";
 import type { ChatMessage } from "../types";
+import { hasVisibleMessageContent, isAssistantThinking } from "../lib/messageParts";
+import { A2UISurface } from "./A2UISurface";
+import { AssistantThinkingIndicator } from "./AssistantThinkingIndicator";
 
 interface MessageListProps {
   messages: ChatMessage[];
-  defaultAssistantLabel?: string;
   historyLoading?: boolean;
   hasMoreHistory?: boolean;
+  connectionStatus?: "online" | "offline";
+  onUiAction?: (payload: {
+    runId: string;
+    messageId: string;
+    surfaceId: string;
+    action: {
+      name: string;
+      context?: Record<string, unknown>;
+      sourceComponentId?: string;
+      dataModel?: Record<string, unknown>;
+    };
+  }) => void;
 }
 
 export function MessageList({
   messages,
-  defaultAssistantLabel = "助手",
   historyLoading = false,
   hasMoreHistory = false,
+  connectionStatus = "online",
+  onUiAction,
 }: MessageListProps) {
   return (
-    <ul aria-label="消息列表" className="chat-message-list m-0 flex list-none flex-col gap-3 p-0">
+    <ul aria-label="消息列表" className="chat-message-list m-0 flex list-none flex-col p-0">
       {hasMoreHistory ? (
         <li
-          className="list-none py-1 text-center text-xs text-muted-foreground"
+          className="list-none py-1 text-center"
           aria-live="polite"
           aria-busy={historyLoading}
         >
@@ -32,25 +47,67 @@ export function MessageList({
           )}
         </li>
       ) : null}
-      {messages.map((message) => (
-        <li
-          key={message.id}
-          className={cn(
-            `msg-bubble--${message.role} w-fit max-w-[90%] rounded-xl border px-3 py-2.5 shadow-sm`,
-            message.role === "user"
-              ? "self-end bg-primary text-primary-foreground"
-              : "self-start bg-muted",
-          )}
-          data-streaming={message.status === "streaming"}
-        >
-          <strong className="msg-author text-sm font-semibold">
-            {message.role === "user" ? "我" : message.authorLabel ?? defaultAssistantLabel}：
-          </strong>
-          <span className="msg-text whitespace-pre-wrap break-words">
-            {message.content || "..."}
-          </span>
-        </li>
-      ))}
+      {messages.map((message) => {
+        const thinking = isAssistantThinking(message);
+        const streaming =
+          message.role === "assistant" &&
+          (message.status === "streaming" || message.status === "sending");
+
+        return (
+          <li
+            key={message.id}
+            className={cn(
+              `msg-bubble--${message.role}`,
+              message.role === "user"
+                ? "w-fit self-end"
+                : thinking
+                  ? "w-fit self-start"
+                  : "w-full self-start",
+            )}
+            data-thinking={thinking || undefined}
+            data-streaming={streaming && !thinking ? true : undefined}
+          >
+            <div className="msg-text space-y-2 whitespace-pre-wrap break-words">
+              {thinking ? (
+                <AssistantThinkingIndicator />
+              ) : (
+                <>
+                  {message.parts.map((part, index) => {
+                    if (part.type === "text") {
+                      if (!part.text) {
+                        return null;
+                      }
+                      return <span key={`${message.id}-text-${index}`}>{part.text}</span>;
+                    }
+                    return (
+                      <A2UISurface
+                        key={`${message.id}-a2ui-${part.surfaceId}-${index}`}
+                        part={part}
+                        message={message}
+                        connectionOnline={connectionStatus === "online"}
+                        onAction={(action) => {
+                          if (connectionStatus !== "online" || !message.runId || !onUiAction) {
+                            return;
+                          }
+                          onUiAction({
+                            runId: message.runId,
+                            messageId: message.id,
+                            surfaceId: part.surfaceId,
+                            action,
+                          });
+                        }}
+                      />
+                    );
+                  })}
+                  {streaming && hasVisibleMessageContent(message) ? (
+                    <span className="ios-stream-cursor" aria-hidden="true" />
+                  ) : null}
+                </>
+              )}
+            </div>
+          </li>
+        );
+      })}
     </ul>
   );
 }

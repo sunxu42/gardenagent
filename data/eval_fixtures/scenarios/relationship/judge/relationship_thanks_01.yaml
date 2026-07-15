@@ -1,0 +1,28 @@
+id: relationship_thanks_01
+domain: relationship
+tags:
+- happy_path
+- multi_turn
+tier: judge
+description: 感谢场景，L0 + Judge
+setup:
+  rounds: 1
+user_driver:
+  type: scripted
+  turns:
+  - text: 真的很感谢你，愿意陪我聊这么久。
+assertions:
+- type: assistant_min_length
+  name: warm_reply
+  min_chars: 15
+- type: assistant_not_contains
+  name: no_cold_response
+  forbidden:
+  - 不客气而已
+judge:
+  enabled: true
+  metrics:
+  - emotion_support.supportive_tone
+  - emotion_support.empathy
+  policy:
+    min_overall: 0.65

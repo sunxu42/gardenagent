@@ -1,4 +1,5 @@
-import type { ChatMessage, MessageRole } from "../types";
+import type { ChatMessage, MessagePart, MessageRole } from "../types";
+import { getMessageText, textPart } from "../lib/messageParts";
 
 export const CHAT_HISTORY_DB_NAME = "gardenagent.chat.history.v1";
 export const CHAT_HISTORY_STORE = "messages";
@@ -16,16 +17,30 @@ export interface StoredChatMessage {
   userId: string;
   role: MessageRole;
   content: string;
+  parts?: MessagePart[];
   authorLabel?: string;
+  /** AG-UI run id — restored so pending A2UI cards stay interactive after reload */
+  runId?: string;
   createdAt: number;
 }
 
+export function messagePersistFingerprint(message: ChatMessage): string {
+  const textLength = getMessageText(message).trim().length;
+  const a2uiSignature = message.parts
+    .filter((part) => part.type === "a2ui")
+    .map((part) => `${part.surfaceId}:${part.status}:${part.interaction ?? ""}:${part.messages.length}`)
+    .join(",");
+  return `${message.id}:${message.status}:${textLength}:${message.runId ?? ""}:${a2uiSignature}`;
+}
+
 export function toStoredMessage(message: ChatMessage, userId: string, createdAt: number): StoredChatMessage | null {
-  const content = message.content.trim();
-  if (!content) {
+  const content = getMessageText(message).trim();
+  const hasA2uiPart = message.parts.some((part) => part.type === "a2ui");
+  if (!content && !hasA2uiPart) {
     return null;
   }
-  if (message.role === "assistant" && message.status !== "done") {
+  // Interactive A2UI cards stay streaming until the user acts; still persist them.
+  if (message.role === "assistant" && message.status !== "done" && !hasA2uiPart) {
     return null;
   }
   return {
@@ -33,18 +48,31 @@ export function toStoredMessage(message: ChatMessage, userId: string, createdAt:
     userId,
     role: message.role,
     content,
+    parts: message.parts,
     ...(message.authorLabel ? { authorLabel: message.authorLabel } : {}),
+    ...(message.runId ? { runId: message.runId } : {}),
     createdAt,
   };
 }
 
 export function toChatMessage(stored: StoredChatMessage): ChatMessage {
+  const parts =
+    stored.parts && stored.parts.length > 0
+      ? stored.parts
+      : stored.content
+        ? [textPart(stored.content)]
+        : [textPart("")];
+  const hasPendingA2ui = parts.some(
+    (part) => part.type === "a2ui" && part.interaction === "pending",
+  );
   return {
     id: stored.id,
     role: stored.role,
+    parts,
     content: stored.content,
-    status: "done",
+    status: hasPendingA2ui ? "streaming" : "done",
     ...(stored.authorLabel ? { authorLabel: stored.authorLabel } : {}),
+    ...(stored.runId ? { runId: stored.runId } : {}),
     createdAt: stored.createdAt,
   };
 }

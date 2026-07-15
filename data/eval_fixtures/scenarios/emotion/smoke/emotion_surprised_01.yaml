@@ -1,0 +1,35 @@
+id: emotion_surprised_01
+domain: emotion
+tags:
+- mood_surprised
+- single_turn
+tier: smoke
+description: 意外惊喜，检查好奇后稳住话题
+setup:
+  rounds: 1
+user_driver:
+  type: scripted
+  turns:
+  - text: 今天我居然考了满分，自己都没想到！
+assertions:
+- type: assistant_max_length
+  name: concise_reply
+  max_chars: 140
+- type: assistant_not_contains
+  name: no_dismissal
+  forbidden:
+  - 至于吗
+  - 别大惊小怪
+  - 没什么大不了
+- type: assistant_contains
+  name: acknowledges_surprise
+  required:
+  - 满分
+  - 没想到
+  - 居然
+  any_round: true
+- type: assistant_min_length
+  name: warm_reply
+  min_chars: 15
+assertion_sets:
+- emotion_smoke_base

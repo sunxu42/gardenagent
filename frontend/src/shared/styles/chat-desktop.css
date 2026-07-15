@@ -1,6 +1,9 @@
 /* Chat — desktop & tablet layout (mobile shell unchanged below 768px) */
+/* iPhone 17 Pro Max logical viewport: 440 × 956 CSS px */
 
 .chat-app-shell {
+  --chat-device-width: 440px;
+  --chat-device-height: 956px;
   min-height: 100dvh;
 }
 
@@ -10,12 +13,11 @@
 
 @media (min-width: 768px) {
   .chat-app-shell {
-    background: linear-gradient(
-      165deg,
-      color-mix(in srgb, var(--app-bg-start) 72%, #ffffff) 0%,
-      color-mix(in srgb, var(--app-bg-mid) 55%, #ffffff) 45%,
-      var(--app-bg-end) 100%
-    );
+    background: var(--ios-grouped-bg, #f2f2f7);
+  }
+
+  [data-appearance="dark"] .chat-app-shell {
+    background: #000000;
   }
 
   .chat-app-layout {
@@ -27,31 +29,17 @@
   }
 
   .mobile-shell.mobile-chat-page {
-    width: 100%;
-    max-width: 28rem;
+    width: var(--chat-device-width);
+    max-width: min(var(--chat-device-width), 100%);
     margin: 0;
-    border-radius: 1.25rem;
-    border: 1px solid hsl(var(--border));
-    box-shadow:
-      0 1px 2px hsl(var(--foreground) / 0.04),
-      0 12px 40px hsl(var(--foreground) / 0.08);
-    height: min(100dvh - 2rem, 52rem);
-    max-height: min(100dvh - 2rem, 52rem);
-    min-height: min(100dvh - 2rem, 52rem);
+    height: var(--chat-device-height);
+    max-height: min(var(--chat-device-height), 100dvh - 2rem);
+    min-height: min(var(--chat-device-height), 100dvh - 2rem);
     overflow: hidden;
-  }
-
-  .chat-scroll-area {
-    margin-right: -12px;
-    padding: 8px 12px 8px 6px;
-  }
-
-  .chat-footer {
-    padding-top: 4px;
   }
 }
 
-/* Desktop: 聊天 30% 居中 + 情绪区 70% 素雅贴边 */
+/* Desktop: 聊天固定 iPhone 17 Pro Max 视口 + 右侧策略面板 */
 @media (min-width: 1024px) {
   .chat-app-shell {
     height: 100dvh;
@@ -73,9 +61,10 @@
   }
 
   .chat-main-column {
-    flex: 3 1 0%;
-    min-width: 0;
-    max-width: 30%;
+    flex: 0 0 auto;
+    width: calc(var(--chat-device-width) + 2.5rem);
+    min-width: calc(var(--chat-device-width) + 2.5rem);
+    max-width: 35%;
     height: 100%;
     max-height: 100dvh;
     min-height: 0;
@@ -84,20 +73,22 @@
     align-items: center;
     justify-content: center;
     padding: 1rem 1.25rem;
+    background: var(--ios-grouped-bg, #f2f2f7);
+  }
+
+  [data-appearance="dark"] .chat-main-column {
+    background: #000000;
   }
 
   .chat-main-column .mobile-shell.mobile-chat-page {
     flex: none;
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-    height: 100%;
-    max-height: 100%;
-    min-height: 0;
+    width: var(--chat-device-width);
+    max-width: var(--chat-device-width);
+    min-width: var(--chat-device-width);
+    height: var(--chat-device-height);
+    max-height: min(var(--chat-device-height), 100dvh - 2rem);
+    min-height: min(var(--chat-device-height), 100dvh - 2rem);
     margin: 0 auto;
-    box-shadow:
-      0 1px 2px hsl(var(--foreground) / 0.04),
-      0 16px 48px hsl(var(--foreground) / 0.1);
   }
 }
 
@@ -113,37 +104,19 @@
   }
 }
 
-
-/* Message readability on wider chat columns */
-@media (min-width: 768px) {
-  .chat-message-list .msg-bubble--user,
-  .chat-message-list .msg-bubble--assistant {
-    max-width: 88%;
-  }
-}
-
-@media (min-width: 1024px) {
-  .chat-message-list .msg-bubble--user,
-  .chat-message-list .msg-bubble--assistant {
-    max-width: 82%;
-  }
-}
-
 /* Settings from drawer */
 .chat-app-shell[data-font-size="large"] .mobile-chat-page {
   font-size: 1.0625rem;
 }
 
-.chat-app-shell[data-font-size="large"] .mobile-chat-page .msg-author {
-  font-size: 0.9375rem;
-}
-
-.chat-app-shell[data-motion="reduced"] .msg-bubble--assistant[data-streaming="true"]::after {
+.chat-app-shell[data-motion="reduced"] .chat-ios .ios-thinking__dot,
+.chat-app-shell[data-motion="reduced"] .chat-ios .ios-stream-cursor {
   animation: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .chat-app-shell[data-motion="normal"] .msg-bubble--assistant[data-streaming="true"]::after {
+  .chat-app-shell[data-motion="normal"] .chat-ios .ios-thinking__dot,
+  .chat-app-shell[data-motion="normal"] .chat-ios .ios-stream-cursor {
     animation: none;
   }
 }

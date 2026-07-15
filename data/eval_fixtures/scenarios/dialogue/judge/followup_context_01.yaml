@@ -1,0 +1,20 @@
+id: followup_context_01
+extends: smoke/followup_context_01
+tier: judge
+tags:
+- multi_turn
+description: 多轮对话，L0 + Judge
+setup:
+  rounds: 2
+assertions:
+- type: assistant_min_length
+  name: non_empty
+  min_chars: 15
+judge:
+  enabled: true
+  metrics:
+  - emotion_support.empathy
+  - emotion_support.attunement
+  - emotion_support.resonance
+  policy:
+    min_overall: 0.65

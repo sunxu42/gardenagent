@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { PanelEmpty } from "@/components/panel/PanelEmpty";
 import { PanelLoading } from "@/components/panel/PanelLoading";
 import { RailDetailPane, RailListPane, RailSidebarGroup } from "@/components/rail/RailPanelShell";
+import { Button } from "@/components/ui/button";
 import { EvalCoverageRadar } from "@/features/test/EvalCoverageRadar";
 import { EvalDomainSummary } from "@/features/test/EvalDomainSummary";
 import { buildDomainRadarPoints } from "@/features/test/coverageRadarModel";
@@ -50,10 +51,10 @@ export function EvalCoverageMatrix({
         title="加载失败"
         description={error}
         action={
-          <button className="panel-state__action" type="button" onClick={onReload}>
+          <Button className="panel-state__action h-auto" type="button" variant="outline" size="sm" onClick={onReload}>
             <RefreshCw className="h-3 w-3" aria-hidden />
             重试
-          </button>
+          </Button>
         }
       />
     );

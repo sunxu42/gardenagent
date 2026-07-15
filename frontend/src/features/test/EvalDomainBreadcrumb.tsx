@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/button";
+
 interface EvalDomainBreadcrumbProps {
   domainLabel: string;
   onBack: () => void;
@@ -11,9 +13,14 @@ export function EvalDomainBreadcrumb({
 }: EvalDomainBreadcrumbProps): JSX.Element {
   return (
     <div className="eval-domain-breadcrumb">
-      <button className="eval-domain-breadcrumb__back" type="button" onClick={onBack}>
+      <Button
+        type="button"
+        variant="link"
+        className="eval-domain-breadcrumb__back h-auto p-0 text-inherit"
+        onClick={onBack}
+      >
         ‹ 总览
-      </button>
+      </Button>
       <span className="eval-domain-breadcrumb__sep">/</span>
       <span className="eval-domain-breadcrumb__current">{domainLabel}</span>
       {meta ? <span className="eval-domain-breadcrumb__meta">{meta}</span> : null}

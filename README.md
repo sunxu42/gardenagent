@@ -204,10 +204,9 @@ Session 写入策略（默认）：
 
 ## 测试
 
-```bash
-# 评测冒烟
-pytest -m smoke tests/eval/
+仓库内已移除 pytest 套件。Agent 质量回归通过 **`eval/` + `data/eval_fixtures/`** 在服务运行后由前端 Test Panel 或 `/api/eval/*` 执行。
 
-# 评测单元测试
-pytest tests/eval/unit/
+```bash
+python -m server
+# 然后使用 Test Panel / eval API 跑 smoke、judge 场景
 ```

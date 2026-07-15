@@ -3,8 +3,13 @@
   align-items: center;
   min-height: 2.75rem;
   padding: 0 1rem;
-  border-bottom: 1px solid hsl(var(--border) / 0.32);
-  background: hsl(var(--background) / 0.48);
+  border-bottom: 1px solid hsl(var(--panel-divider));
+  background: hsl(var(--panel-surface-list));
+  box-shadow: 0 1px 0 hsl(var(--panel-divider-highlight) / 0.45);
+}
+
+.rail-detail-pane .rail-panel-header {
+  background: hsl(var(--panel-surface-detail));
 }
 
 .rail-panel-header__row {
@@ -31,8 +36,9 @@
   align-items: center;
   justify-content: center;
   border-radius: 0.375rem;
-  background: hsl(var(--muted) / 0.45);
-  color: hsl(var(--muted-foreground));
+  border: 1px solid hsl(var(--panel-divider) / 0.75);
+  background: hsl(var(--panel-surface-tint));
+  color: hsl(var(--primary));
 }
 
 .rail-panel-header__actions {
