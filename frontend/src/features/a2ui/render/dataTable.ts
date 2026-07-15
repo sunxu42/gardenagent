@@ -10,10 +10,10 @@ interface TableColumn {
   header: string;
 }
 
-interface TableRow {
-  id: string;
-  [key: string]: string;
-}
+export type TableRow = {
+  id?: string;
+  [key: string]: string | undefined;
+};
 
 export function renderDataTable(params: {
   title: string;
@@ -32,7 +32,7 @@ export function renderDataTable(params: {
       header: column.header.trim(),
     }))
     .filter((column) => column.key && column.header);
-  const rows = params.rows.map((row, index) => ({
+  const rows: Array<Record<string, string> & { id: string }> = params.rows.map((row, index) => ({
     id: (row.id || `row-${index + 1}`).trim(),
     ...Object.fromEntries(
       columns.map((column) => [column.key, String(row[column.key] ?? "").trim()]),
@@ -102,10 +102,10 @@ export function renderDataTable(params: {
     });
   }
 
-  const messages: A2UIMessage[] = [
+  const messages = [
     { version: A2UI_VERSION, createSurface: { surfaceId, catalogId: DEFAULT_CATALOG_ID } },
     { version: A2UI_VERSION, updateComponents: { surfaceId, components } },
-  ];
+  ] as A2UIMessage[];
 
   if (interactive) {
     messages.push({

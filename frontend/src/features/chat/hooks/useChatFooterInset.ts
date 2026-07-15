@@ -13,7 +13,7 @@ export function useChatFooterInset(
     const footer = footerRef.current;
     const scrollEl = scrollRef.current;
     const shell = scrollEl?.closest(".chat-ios");
-    if (!footer || !shell) {
+    if (!(footer && shell instanceof HTMLElement)) {
       return;
     }
 

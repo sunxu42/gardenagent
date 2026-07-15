@@ -1,6 +1,6 @@
 import type { A2UIMessage } from "a2ui-shadcn";
 import { A2UI_CATALOG } from "./catalogIndex";
-import { renderDataTable } from "./render/dataTable";
+import { renderDataTable, type TableRow } from "./render/dataTable";
 import { renderDatePicker } from "./render/datePicker";
 import { renderMultiSelect } from "./render/multiSelect";
 import { renderSingleSelect, type SingleSelectParams } from "./render/singleSelect";
@@ -23,7 +23,7 @@ type DatePickerParams = {
 type DataTableParams = {
   title: string;
   columns: Array<{ key: string; header: string }>;
-  rows: Array<Record<string, string>>;
+  rows: TableRow[];
   interactive?: boolean;
   footnote?: string;
 };

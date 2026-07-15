@@ -111,7 +111,7 @@ describe("chatReducer agui", () => {
     const a2uiPart = state.messages[0]?.parts.find((part) => part.type === "a2ui");
     if (a2uiPart?.type === "a2ui") {
       expect(a2uiPart.interaction).toBe("resolved");
-      const lastOp = a2uiPart.messages.at(-1);
+      const lastOp = a2uiPart.messages[a2uiPart.messages.length - 1];
       expect(lastOp).toEqual({
         version: "v0.9",
         updateDataModel: {

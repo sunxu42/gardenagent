@@ -164,7 +164,7 @@ describe("chatHistoryTypes parts", () => {
     const a2uiPart = restored.parts.find((part) => part.type === "a2ui");
     expect(a2uiPart?.type).toBe("a2ui");
     if (a2uiPart?.type === "a2ui") {
-      const lastOp = a2uiPart.messages.at(-1);
+      const lastOp = a2uiPart.messages[a2uiPart.messages.length - 1];
       expect(lastOp).toEqual({
         version: "v0.9",
         updateDataModel: {

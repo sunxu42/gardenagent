@@ -3,6 +3,8 @@ import { forwardRef, type ComponentPropsWithoutRef, type ElementType } from "rea
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
+type ScrollAreaProps = ComponentPropsWithoutRef<typeof ScrollArea>;
+
 type PolymorphicProps<T extends ElementType> = {
   as?: T;
   className?: string;
@@ -60,7 +62,7 @@ export function RailDetailPane({
   return <Tag className={cn("rail-detail-pane", className)} {...props} />;
 }
 
-interface RailPanelScrollProps extends ComponentPropsWithoutRef<"div"> {
+interface RailPanelScrollProps extends Omit<ScrollAreaProps, "ref"> {
   padded?: boolean;
 }
 
