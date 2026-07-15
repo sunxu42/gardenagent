@@ -1,0 +1,20 @@
+id: a2ui_negative_explain_ok
+domain: tools
+tags:
+- tool_optional
+- a2ui_explain
+tier: smoke
+description: 请求谜面说明，口语即可，不强制 A2UI（原 info_card 已下线）
+setup:
+  rounds: 1
+user_driver:
+  type: scripted
+  turns:
+  - text: 给我出一个脑筋急转弯谜面吧，随便说说就行。
+assertions:
+- type: tool_not_called
+  name: show_single_select_not_called
+  tool_name: show_single_select
+- type: tool_not_called
+  name: show_data_table_not_called
+  tool_name: show_data_table

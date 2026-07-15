@@ -3,17 +3,21 @@ import { useSearchParams } from "react-router-dom";
 import { Composer } from "../features/chat/components/Composer";
 import { HeaderBar } from "../features/chat/components/HeaderBar";
 import { MessageList } from "../features/chat/components/MessageList";
+import { showUiActionToast } from "../features/chat/lib/uiActionToast";
 import { RetryHint } from "../features/chat/components/RetryHint";
 import { SettingsDrawer } from "../features/chat/components/SettingsDrawer";
 import { ClearUserDataDialog } from "../features/chat/components/ClearUserDataDialog";
 import { StrategyPanel } from "../features/strategy/StrategyPanel";
 import { MobileStrategySheet } from "../features/strategy/MobileStrategySheet";
 import { EvalRunProvider } from "../features/test/EvalRunProvider";
+import { A2UIProviderShell } from "../features/chat/components/A2UIProviderShell";
 import type { EvalWsEvent } from "../features/test/evalWsTypes";
 import { parseStrategyPanelTab, type StrategyPanelTab } from "../features/strategy/types";
 import { chatReducer, initialChatState } from "../features/chat/store/chatReducer";
-import type { ChatSettings, ChatState, ThemeName, AppearanceMode } from "../features/chat/types";
+import type { ChatSettings, ChatState, AppearanceMode } from "../features/chat/types";
 import { useChatHistoryPersistence } from "../features/chat/hooks/useChatHistoryPersistence";
+import { useChatScrollChrome } from "../features/chat/hooks/useChatScrollChrome";
+import { useChatFooterInset } from "../features/chat/hooks/useChatFooterInset";
 import { useStickToBottomScroll } from "../features/chat/hooks/useStickToBottomScroll";
 import { DEFAULT_TTS_VOICE } from "../features/chat/ttsVoices";
 import { toggleAffectLockRef } from "../features/chat/lib/emotionReference";
@@ -29,12 +33,7 @@ import { loadSettingsForUser, saveSettingsForUser } from "../lib/settingsStorage
 import { clearServerUserData } from "../services/userDataApi";
 import { useMediaQuery } from "../lib/useMediaQuery";
 
-const themeSet = new Set<ThemeName>(["mint-cute", "pink-blossom", "gray-mist", "orange-sunrise"]);
 const appearanceSet = new Set<AppearanceMode>(["light", "dark"]);
-
-function isThemeName(value: unknown): value is ThemeName {
-  return typeof value === "string" && themeSet.has(value as ThemeName);
-}
 
 function isAppearanceMode(value: unknown): value is AppearanceMode {
   return typeof value === "string" && appearanceSet.has(value as AppearanceMode);
@@ -46,7 +45,6 @@ function mergeSettings(partial: Partial<ChatSettings>): ChatSettings {
     ...initialChatState.settings,
     ...partial,
     voiceType: voiceType || initialChatState.settings.voiceType || DEFAULT_TTS_VOICE,
-    theme: isThemeName(partial.theme) ? partial.theme : initialChatState.settings.theme,
     appearance: isAppearanceMode(partial.appearance)
       ? partial.appearance
       : initialChatState.settings.appearance,
@@ -93,7 +91,11 @@ export function ChatApp() {
     typeof window !== "undefined" ? getOrCreateUserId() : "user_ssr_placeholder",
   );
   const voiceTypeRef = useRef("");
-  const { scrollRef: chatScrollRef, onScroll: onChatScroll } = useStickToBottomScroll(state.messages);
+  const footerRef = useRef<HTMLElement>(null);
+  const { scrollRef: chatScrollRef, onScroll: onChatScroll, pinToBottom } =
+    useStickToBottomScroll(state.messages);
+  useChatFooterInset(footerRef, chatScrollRef);
+  const { compact: chromeCompact, onScroll: onChromeScroll } = useChatScrollChrome(chatScrollRef);
   const { historyLoading, hasMoreHistory, onHistoryScroll } = useChatHistoryPersistence({
     userId: userIdRef.current,
     messages: state.messages,
@@ -185,6 +187,7 @@ export function ChatApp() {
     const turnAt = Date.now();
     const userMessageId = `user-${turnAt}`;
     const assistantId = `assistant-${turnAt}`;
+    const runId = `run-${turnAt}`;
 
     dispatch({
       type: "messageQueued",
@@ -211,7 +214,8 @@ export function ChatApp() {
         value: "",
       },
     });
-    chatApiRef.current?.sendText(trimmed);
+    pinToBottom();
+    chatApiRef.current?.sendText(trimmed, { messageId: assistantId, runId });
   };
 
   const handleClearUserData = useCallback(async () => {
@@ -278,18 +282,22 @@ export function ChatApp() {
   };
 
   return (
+    <A2UIProviderShell>
     <EvalRunProvider eventDispatchRef={evalEventDispatchRef}>
     <div
       className="chat-app-shell"
-      data-theme={state.settings.theme}
       data-appearance={state.settings.appearance}
       data-font-size={state.settings.fontSize}
       data-motion={state.settings.motion}
     >
       <div className="chat-app-layout">
         <div className="chat-main-column">
-        <div className="mobile-chat-page mobile-shell" data-theme={state.settings.theme} data-appearance={state.settings.appearance}>
-        <header role="banner">
+        <div
+          className="mobile-chat-page mobile-shell chat-ios"
+          data-appearance={state.settings.appearance}
+          data-scroll-compact={chromeCompact || undefined}
+        >
+        <header role="banner" className="chat-ios-chrome chat-ios-chrome--top">
           <HeaderBar
             agentName={agentDisplayName}
             connectionStatus={state.connectionStatus}
@@ -304,16 +312,52 @@ export function ChatApp() {
           onScroll={() => {
             onChatScroll();
             onHistoryScroll();
+            onChromeScroll();
           }}
         >
           <MessageList
             messages={state.messages}
             historyLoading={historyLoading}
             hasMoreHistory={hasMoreHistory}
+            connectionStatus={state.connectionStatus}
+            onUiAction={(payload) => {
+              if (state.connectionStatus === "offline") {
+                showUiActionToast("连接已断开，请等待重连后再操作");
+                return;
+              }
+              const target = state.messages.find((message) => message.id === payload.messageId);
+              const pendingOnSurface = target?.parts.some(
+                (part) =>
+                  part.type === "a2ui" &&
+                  part.surfaceId === payload.surfaceId &&
+                  part.interaction === "pending",
+              );
+              if (target?.status === "done" && !pendingOnSurface) {
+                showUiActionToast("会话已过期，请重新发送");
+                return;
+              }
+              const ok = chatApiRef.current?.sendUiAction(payload);
+              if (!ok) {
+                showUiActionToast("会话已过期，请重新发送");
+                return;
+              }
+              dispatch({
+                type: "a2uiInteractionResolved",
+                payload: {
+                  messageId: payload.messageId,
+                  surfaceId: payload.surfaceId,
+                  action: payload.action,
+                },
+              });
+            }}
           />
           <RetryHint visible={state.connectionStatus === "offline"} />
         </main>
-        <footer role="contentinfo" className="chat-footer">
+        <footer
+          ref={footerRef}
+          role="contentinfo"
+          className="chat-footer chat-ios-footer chat-ios-chrome chat-ios-chrome--bottom"
+        >
           <Composer
             value={state.inputValue}
             voiceError={state.voiceError}
@@ -344,6 +388,7 @@ export function ChatApp() {
           open={clearDialogOpen}
           busy={clearBusy}
           error={clearError}
+          appearance={state.settings.appearance}
           onOpenChange={setClearDialogOpen}
           onConfirm={() => void handleClearUserData()}
         />
@@ -360,5 +405,6 @@ export function ChatApp() {
       ) : null}
     </div>
     </EvalRunProvider>
+    </A2UIProviderShell>
   );
 }

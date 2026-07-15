@@ -23,9 +23,9 @@ function VadAxisScale({
           <span className="text-muted-foreground/70">中性</span>
           <span className="text-primary">{poleHigh}</span>
         </div>
-        <div className="relative mt-1 h-2 overflow-hidden rounded-full bg-muted/40">
+        <div className="relative mt-1 h-2 overflow-hidden rounded-full affect-guide-scale-track">
           <div
-            className="absolute inset-0 bg-gradient-to-r from-slate-400/75 via-slate-300/45 to-primary"
+            className="absolute inset-0 bg-gradient-to-r from-sky-300/80 via-sky-200/50 to-primary"
             aria-hidden
           />
         </div>
@@ -44,7 +44,7 @@ function VadAxisScale({
         <span>{poleLow}</span>
         <span className="text-primary">{poleHigh}</span>
       </div>
-      <div className="relative mt-1 h-2 overflow-hidden rounded-full bg-muted/40">
+      <div className="relative mt-1 h-2 overflow-hidden rounded-full affect-guide-scale-track">
         <div
           className="absolute inset-0 bg-gradient-to-r from-primary/30 to-primary"
           aria-hidden
@@ -68,10 +68,7 @@ export function VadDimensionGuide() {
   return (
     <div className="space-y-2">
       {VAD_DIMENSIONS.map((dim) => (
-        <article
-          key={dim.key}
-          className="rounded-md bg-muted/20 px-3 py-2.5"
-        >
+        <article key={dim.key} className="affect-guide-inset affect-guide-inset--violet px-3 py-2.5">
           <header className="flex items-start gap-2.5">
             <span
               className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/12 text-xs font-semibold text-primary"

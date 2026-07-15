@@ -12,8 +12,8 @@ from agent.memory.runtime.flush import (
     flush_agent_session_memory,
     run_memory_idle_flush_loop,
 )
-from agent.middlewares.mem0_oss_middleware import Mem0OssMiddleware
-from agent.middlewares.mem0_summarization_flush_middleware import Mem0SummarizationFlushMiddleware
+from agent.middlewares.memory_flush_on_summarize import MemoryFlushOnSummarizeMiddleware
+from agent.middlewares.memory_recall import MemoryRecallMiddleware
 from agent.tools.remember import create_remember_tool
 
 
@@ -34,8 +34,8 @@ def setup_memory_subsystem(config, agent_holder: Any) -> MemorySubsystem:
         mem0_service = Mem0Service.create(config)
         session_buffer = SessionBuffer()
         middleware = [
-            Mem0OssMiddleware(mem0_service, config, session_buffer=session_buffer),
-            Mem0SummarizationFlushMiddleware(agent_holder),
+            MemoryRecallMiddleware(mem0_service, config, session_buffer=session_buffer),
+            MemoryFlushOnSummarizeMiddleware(agent_holder),
         ]
         extra_tools = [
             create_remember_tool(

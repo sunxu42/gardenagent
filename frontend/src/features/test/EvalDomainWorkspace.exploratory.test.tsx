@@ -66,7 +66,8 @@ describe("EvalDomainWorkspace exploratory", () => {
     await waitFor(() => {
       expect(startExploratoryEvalAsync).toHaveBeenCalled();
       expect(screen.getByRole("button", { name: "取消测试" })).toBeInTheDocument();
-      expect(screen.getByText("探索过程")).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "exploratory" })).toBeInTheDocument();
+      expect(screen.getByText("运行中")).toBeInTheDocument();
     });
   });
 

@@ -1,0 +1,35 @@
+id: emotion_disgusted_01
+domain: emotion
+tags:
+- mood_disgusted
+- single_turn
+tier: smoke
+description: 厌恶不适，检查承认不适、不放大恶心细节
+setup:
+  rounds: 1
+user_driver:
+  type: scripted
+  turns:
+  - text: 食堂的菜有一股怪味，好恶心，我不想吃了。
+assertions:
+- type: assistant_max_length
+  name: concise_reply
+  max_chars: 120
+- type: assistant_not_contains
+  name: no_amplification
+  forbidden:
+  - 太危险了
+  - 肯定有毒
+  - 别矫情
+- type: assistant_contains
+  name: acknowledges_discomfort
+  required:
+  - 恶心
+  - 怪味
+  - 不想吃
+  any_round: true
+- type: assistant_min_length
+  name: empathetic_reply
+  min_chars: 20
+assertion_sets:
+- emotion_smoke_base

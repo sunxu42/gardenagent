@@ -1,0 +1,165 @@
+/* Affect panel — align accent colors with --apple-* tokens */
+
+.affect-tint-accent {
+  border: 0.5px solid color-mix(in srgb, var(--apple-accent) 22%, transparent);
+  background: color-mix(in srgb, var(--apple-accent) 8%, white);
+}
+
+.affect-dot-accent {
+  background: var(--apple-accent);
+}
+
+.affect-tint-green {
+  border: 0.5px solid color-mix(in srgb, var(--apple-green) 24%, transparent);
+  background: color-mix(in srgb, var(--apple-green) 10%, white);
+}
+
+.affect-status-accent {
+  background: color-mix(in srgb, var(--apple-accent) 7%, white);
+}
+
+[data-appearance="dark"] .affect-tint-accent {
+  background: color-mix(in srgb, var(--apple-accent) 10%, transparent);
+}
+
+[data-appearance="dark"] .affect-tint-green {
+  background: color-mix(in srgb, var(--apple-green) 12%, transparent);
+}
+
+[data-appearance="dark"] .affect-status-accent {
+  background: color-mix(in srgb, var(--apple-accent) 9%, transparent);
+}
+
+/* ── Guide panel surfaces (情绪模块说明) — bright grouped cells, not gray muted */
+
+.affect-guide-section {
+  border-radius: 0.5rem;
+  border: 1px solid hsl(var(--panel-divider) / 0.8);
+  border-left-width: 3px;
+  background: hsl(var(--panel-surface-detail));
+}
+
+.affect-guide-section--amber {
+  border-color: color-mix(in srgb, #fbbf24 32%, hsl(var(--panel-divider)));
+  border-left-color: #f59e0b;
+  background: linear-gradient(165deg, #fffbeb 0%, #ffffff 62%);
+}
+
+.affect-guide-section--sky {
+  border-color: color-mix(in srgb, #38bdf8 28%, hsl(var(--panel-divider)));
+  border-left-color: #0ea5e9;
+  background: linear-gradient(165deg, #f0f9ff 0%, #ffffff 62%);
+}
+
+.affect-guide-section--indigo {
+  border-color: color-mix(in srgb, #818cf8 30%, hsl(var(--panel-divider)));
+  border-left-color: #6366f1;
+  background: linear-gradient(165deg, #eef2ff 0%, #ffffff 62%);
+}
+
+.affect-guide-section--violet {
+  border-color: color-mix(in srgb, #a78bfa 30%, hsl(var(--panel-divider)));
+  border-left-color: #8b5cf6;
+  background: linear-gradient(165deg, #f5f3ff 0%, #ffffff 62%);
+}
+
+[data-appearance="dark"] .affect-guide-section--amber {
+  border-color: color-mix(in srgb, #f59e0b 35%, hsl(var(--panel-divider)));
+  background: linear-gradient(165deg, rgb(120 53 15 / 28%) 0%, hsl(var(--panel-surface-detail)) 68%);
+}
+
+[data-appearance="dark"] .affect-guide-section--sky {
+  border-color: color-mix(in srgb, #0ea5e9 32%, hsl(var(--panel-divider)));
+  background: linear-gradient(165deg, rgb(12 74 110 / 26%) 0%, hsl(var(--panel-surface-detail)) 68%);
+}
+
+[data-appearance="dark"] .affect-guide-section--indigo {
+  border-color: color-mix(in srgb, #6366f1 34%, hsl(var(--panel-divider)));
+  background: linear-gradient(165deg, rgb(49 46 129 / 28%) 0%, hsl(var(--panel-surface-detail)) 68%);
+}
+
+[data-appearance="dark"] .affect-guide-section--violet {
+  border-color: color-mix(in srgb, #8b5cf6 34%, hsl(var(--panel-divider)));
+  background: linear-gradient(165deg, rgb(76 29 149 / 28%) 0%, hsl(var(--panel-surface-detail)) 68%);
+}
+
+.affect-guide-nav {
+  border-bottom: 1px solid hsl(var(--panel-divider) / 0.85);
+}
+
+.affect-guide-nav__track {
+  border: 1px solid hsl(var(--panel-divider) / 0.75);
+  border-radius: 0.5rem;
+  background: hsl(var(--panel-surface-detail));
+  box-shadow: inset 0 1px 0 hsl(var(--panel-divider-highlight) / 0.4);
+}
+
+.affect-guide-inset {
+  border: 1px solid hsl(var(--panel-divider) / 0.7);
+  border-radius: 0.375rem;
+  background: hsl(var(--panel-surface-tint));
+}
+
+.affect-guide-inset--sky {
+  border-color: color-mix(in srgb, #38bdf8 24%, hsl(var(--panel-divider)));
+  background: linear-gradient(180deg, #f0f9ff 0%, #ffffff 100%);
+}
+
+.affect-guide-inset--indigo {
+  border-color: color-mix(in srgb, #818cf8 24%, hsl(var(--panel-divider)));
+  background: linear-gradient(180deg, #eef2ff 0%, #ffffff 100%);
+}
+
+.affect-guide-inset--violet {
+  border-color: color-mix(in srgb, #a78bfa 24%, hsl(var(--panel-divider)));
+  background: linear-gradient(180deg, #f5f3ff 0%, #ffffff 100%);
+}
+
+[data-appearance="dark"] .affect-guide-inset--sky {
+  background: linear-gradient(180deg, rgb(12 74 110 / 22%) 0%, hsl(var(--panel-surface-detail)) 100%);
+}
+
+[data-appearance="dark"] .affect-guide-inset--indigo {
+  background: linear-gradient(180deg, rgb(49 46 129 / 24%) 0%, hsl(var(--panel-surface-detail)) 100%);
+}
+
+[data-appearance="dark"] .affect-guide-inset--violet {
+  background: linear-gradient(180deg, rgb(76 29 149 / 24%) 0%, hsl(var(--panel-surface-detail)) 100%);
+}
+
+.affect-guide-card {
+  border-radius: 0.375rem;
+  border: 1px solid hsl(var(--panel-divider) / 0.72);
+  background: hsl(var(--panel-surface-detail));
+}
+
+.affect-guide-card--amber {
+  border-color: color-mix(in srgb, #fbbf24 28%, hsl(var(--panel-divider)));
+  background: linear-gradient(180deg, #fffbeb 0%, #ffffff 100%);
+}
+
+.affect-guide-card--violet {
+  border-color: color-mix(in srgb, #a78bfa 26%, hsl(var(--panel-divider)));
+  background: linear-gradient(180deg, #f5f3ff 0%, #ffffff 100%);
+}
+
+.affect-guide-card--sky {
+  border-color: color-mix(in srgb, var(--apple-accent) 26%, hsl(var(--panel-divider)));
+  background: color-mix(in srgb, var(--apple-accent) 7%, white);
+}
+
+[data-appearance="dark"] .affect-guide-card--amber {
+  background: linear-gradient(180deg, rgb(120 53 15 / 24%) 0%, hsl(var(--panel-surface-detail)) 100%);
+}
+
+[data-appearance="dark"] .affect-guide-card--violet {
+  background: linear-gradient(180deg, rgb(76 29 149 / 22%) 0%, hsl(var(--panel-surface-detail)) 100%);
+}
+
+.affect-guide-scale-track {
+  background: color-mix(in srgb, var(--apple-accent) 12%, #e0f2fe);
+}
+
+[data-appearance="dark"] .affect-guide-scale-track {
+  background: color-mix(in srgb, var(--apple-accent) 18%, hsl(var(--panel-surface-muted)));
+}

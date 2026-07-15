@@ -1,0 +1,724 @@
+/* iOS 26 Settings — glass chrome layer + solid grouped content (Web approximation)
+   Portal renders outside .chat-app-shell — tokens on .ios-settings-root */
+
+.ios-settings-root[data-appearance="light"] {
+  --apple-accent: #007aff;
+  --apple-accent-pressed: #0062cc;
+  --apple-red: #ff3b30;
+  --apple-green: #34c759;
+  --apple-bg: #ffffff;
+  --apple-grouped-bg: #f2f2f7;
+  --apple-cell-bg: #ffffff;
+  --apple-cell-hover: #f0f4ff;
+  --apple-label: rgb(0 0 0 / 88%);
+  --apple-secondary-label: rgb(60 60 67 / 60%);
+  --apple-separator: rgb(60 60 67 / 16%);
+  --apple-glass-bg: rgb(255 255 255 / 72%);
+  --apple-glass-border: rgb(255 255 255 / 55%);
+  --apple-glass-blur: 40px;
+  --apple-glass-saturate: 180%;
+  --apple-radius-lg: 1.375rem;
+  --apple-radius-md: 0.75rem;
+  --glass-highlight: rgb(255 255 255 / 80%);
+  --chrome-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --settings-inset-x: 1.125rem;
+  --settings-inset-y: 1rem;
+  --settings-group-gap: 1.375rem;
+  --settings-label-inset: 0.125rem;
+  --settings-row-padding-x: 1rem;
+}
+
+.ios-settings-root[data-appearance="dark"] {
+  --apple-accent: #0a84ff;
+  --apple-accent-pressed: #409cff;
+  --apple-red: #ff453a;
+  --apple-green: #30d158;
+  --apple-bg: #000000;
+  --apple-grouped-bg: #1c1c1e;
+  --apple-cell-bg: #2c2c2e;
+  --apple-cell-hover: #3a3a3c;
+  --apple-label: rgb(255 255 255 / 92%);
+  --apple-secondary-label: rgb(235 235 245 / 48%);
+  --apple-separator: rgb(255 255 255 / 12%);
+  --apple-glass-bg: rgb(44 44 46 / 68%);
+  --apple-glass-border: rgb(255 255 255 / 14%);
+  --apple-glass-blur: 40px;
+  --apple-glass-saturate: 180%;
+  --glass-highlight: rgb(255 255 255 / 10%);
+  --chrome-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --settings-inset-x: 1.125rem;
+  --settings-inset-y: 1rem;
+  --settings-group-gap: 1.375rem;
+  --settings-label-inset: 0.125rem;
+  --settings-row-padding-x: 1rem;
+}
+
+/* Overlay */
+.ios-settings-overlay {
+  background: rgb(0 0 0 / 32%) !important;
+  backdrop-filter: blur(8px) saturate(120%);
+  -webkit-backdrop-filter: blur(8px) saturate(120%);
+}
+
+.ios-settings-overlay--dark {
+  background: rgb(0 0 0 / 52%) !important;
+}
+
+/* Sheet shell */
+.ios-settings-sheet {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-family: ui-sans-serif, system-ui, -apple-system, "SF Pro Text", "PingFang SC",
+    "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Content panel — solid grouped surface (not glass) */
+.ios-settings-sheet__panel {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--apple-grouped-bg);
+  color: var(--apple-label);
+}
+
+.ios-settings-sheet--bottom {
+  top: 8dvh !important;
+  height: 92dvh !important;
+  max-height: 92dvh !important;
+}
+
+.ios-settings-sheet--bottom .ios-settings-sheet__panel {
+  border-radius: var(--apple-radius-lg) var(--apple-radius-lg) 0 0;
+  height: 100%;
+  max-height: 92dvh;
+  box-shadow: 0 -10px 44px rgb(0 0 0 / 16%);
+}
+
+.ios-settings-sheet--center {
+  width: min(92vw, 24rem) !important;
+  max-width: 24rem !important;
+  height: min(88dvh, 42rem) !important;
+  max-height: min(88dvh, 42rem) !important;
+}
+
+.ios-settings-sheet--center .ios-settings-sheet__panel {
+  height: 100%;
+  max-height: min(88dvh, 42rem);
+  border: 0.5px solid var(--apple-separator);
+  border-radius: var(--apple-radius-lg);
+  box-shadow: 0 16px 48px rgb(0 0 0 / 18%), 0 0 0 0.5px rgb(255 255 255 / 35%) inset;
+}
+
+.ios-settings-drag-handle {
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 0.25rem;
+  margin: 0.625rem auto 0.375rem;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--apple-secondary-label) 45%, transparent);
+}
+
+/* Glass navigation chrome only */
+.ios-settings-header--glass {
+  flex-shrink: 0;
+  padding: var(--settings-inset-y) var(--settings-inset-x) 0.75rem;
+  padding-right: calc(var(--settings-inset-x) + 2.25rem);
+  border-bottom: 0.5px solid var(--apple-separator);
+  background: var(--apple-glass-bg);
+  backdrop-filter: blur(var(--apple-glass-blur)) saturate(var(--apple-glass-saturate));
+  -webkit-backdrop-filter: blur(var(--apple-glass-blur)) saturate(var(--apple-glass-saturate));
+  box-shadow: 0 1px 0 var(--glass-highlight) inset;
+}
+
+.ios-settings-sheet--bottom .ios-settings-header--glass {
+  padding-top: 0.25rem;
+}
+
+.ios-settings-sheet--bottom .ios-settings-header--glass:not(.ios-settings-header--nav) {
+  padding-left: calc(var(--settings-inset-x) + 2.25rem);
+  text-align: center;
+}
+
+.ios-settings-header--nav {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.5rem;
+  padding-right: calc(var(--settings-inset-x) + 2.25rem);
+}
+
+.ios-settings-header__title {
+  margin: 0;
+  justify-self: center;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--apple-label);
+}
+
+.ios-settings-header__spacer {
+  justify-self: end;
+  width: 1px;
+}
+
+.ios-settings-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+  justify-self: start;
+  border: none;
+  background: transparent;
+  padding: 0.25rem 0;
+  font-size: 1.0625rem;
+  font-weight: 400;
+  color: var(--apple-accent);
+  cursor: pointer;
+  transition: opacity 180ms ease, transform 200ms var(--chrome-ease);
+}
+
+.ios-settings-back:hover {
+  opacity: 0.82;
+}
+
+.ios-settings-back:active {
+  transform: scale(0.97);
+}
+
+.ios-settings-back:focus-visible {
+  outline: 2px solid var(--apple-accent);
+  outline-offset: 2px;
+  border-radius: 0.375rem;
+}
+
+.ios-settings-header [data-radix-dialog-title] {
+  margin: 0;
+  font-size: 1.375rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: var(--apple-label);
+}
+
+.ios-settings-sheet--bottom .ios-settings-header [data-radix-dialog-title] {
+  font-size: 1.125rem;
+  text-align: center;
+}
+
+.ios-settings-header [data-radix-dialog-description] {
+  margin-top: 0.2rem;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--apple-secondary-label);
+}
+
+.ios-settings-sheet--bottom .ios-settings-header [data-radix-dialog-description] {
+  text-align: center;
+}
+
+/* Navigation stack */
+.ios-settings-nav {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.ios-settings-nav__track {
+  display: flex;
+  flex: 1 1 auto;
+  width: 200%;
+  min-height: 0;
+  transition: transform 340ms var(--chrome-ease);
+}
+
+.ios-settings-nav__track--voice {
+  transform: translateX(-50%);
+}
+
+.ios-settings-nav__page {
+  display: flex;
+  width: 50%;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ios-settings-nav__page[aria-hidden="true"] {
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Scroll region + edge fade */
+.ios-settings-scroll-chrome {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.ios-settings-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: var(--settings-inset-y) var(--settings-inset-x) 1.5rem;
+  padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
+}
+
+.ios-settings-scroll-edge {
+  pointer-events: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  height: 1.25rem;
+  opacity: 0;
+  transition: opacity 220ms var(--chrome-ease);
+}
+
+.ios-settings-scroll-edge.is-visible {
+  opacity: 1;
+}
+
+.ios-settings-scroll-edge--top {
+  top: 0;
+  background: linear-gradient(
+    180deg,
+    var(--apple-grouped-bg) 0%,
+    color-mix(in srgb, var(--apple-grouped-bg) 72%, transparent) 55%,
+    transparent 100%
+  );
+}
+
+.ios-settings-scroll-edge--bottom {
+  bottom: 0;
+  background: linear-gradient(
+    0deg,
+    var(--apple-grouped-bg) 0%,
+    color-mix(in srgb, var(--apple-grouped-bg) 72%, transparent) 55%,
+    transparent 100%
+  );
+}
+
+/* Close — glass control in chrome layer */
+.ios-settings-sheet > button.absolute {
+  top: calc(var(--settings-inset-y) + 0.125rem) !important;
+  right: var(--settings-inset-x) !important;
+  z-index: 20;
+  display: inline-flex;
+  height: 2rem;
+  width: 2rem;
+  align-items: center;
+  justify-content: center;
+  border: 0.5px solid var(--apple-glass-border);
+  border-radius: 9999px;
+  background: var(--apple-glass-bg);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  opacity: 1 !important;
+  color: var(--apple-label);
+  box-shadow: 0 1px 0 var(--glass-highlight) inset;
+  transition:
+    background-color 200ms ease,
+    transform 200ms var(--chrome-ease),
+    color 200ms ease;
+}
+
+.ios-settings-sheet > button.absolute:hover {
+  background: color-mix(in srgb, var(--apple-accent) 14%, var(--apple-glass-bg));
+  color: var(--apple-accent);
+}
+
+.ios-settings-sheet > button.absolute:active {
+  transform: scale(0.9);
+}
+
+.ios-settings-sheet > button.absolute:focus-visible {
+  outline: 2px solid var(--apple-accent);
+  outline-offset: 2px;
+}
+
+/* Groups */
+.ios-settings-group + .ios-settings-group {
+  margin-top: var(--settings-group-gap);
+}
+
+.ios-settings-group__label {
+  margin: 0 0 0.4375rem var(--settings-label-inset);
+  padding-inline: 0.125rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--apple-secondary-label);
+}
+
+.ios-settings-group__label--danger {
+  color: var(--apple-red);
+}
+
+.ios-settings-list {
+  overflow: hidden;
+  border: 0.5px solid var(--apple-separator);
+  border-radius: var(--apple-radius-md);
+  background: var(--apple-cell-bg);
+  box-shadow: 0 1px 0 rgb(255 255 255 / 55%) inset;
+}
+
+.ios-settings-root[data-appearance="dark"] .ios-settings-list {
+  box-shadow: 0 1px 0 rgb(255 255 255 / 6%) inset;
+}
+
+.ios-settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 2.875rem;
+  padding: 0.6875rem var(--settings-row-padding-x);
+  border-bottom: 0.5px solid var(--apple-separator);
+}
+
+.ios-settings-row:last-child {
+  border-bottom: none;
+}
+
+.ios-settings-row--stacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+.ios-settings-row--disclosure {
+  width: 100%;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  text-align: left;
+  transition: background-color 180ms ease;
+}
+
+.ios-settings-row--disclosure:hover {
+  background: var(--apple-cell-hover);
+}
+
+.ios-settings-row--disclosure:active {
+  background: color-mix(in srgb, var(--apple-accent) 10%, var(--apple-cell-bg));
+}
+
+.ios-settings-row__label {
+  font-size: 1.0625rem;
+  font-weight: 400;
+  color: var(--apple-label);
+}
+
+.ios-settings-row__value {
+  margin-left: auto;
+  max-width: 52%;
+  font-size: 1rem;
+  color: var(--apple-accent);
+}
+
+.ios-settings-row__chevron {
+  color: var(--apple-secondary-label);
+}
+
+.ios-settings-row--option {
+  width: 100%;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font-size: 1.0625rem;
+  color: var(--apple-label);
+  transition: background-color 180ms ease, color 180ms ease, transform 200ms var(--chrome-ease);
+}
+
+.ios-settings-row--option > span {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ios-settings-row--destructive {
+  width: 100%;
+  justify-content: center;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  font-size: 1.0625rem;
+  font-weight: 400;
+  color: var(--apple-red);
+  transition: background-color 180ms ease, transform 200ms var(--chrome-ease);
+}
+
+.ios-settings-row--destructive:hover {
+  background: color-mix(in srgb, var(--apple-red) 6%, var(--apple-cell-bg));
+}
+
+.ios-settings-row--destructive:active {
+  transform: scale(0.995);
+  background: color-mix(in srgb, var(--apple-red) 10%, var(--apple-cell-bg));
+}
+
+.ios-settings-row--destructive:focus-visible {
+  outline: 2px solid var(--apple-accent);
+  outline-offset: -2px;
+}
+
+.ios-settings-row--option:hover {
+  background: var(--apple-cell-hover);
+}
+
+.ios-settings-row--option:active {
+  transform: scale(0.995);
+}
+
+.ios-settings-row--option-active {
+  color: var(--apple-accent);
+  font-weight: 600;
+  background: color-mix(in srgb, var(--apple-accent) 7%, var(--apple-cell-bg));
+}
+
+/* iOS switch + press morph — absolute thumb avoids Tailwind translate-x-5 mismatch */
+.ios-settings-switch {
+  --ios-switch-width: 3rem;
+  --ios-switch-height: 1.75rem;
+  --ios-switch-thumb: 1.5rem;
+  --ios-switch-inset: 0.125rem;
+
+  position: relative !important;
+  display: inline-block !important;
+  box-sizing: border-box !important;
+  height: var(--ios-switch-height) !important;
+  width: var(--ios-switch-width) !important;
+  padding: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  transition: transform 200ms var(--chrome-ease), background-color 200ms ease !important;
+}
+
+.ios-settings-switch:active {
+  transform: scale(0.94);
+}
+
+.ios-settings-switch[data-state="unchecked"] {
+  background: rgb(120 120 128 / 32%) !important;
+}
+
+.ios-settings-switch[data-state="checked"] {
+  background: var(--apple-green) !important;
+}
+
+.ios-settings-switch > span {
+  position: absolute !important;
+  top: var(--ios-switch-inset) !important;
+  left: var(--ios-switch-inset) !important;
+  right: auto !important;
+  height: var(--ios-switch-thumb) !important;
+  width: var(--ios-switch-thumb) !important;
+  background: #ffffff !important;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 18%) !important;
+  translate: none !important;
+  --tw-translate-x: 0 !important;
+  --tw-translate-y: 0 !important;
+  transform: none !important;
+  transition: left 280ms var(--chrome-ease), transform 200ms var(--chrome-ease) !important;
+}
+
+.ios-settings-switch > span[data-state="checked"] {
+  left: calc(100% - var(--ios-switch-thumb) - var(--ios-switch-inset)) !important;
+  right: auto !important;
+  translate: none !important;
+  --tw-translate-x: 0 !important;
+  transform: none !important;
+}
+
+.ios-settings-switch:active > span {
+  transform: scale(1.06) !important;
+}
+
+/* Inline segmented control */
+.ios-settings-segment {
+  display: flex;
+  gap: 0.125rem;
+  padding: 0.125rem;
+  border: 0.5px solid var(--apple-separator);
+  border-radius: 0.625rem;
+  background: var(--apple-grouped-bg);
+}
+
+.ios-settings-segment__btn {
+  flex: 1 1 0;
+  cursor: pointer;
+  border: none;
+  border-radius: 0.5rem;
+  background: transparent;
+  padding: 0.4375rem 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--apple-secondary-label);
+  transition:
+    background-color 200ms ease,
+    color 200ms ease,
+    box-shadow 200ms ease,
+    transform 200ms var(--chrome-ease);
+}
+
+.ios-settings-segment__btn:hover {
+  color: var(--apple-label);
+}
+
+.ios-settings-segment__btn:active {
+  transform: scale(0.97);
+}
+
+.ios-settings-segment__btn--active {
+  background: var(--apple-cell-bg);
+  color: var(--apple-accent);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 10%), 0 1px 0 rgb(255 255 255 / 70%) inset;
+}
+
+/* Hints */
+.ios-settings-hint {
+  margin: 0.4375rem var(--settings-label-inset) 0;
+  padding-inline: 0.125rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--apple-secondary-label);
+}
+
+.ios-settings-hint--block {
+  margin-top: 0.5rem;
+  margin-bottom: 0;
+}
+
+.ios-settings-hint--footer {
+  margin-top: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+/* Clear data alert */
+.ios-settings-alert-overlay {
+  background: rgb(0 0 0 / 40%) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.ios-settings-alert {
+  border: 0.5px solid var(--apple-separator) !important;
+  border-radius: var(--apple-radius-lg) !important;
+  background: var(--apple-cell-bg) !important;
+  padding: 1.25rem !important;
+  color: var(--apple-label) !important;
+  box-shadow: 0 16px 48px rgb(0 0 0 / 22%) !important;
+}
+
+.ios-settings-alert__title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--apple-red);
+}
+
+.ios-settings-alert__desc {
+  margin-top: 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--apple-secondary-label);
+}
+
+.ios-settings-alert__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+
+.ios-settings-alert__btn {
+  cursor: pointer;
+  border: none;
+  border-radius: 0.625rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  transition: background-color 180ms ease, opacity 180ms ease, transform 200ms var(--chrome-ease);
+}
+
+.ios-settings-alert__btn:active {
+  transform: scale(0.97);
+}
+
+.ios-settings-alert__btn--cancel {
+  background: var(--apple-grouped-bg);
+  color: var(--apple-label);
+}
+
+.ios-settings-alert__btn--cancel:hover {
+  background: var(--apple-cell-hover);
+}
+
+.ios-settings-alert__btn--destructive {
+  background: var(--apple-red);
+  color: #ffffff;
+}
+
+.ios-settings-alert__btn--destructive:hover {
+  opacity: 0.92;
+}
+
+.ios-settings-alert__btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .ios-settings-overlay,
+  .ios-settings-alert-overlay {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .ios-settings-header--glass,
+  .ios-settings-sheet > button.absolute {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: var(--apple-cell-bg) !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ios-settings-sheet > button.absolute,
+  .ios-settings-back,
+  .ios-settings-nav__track,
+  .ios-settings-row--option,
+  .ios-settings-row--destructive,
+  .ios-settings-switch,
+  .ios-settings-segment__btn,
+  .ios-settings-alert__btn,
+  .ios-settings-scroll-edge,
+  .ios-settings-row__chevron {
+    transition: none !important;
+  }
+
+  .ios-settings-row--option:active,
+  .ios-settings-row--destructive:active,
+  .ios-settings-switch:active,
+  .ios-settings-sheet > button.absolute:active {
+    transform: none !important;
+  }
+}

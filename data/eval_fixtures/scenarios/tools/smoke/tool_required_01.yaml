@@ -1,0 +1,20 @@
+id: tool_required_01
+domain: tools
+tags:
+- tool_required
+tier: smoke
+description: 明确请求状态查询，应调用 session_status
+setup:
+  rounds: 1
+user_driver:
+  type: scripted
+  turns:
+  - text: 请用工具查询你当前的状态并告诉我。
+assertions:
+- type: assistant_min_length
+  name: non_empty_reply
+  min_chars: 10
+- type: tool_called
+  name: session_status_called
+  tool_name: session_status
+  optional: false

@@ -1,12 +1,12 @@
-"""Renderer registry."""
+"""Renderer registry for prompt modules."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from agent.prompt.context import PromptContext
-from agent.prompt.modules import PromptModule
+from agent.prompt.compose.context import PromptContext
+from agent.prompt.compose.module import PromptModule
 
 RendererFn = Callable[[PromptModule, PromptContext, "RendererDeps"], str]
 
@@ -44,6 +44,14 @@ def validate_manifest_renderers(renderer_names: list[str]) -> None:
 def _ensure_registered() -> None:
     if _REGISTRY:
         return
-    from agent.prompt.renderers import affective, mem0, reply_plan, strategy  # noqa: F401
+    from agent.prompt.renderers import (  # noqa: F401
+        a2ui,
+        affective,
+        emotion_mood,
+        memory,
+        reply_plan,
+        strategy,
+    )
+
 
 _ensure_registered()

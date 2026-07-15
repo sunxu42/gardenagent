@@ -1,4 +1,4 @@
-export const STRATEGY_PANEL_TABS = ["emotion", "prompt", "logs", "memory", "test"] as const;
+export const STRATEGY_PANEL_TABS = ["prompt", "memory", "emotion", "a2ui", "test", "logs"] as const;
 
 export type StrategyPanelTab = (typeof STRATEGY_PANEL_TABS)[number];
 
@@ -14,7 +14,8 @@ export const STRATEGY_TAB_LABELS: Record<StrategyPanelTab, string> = {
   prompt: "提示词",
   logs: "日志",
   memory: "记忆",
+  a2ui: "交互",
   test: "测试",
 };
 
-export type StrategyTabGroup = "insight" | "config" | "quality";
+export type StrategyTabGroup = "prompt" | "context" | "interaction" | "devtools";

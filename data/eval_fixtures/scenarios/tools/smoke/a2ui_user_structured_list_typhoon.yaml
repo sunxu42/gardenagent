@@ -1,0 +1,21 @@
+id: a2ui_user_structured_list_typhoon
+domain: tools
+tags:
+- tool_required
+- a2ui_structured_list
+tier: smoke
+description: 用户要求列举历年结构化记录，应调用 show_data_table
+setup:
+  rounds: 1
+user_driver:
+  type: scripted
+  turns:
+  - text: 帮我列举一下近10年的台风
+assertions:
+- type: tool_called
+  name: show_data_table_called
+  tool_name: show_data_table
+- type: text_not_matches
+  name: no_year_bullet_list
+  pattern: ^\s*[-*]?\s*\*{0,2}\d{4}年
+  optional: true

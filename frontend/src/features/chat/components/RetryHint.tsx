@@ -1,5 +1,3 @@
-import { Badge } from "@/components/ui/badge";
-
 interface RetryHintProps {
   visible: boolean;
 }
@@ -9,5 +7,5 @@ export function RetryHint({ visible }: RetryHintProps) {
     return null;
   }
 
-  return <Badge variant="outline">发送失败可重试。</Badge>;
+  return <span className="chat-ios-retry">发送失败可重试</span>;
 }

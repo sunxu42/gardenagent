@@ -10,7 +10,7 @@ export function AffectSourceList({ title = "判断来源", items }: AffectSource
   if (items.length === 0) return null;
 
   return (
-    <div className="rounded-lg border border-border/70 bg-muted/25 p-2.5">
+    <div className="affect-guide-inset affect-guide-inset--sky p-2.5">
       <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-foreground">
         <BookOpen className="h-3.5 w-3.5 text-primary" aria-hidden />
         {title}

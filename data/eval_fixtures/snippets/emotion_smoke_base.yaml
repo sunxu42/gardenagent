@@ -1,0 +1,17 @@
+assertions:
+  - type: assistant_not_contains
+    name: no_ai_stock_phrases
+    forbidden:
+      - "语言模型"
+      - "人工智能"
+      - "我是AI"
+      - "作为AI"
+      - "我理解你的感受"
+      - "以下是建议"
+      - "为你准备"
+  - type: assistant_not_contains
+    name: no_written_formulas
+    forbidden: ["首先", "其次", "最后", "第一", "第二"]
+  - type: assistant_not_contains
+    name: no_markdown_heavy
+    forbidden: ["```", "##", "|"]

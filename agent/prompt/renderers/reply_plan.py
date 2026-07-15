@@ -6,9 +6,9 @@ from typing import Any
 
 import yaml
 
-from agent.prompt.context import PromptContext
-from agent.prompt.formatting import format_dialogue_examples
-from agent.prompt.modules import PromptModule
+from agent.prompt.compose.context import PromptContext
+from agent.prompt.compose.format_value import format_dialogue_examples
+from agent.prompt.compose.module import PromptModule
 from agent.prompt.renderers import RendererDeps, register
 
 
@@ -38,6 +38,36 @@ def render_reply_plan(module: PromptModule, ctx: PromptContext, *, deps: Rendere
     lines.extend(f"- {item}" for item in plan.boundaries)
     if plan.few_shot_tags:
         lines.append("Few-shot tags: " + ", ".join(plan.few_shot_tags))
+    if plan.presentation_hint == "offer_choice_2plus":
+        lines.extend(
+            [
+                "",
+                "### 本回合展示约束（硬性）",
+                "你打算提供 ≥2 个可选项并等待用户选择。",
+                "步骤：1) 先调用 show_single_select（选好 variant）或其它对应 show_* A2UI tool；"
+                "2) 正文最多一句口语邀请点选。",
+                "禁止：正文用 1/2/3、「第一第二」、A/B/C 逐条列出所有选项。",
+            ]
+        )
+    elif plan.presentation_hint == "explain_only":
+        lines.extend(
+            [
+                "",
+                "### 本回合展示约束",
+                "讲解性内容，无表格结构。可用口语说明，不需要调 A2UI tool。",
+            ]
+        )
+    elif plan.presentation_hint == "structured_table":
+        lines.extend(
+            [
+                "",
+                "### 本回合展示约束（硬性）",
+                "用户需要结构化列举或多行记录（如历年事件、按年清单）。",
+                "步骤：1) 先调用 show_data_table(interactive=false)，列好 columns 与 rows；"
+                "2) 正文最多一句口语补充。",
+                "禁止：在正文用年份逐条罗列或 bullet 列表代替表格。",
+            ]
+        )
     examples = _select_reply_examples(deps.affective_path, plan.few_shot_tags)
     if examples:
         lines.append("")

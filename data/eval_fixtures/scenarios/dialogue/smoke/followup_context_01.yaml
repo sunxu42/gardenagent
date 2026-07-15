@@ -1,0 +1,21 @@
+id: followup_context_01
+domain: dialogue
+tags:
+- multi_turn
+tier: smoke
+description: 多轮对话，检查每轮均有有效回复
+setup:
+  rounds: 2
+user_driver:
+  type: scripted
+  turns:
+  - text: 我今天被领导批评了，心情很差。
+  - text: 就是刚才说的那件事，我还是过不去。
+assertions:
+- type: assistant_min_length
+  name: round_one_reply
+  min_chars: 15
+- type: assistant_not_contains
+  name: no_dismissal
+  forbidden:
+  - 别想太多

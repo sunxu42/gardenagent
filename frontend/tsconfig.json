@@ -15,7 +15,8 @@
     "types": ["vitest/globals"],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@a2ui-catalog/*": ["../agent/a2ui/catalog/*"]
     }
   },
   "include": ["src"]

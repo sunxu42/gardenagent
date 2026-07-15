@@ -1,3 +1,4 @@
+import { Badge } from "@/components/ui/badge";
 import type { ConnectionStatus } from "../types";
 import { cn } from "@/lib/utils";
 
@@ -9,19 +10,17 @@ export function ConnectionBanner({ status }: ConnectionBannerProps) {
   const isOnline = status === "online";
 
   return (
-    <span
+    <Badge
       role="status"
-      className={cn(
-        "inline-flex shrink-0 items-center gap-1 rounded-full text-xs font-medium",
-        isOnline ? "text-emerald-600" : "text-destructive",
-      )}
+      variant="outline"
       aria-label={isOnline ? "在线" : "离线"}
+      className={cn(
+        "chat-ios-status rounded-full border-0 bg-transparent px-0 py-0 font-normal shadow-none",
+        isOnline ? "chat-ios-status--online" : "chat-ios-status--offline",
+      )}
     >
-      <span
-        className={cn("h-1.5 w-1.5 rounded-full", isOnline ? "bg-emerald-500" : "bg-destructive")}
-        aria-hidden="true"
-      />
+      <span className="chat-ios-status__dot" aria-hidden="true" />
       {isOnline ? "在线" : "离线"}
-    </span>
+    </Badge>
   );
 }

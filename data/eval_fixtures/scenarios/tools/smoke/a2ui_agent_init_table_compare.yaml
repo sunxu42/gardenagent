@@ -1,0 +1,17 @@
+id: a2ui_agent_init_table_compare
+domain: tools
+tags:
+- tool_required
+- a2ui_agent_init
+tier: smoke
+description: 用户要对比方案，应调用 show_data_table
+setup:
+  rounds: 1
+user_driver:
+  type: scripted
+  turns:
+  - text: 帮我对比一下这几个出游方案
+assertions:
+- type: tool_called
+  name: show_data_table_called
+  tool_name: show_data_table

@@ -1,0 +1,30 @@
+id: emotion_sad_explore_01
+extends: smoke/emotion_sad_explore_01
+tier: judge
+tags:
+- mood_sad
+- stage_exploration
+- multi_turn
+description: 探索阶段多轮倾诉，attunement + resonance
+setup:
+  rounds: 2
+assertions:
+- type: assistant_not_contains
+  name: no_premature_advice
+  forbidden:
+  - 你应该
+  - 建议你试试
+- type: assistant_min_length
+  name: empathetic_reply
+  min_chars: 20
+judge:
+  enabled: true
+  metrics:
+  - emotion_support.attunement
+  - emotion_support.validation
+  - emotion_support.resonance
+  - emotion_support.boundary_safety
+  policy:
+    blocking:
+    - boundary_safety
+    min_overall: 0.65

@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import type { DomainRadarPoint } from "@/features/test/coverageRadarModel";
 
 interface EvalDomainSummaryProps {
@@ -46,9 +47,13 @@ export function EvalDomainSummary({ point, onEnter }: EvalDomainSummaryProps): J
         </div>
       ) : null}
 
-      <button className="eval-domain-summary__enter" type="button" onClick={onEnter}>
+      <Button
+        type="button"
+        className="eval-domain-summary__enter h-auto"
+        onClick={onEnter}
+      >
         进入测试
-      </button>
+      </Button>
     </div>
   );
 }

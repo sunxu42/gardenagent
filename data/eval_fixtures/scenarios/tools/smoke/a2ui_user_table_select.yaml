@@ -1,0 +1,16 @@
+id: a2ui_user_table_select
+domain: tools
+tags:
+- tool_required
+tier: smoke
+description: 请求从表格中选一行，应调用 show_data_table
+setup:
+  rounds: 1
+user_driver:
+  type: scripted
+  turns:
+  - text: 用表格列出这几天，让我点选一天细聊。
+assertions:
+- type: tool_called
+  name: show_data_table_called
+  tool_name: show_data_table

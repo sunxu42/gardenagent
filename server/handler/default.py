@@ -152,6 +152,8 @@ class Handler:
         self._pending_settle: List[Dict[str, Any]] = []
         self._log = get_logger(LogModule.HANDLER)
         self._metrics = TurnMetricsAggregator(audio_output=self.enable_audio_output)
+        self.text_buffer: List[str] = []
+        self.agui_text_buffer: List[str] = []
 
     def _reset_timing_stats(self) -> None:
         self.timing_stats = {
@@ -219,9 +221,9 @@ class Handler:
         return list(dict.fromkeys(voices))
 
     def get_agent_display_name(self) -> str:
-        """与 PersonaPrompt 一致：每次从 prompts YAML 解析当前角色展示名。"""
+        """与 soul.yaml 一致：每次从 prompts YAML 解析当前角色展示名。"""
         try:
-            from agent.middlewares.persona_prompt_middleware import resolve_soul_profile
+            from agent.prompt.persona.soul_profile import resolve_soul_profile
 
             label = resolve_soul_profile().get("assistant_label")
             if label and str(label).strip():
@@ -313,6 +315,18 @@ class Handler:
     async def handle_json_message(self, message: str):
         try:
             data = json.loads(message)
+            channel = data.get("channel")
+            if channel == "agui":
+                if self.session_service:
+                    event = self.session_service.agui_bridge.parse_inbound(data)
+                    if event and event.get("type") == "UI_ACTION":
+                        self._log.info(f"收到 AG-UI 事件: type={event.get('type')}")
+                        await self.session_service.on_ui_action(
+                            event,
+                            thread_id=self.session_id or self.client_id,
+                        )
+                return
+
             # {"role": "user", "content": [{"type": "text", "text": "你好"}]}
             # {"role": "user", "content": [{"type": "audio", "audio": "base64"}]}
             # {"role": "user", "content": [{"type": "image", "image": "base64"}]}
@@ -458,11 +472,33 @@ class Handler:
             if content.get('type', '') == 'text':
                 text += content.get('text', '')
 
+        agui_meta = data.get("agui")
+        if self.session_service:
+            await self.session_service.finalize_pending_agui_turn()
+            if isinstance(agui_meta, dict):
+                message_id = agui_meta.get("messageId")
+                run_id = agui_meta.get("runId")
+                if (
+                    isinstance(message_id, str)
+                    and message_id.strip()
+                    and isinstance(run_id, str)
+                    and run_id.strip()
+                ):
+                    self.session_service.begin_agui_turn(
+                        message_id=message_id.strip(),
+                        run_id=run_id.strip(),
+                    )
+                else:
+                    self.session_service.clear_agui_turn()
+            else:
+                self.session_service.clear_agui_turn()
+
         result = {
-                'text': text,
-                'is_final': True,
-                'timestamp': time.time(),
-            }
+            "text": text,
+            "is_final": True,
+            "timestamp": time.time(),
+            "source": "text",
+        }
         await self.asr_result_handler(result)
 
     def _on_appraisal_snapshot_ready(self, digest: str) -> None:
@@ -621,11 +657,16 @@ class Handler:
             if not text:
                 return
 
+            source = str(result.get("source") or "asr").strip() or "asr"
+            # Text chat enables AG-UI in handle_user_message; do not clear it here.
+            if self.session_service and source != "text":
+                self.session_service.clear_agui_turn()
+
             await self.send_json_to_client({
                 "role": "user",
                 "content": text,
                 "is_final": is_final,
-                "source": "asr",
+                "source": source,
             })
 
             # 检测打断信号
@@ -637,12 +678,12 @@ class Handler:
             if is_final and text.strip() and self.session_service and self.session_service.queue:
                 turn_id = f"{self.session_id or self.client_id}-turn-{self._turn_seq}"
                 asr_sec = float(self.timing_stats["asr_recognition_latency"])
-                log_user_to_agent(text=text, source="asr", asr_sec=asr_sec if asr_sec > 0 else None)
+                log_user_to_agent(text=text, source=source, asr_sec=asr_sec if asr_sec > 0 else None)
                 message = {
                     'text': text,
                     'is_final': is_final,
                     'timestamp': result.get('timestamp', time.time()),
-                    'source': 'asr',
+                    'source': source,
                     'thread_id': self.session_id or self.client_id,
                     'turn_id': turn_id,
                 }
@@ -665,17 +706,35 @@ class Handler:
                 return
 
             msg_type = result.get('msg_type', '')
+            if msg_type == "agui":
+                envelope = result.get("envelope")
+                if isinstance(envelope, dict):
+                    event = envelope.get("event")
+                    if isinstance(event, dict) and event.get("type") == "TEXT_MESSAGE_CONTENT":
+                        delta = event.get("delta")
+                        if isinstance(delta, str) and delta:
+                            self.agui_text_buffer.append(delta)
+                    await self.send_json_to_client(envelope)
+                return
+
+            use_agui = bool(self.session_service and self.session_service.use_agui_channel)
+
             if msg_type == "SENTENCE_START":
                 self.first_token = True
                 self.first_audio_chunk = True
                 self.text_buffer = []
+                self.agui_text_buffer = []
                 text = "SENTENCE_START"
-                await self.send_assistant_to_client({"role": "assistant", "content": "SENTENCE_START"})
+                if not use_agui:
+                    await self.send_assistant_to_client({"role": "assistant", "content": "SENTENCE_START"})
             elif msg_type == "SENTENCE_END":
                 text = "SENTENCE_END"
-                await self.send_assistant_to_client({"role": "assistant", "content": "SENTENCE_END"})
+                if not use_agui:
+                    await self.send_assistant_to_client({"role": "assistant", "content": "SENTENCE_END"})
                 reply_text = "".join(
-                    chunk for chunk in self.text_buffer if isinstance(chunk, str)
+                    chunk
+                    for chunk in (self.agui_text_buffer or self.text_buffer)
+                    if isinstance(chunk, str)
                 )
                 log_agent_response_complete(text=reply_text)
                 self._metrics.mark_sentence_end()
@@ -699,9 +758,11 @@ class Handler:
                     self.first_token = False
 
                 if isinstance(response, dict) and response.get("role") == "assistant":
-                    await self.send_assistant_to_client(response)
+                    if not use_agui:
+                        await self.send_assistant_to_client(response)
                 else:
-                    await self.send_json_to_client(response)
+                    if not use_agui:
+                        await self.send_json_to_client(response)
 
                 text = response.get('content', '') if isinstance(response, dict) else ''
                 self.text_buffer.append(text)

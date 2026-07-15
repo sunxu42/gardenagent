@@ -3,7 +3,7 @@
 Historically this also seeded the workspace with bootstrap-style markdown
 files (AGENTS.md / SOUL.md / IDENTITY.md / BOOTSTRAP.md / USER.md /
 HEARTBEAT.md). The system prompt is now composed deterministically from
-`prompts/*.yaml` via `agent.middlewares.PersonaPromptMiddleware`, so we no longer copy
+`prompts/*.yaml` via `agent.middlewares.SystemPromptMiddleware`, so we no longer copy
 those template files into the workspace. We still seed the `skills/`
 folder because `SkillsMiddleware` reads it from the backend root.
 """

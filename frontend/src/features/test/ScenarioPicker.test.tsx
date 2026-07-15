@@ -63,8 +63,8 @@ describe("ScenarioPicker", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("smoke/emotion_a")).toBeInTheDocument();
+      expect(screen.getByText("emotion_a")).toBeInTheDocument();
     });
-    expect(screen.queryByText("smoke/safety_a")).not.toBeInTheDocument();
+    expect(screen.queryByText("safety_a")).not.toBeInTheDocument();
   });
 });

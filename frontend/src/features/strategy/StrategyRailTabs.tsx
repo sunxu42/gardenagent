@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   AFFECT_GUIDE_MOTION_EASE_CSS,
   RAIL_TAB_MOTION_MS,
@@ -76,12 +77,13 @@ export function StrategyRailTabs({
           return (
             <Fragment key={id}>
               {showSeparator ? <div className="strategy-rail-tab-sep" aria-hidden /> : null}
-              <button
+              <Button
                 ref={(el) => {
                   if (el) tabRefs.current.set(id, el);
                   else tabRefs.current.delete(id);
                 }}
                 type="button"
+                variant="ghost"
                 role="tab"
                 aria-selected={selected}
                 aria-current={selected ? "page" : undefined}
@@ -90,11 +92,11 @@ export function StrategyRailTabs({
                 onClick={() => onTabChange(id)}
                 onMouseEnter={() => onTabPrefetch?.(id)}
                 onFocus={() => onTabPrefetch?.(id)}
-                className={`strategy-rail-tab cursor-pointer${selected ? " strategy-rail-tab--active" : ""}`}
+                className={`strategy-rail-tab h-auto cursor-pointer shadow-none hover:bg-transparent${selected ? " strategy-rail-tab--active" : ""}`}
               >
                 <Icon className="h-4 w-4 shrink-0" aria-hidden />
                 <span className="strategy-rail-tab__label">{label}</span>
-              </button>
+              </Button>
             </Fragment>
           );
         })}

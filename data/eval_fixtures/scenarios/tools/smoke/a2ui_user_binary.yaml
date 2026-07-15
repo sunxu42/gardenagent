@@ -1,0 +1,16 @@
+id: a2ui_user_binary
+domain: tools
+tags:
+- tool_required
+tier: smoke
+description: 二选一继续，应调用 show_single_select(variant=binary)
+setup:
+  rounds: 1
+user_driver:
+  type: scripted
+  turns:
+  - text: 要不要继续玩下去？
+assertions:
+- type: tool_called
+  name: show_single_select_called
+  tool_name: show_single_select

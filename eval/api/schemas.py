@@ -142,6 +142,7 @@ class CoverageCellDTO(BaseModel):
     tags_covered: list[str] = Field(default_factory=list)
     tags_expected: list[str] = Field(default_factory=list)
     tags_missing: list[str] = Field(default_factory=list)
+    tier_expected: bool = True
     last_run_at: str | None = None
     pass_count: int = 0
     fail_count: int = 0

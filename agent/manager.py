@@ -15,6 +15,7 @@ def _apply_langchain_reviver_explicit_default() -> None:
 _apply_langchain_reviver_explicit_default()
 
 import asyncio
+import json
 from typing import Any
 
 import yaml
@@ -26,8 +27,8 @@ from langgraph.checkpoint.memory import MemorySaver
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage, AIMessageChunk
 
 from agent.events import HEARTBEAT_INPUT_EVENT, InputEvent, OutputEvent
-from agent.middlewares import PersonaPromptMiddleware
-from agent.middlewares.persona_prompt_middleware import resolve_soul_profile
+from agent.middlewares.tool_loop_guard import ToolLoopGuardMiddleware
+from agent.prompt.persona.soul_profile import resolve_soul_profile
 from agent.graph import create_deep_agent
 from shared.config.resolve_agent import resolve_agent_runtime
 from agent.configs.secrets import load_secrets
@@ -43,6 +44,10 @@ from agent.memory.bootstrap import (
 from agent.emotion.bootstrap import setup_emotion_subsystem
 from agent.timer import LocalSchedulerService, create_cron_tool
 from agent.system_tools import create_session_status_tool
+from agent.tools.show_single_select import create_show_single_select_tool
+from agent.tools.show_multi_select import create_show_multi_select_tool
+from agent.tools.show_date_picker import create_show_date_picker_tool
+from agent.tools.show_data_table import create_show_data_table_tool
 from shared.observability.logging import LogModule, bind_session, get_logger, set_turn_id
 
 _log = get_logger(LogModule.AGENT)
@@ -118,6 +123,87 @@ def _apply_subsystem(agent_manager, emotion, memory) -> None:
     agent_manager.session_buffer = memory.session_buffer
 
 
+def _format_agent_input(content: str) -> str:
+    """Normalize structured client events (e.g. UI actions) into natural language."""
+    text = (content or "").strip()
+    if not text:
+        return text
+    try:
+        payload = json.loads(text)
+    except json.JSONDecodeError:
+        return content
+    if not isinstance(payload, dict) or payload.get("type") != "ui_action":
+        return content
+
+    action = payload.get("action")
+    if not isinstance(action, dict):
+        return content
+
+    action_name = str(action.get("name") or "").strip()
+    context = action.get("context") if isinstance(action.get("context"), dict) else {}
+    if action_name == "confirm_plan":
+        plan_id = str(context.get("planId") or "").strip()
+        plan_label = str(context.get("planLabel") or "").strip()
+        if plan_id and plan_label:
+            return (
+                f"用户通过界面选择了方案：{plan_label}（标识 {plan_id}）。"
+                "请用简短自然的语言确认选择并继续对话。"
+            )
+        if plan_id:
+            return f"用户通过界面选择了方案：{plan_id}。请用简短自然的语言确认选择并继续对话。"
+        return "用户通过界面确认了方案。请用简短自然的语言确认选择并继续对话。"
+    if action_name == "confirm_selection":
+        selected = context.get("selectedIds")
+        if isinstance(selected, list) and selected:
+            labels = "、".join(str(item) for item in selected)
+            return f"用户通过界面多选确认了：{labels}。请用简短自然的语言确认并继续对话。"
+        return "用户通过界面提交了多选结果。请用简短自然的语言确认并继续对话。"
+    if action_name == "confirm_choice":
+        choice_id = str(context.get("choiceId") or "").strip()
+        if choice_id:
+            return f"用户通过界面选择了：{choice_id}。请用简短自然的语言确认并继续对话。"
+        return "用户通过界面做出了二选一选择。请用简短自然的语言确认并继续对话。"
+    if action_name == "confirm_row":
+        row_id = str(context.get("rowId") or "").strip()
+        cells = context.get("cells") if isinstance(context.get("cells"), dict) else {}
+        if row_id and cells:
+            cell_summary = "、".join(f"{key}={value}" for key, value in cells.items() if value)
+            return (
+                f"用户通过表格点选了行 {row_id}"
+                f"{f'（{cell_summary}）' if cell_summary else ''}。"
+                "请用简短自然的语言确认选择并继续对话。"
+            )
+        if row_id:
+            return f"用户通过表格点选了行 {row_id}。请用简短自然的语言确认选择并继续对话。"
+        return "用户通过表格点选了一行。请用简短自然的语言确认选择并继续对话。"
+    return (
+        f"用户触发界面操作 {action_name}："
+        f"{json.dumps(context, ensure_ascii=False)}。请据此继续对话。"
+    )
+
+
+def _extract_a2ui_payload(tool_content: Any) -> dict[str, Any] | None:
+    """Parse show_* A2UI tool output into session-service payload."""
+    if isinstance(tool_content, dict):
+        data = tool_content
+    elif isinstance(tool_content, str):
+        try:
+            data = json.loads(tool_content)
+        except json.JSONDecodeError:
+            return None
+    else:
+        return None
+
+    operations = data.get("a2ui_operations")
+    if not isinstance(operations, list):
+        return None
+    surface_id = str(data.get("surface_id") or "single-select").strip() or "single-select"
+    op_list = [item for item in operations if isinstance(item, dict)]
+    if not op_list:
+        return None
+    return {"a2ui_operations": op_list, "surface_id": surface_id}
+
+
 class AgentManager:
 
     def __init__(self, config=None):
@@ -136,6 +222,10 @@ class AgentManager:
         agent_manager.local_scheduler.start()
         agent_manager.tools.append(create_cron_tool(agent_manager.local_scheduler))
         agent_manager.tools.append(create_session_status_tool())
+        agent_manager.tools.append(create_show_single_select_tool())
+        agent_manager.tools.append(create_show_multi_select_tool())
+        agent_manager.tools.append(create_show_date_picker_tool())
+        agent_manager.tools.append(create_show_data_table_tool())
 
         backend = FilesystemBackend(
             root_dir=agent_manager.config.workspace_dir,
@@ -146,20 +236,19 @@ class AgentManager:
         memory = setup_memory_subsystem(agent_manager.config, agent_manager)
         _apply_subsystem(agent_manager, emotion, memory)
 
-        from agent.prompt.bootstrap import setup_prompt_composer
+        from agent.prompt.setup import setup_system_prompt_middleware
 
         cfg = agent_manager.config
-        composer = setup_prompt_composer(cfg, emotion_service=emotion.service)
-        composer_on = bool(getattr(cfg, "prompt_composer_enabled", False))
+        system_prompt_mw = setup_system_prompt_middleware(
+            cfg, emotion_service=emotion.service
+        )
 
         middleware: list[Any] = []
         middleware.extend(memory.middleware)
+        middleware.append(ToolLoopGuardMiddleware())
         middleware.extend(emotion.appraisal_middleware)
-        if composer is not None:
-            middleware.append(composer)
-        if not composer_on:
-            middleware.append(PersonaPromptMiddleware(cfg.prompts_dir))
-            middleware.extend(emotion.prompt_middleware)
+        if system_prompt_mw is not None:
+            middleware.append(system_prompt_mw)
         agent_manager.tools.extend(memory.extra_tools)
 
         agent_manager._checkpointer = MemorySaver()
@@ -263,7 +352,7 @@ class AgentManager:
                 USER_AFFECT_NEUTRAL_D,
                 USER_AFFECT_NEUTRAL_V,
             )
-            from agent.middlewares.persona_prompt_middleware import resolve_soul_profile
+            from agent.prompt.persona.soul_profile import resolve_soul_profile
 
             prof = resolve_soul_profile(self.config.prompts_dir)
             soul_base = prof.get("baseline") or {}
@@ -456,9 +545,12 @@ class AgentManager:
                             yield {"updates": f">> 调用工具: {name}"}
 
             elif isinstance(chunk, ToolMessage):
-                name = chunk.name
-
-                yield {"updates": f"{name}调用工具结束"}
+                name = chunk.name or "unknown"
+                a2ui_payload = _extract_a2ui_payload(chunk.content)
+                if a2ui_payload is not None:
+                    yield a2ui_payload
+                else:
+                    yield {"updates": f"{name}调用工具结束"}
 
     async def astream(self, event: InputEvent):
         event_id = event.event_id
@@ -473,14 +565,18 @@ class AgentManager:
             thread_id = (
                 stable.strip()
                 if isinstance(stable, str) and stable.strip()
-                else (str(event_id) if event_id else "agent-demo")
+                else (
+                    getattr(self, "_last_user_thread_id", None)
+                    or (str(event_id) if event_id else "agent-demo")
+                )
             )
             if trigger_by != HEARTBEAT_INPUT_EVENT:
                 self._last_user_thread_id = thread_id
             turn_id = getattr(event, "turn_id", None)
             turn = turn_id.strip() if isinstance(turn_id, str) and turn_id.strip() else None
             with bind_session(thread_id, turn_id=turn):
-                async for chunk in self.achat(event.content, thread_id=thread_id):
+                user_input = _format_agent_input(event.content)
+                async for chunk in self.achat(user_input, thread_id=thread_id):
                     self.agent_output_queue.put_nowait(
                         OutputEvent(data=chunk, trigger_by=trigger_by, event_id=event_id, phase="middle")
                     )

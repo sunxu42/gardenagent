@@ -1,0 +1,16 @@
+id: a2ui_user_single_select_plans
+domain: tools
+tags:
+- tool_required
+tier: smoke
+description: 请求多个出游方案并选择，应调用 show_single_select
+setup:
+  rounds: 1
+user_driver:
+  type: scripted
+  turns:
+  - text: 给我 3 个周末出游方案让我选
+assertions:
+- type: tool_called
+  name: show_single_select_called
+  tool_name: show_single_select

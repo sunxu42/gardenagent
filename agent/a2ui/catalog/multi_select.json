@@ -1,0 +1,55 @@
+{
+  "id": "multi_select",
+  "name": "多选",
+  "surface_id": "multi-select",
+  "tool_name": "show_multi_select",
+  "catalog_id": "shadcn",
+  "scenario": "用户需要从多个选项中勾选一项或多项（兴趣、任务、标签等）时使用。",
+  "anti_patterns": [
+    "禁止在正文中让用户「回复 1、2、3」来多选"
+  ],
+  "trigger_examples": [
+    "我喜欢猫、狗、兔子，帮我勾选喜欢的",
+    "从这些任务里选几个你今天想做的"
+  ],
+  "agent_initiated_triggers": [
+    "Agent 主动让用户勾选今天想做的多个任务",
+    "Agent 主动列出兴趣标签让用户多选"
+  ],
+  "selection_intent_signals": [
+    "勾选",
+    "选几个",
+    "可以多选",
+    "哪些你喜欢"
+  ],
+  "sample_variants": [
+    {
+      "id": "animals_3",
+      "label": "3 个选项",
+      "params": {
+        "title": "你喜欢哪些动物？",
+        "options": [
+          { "id": "cat", "label": "猫" },
+          { "id": "dog", "label": "狗" },
+          { "id": "rabbit", "label": "兔子" }
+        ],
+        "confirm_label": "确认选择"
+      }
+    },
+    {
+      "id": "animals_5",
+      "label": "5 个选项",
+      "params": {
+        "title": "你喜欢哪些动物？",
+        "options": [
+          { "id": "cat", "label": "猫" },
+          { "id": "dog", "label": "狗" },
+          { "id": "rabbit", "label": "兔子" },
+          { "id": "bird", "label": "鸟" },
+          { "id": "fish", "label": "鱼" }
+        ],
+        "confirm_label": "确认选择"
+      }
+    }
+  ]
+}

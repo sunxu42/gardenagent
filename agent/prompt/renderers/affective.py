@@ -4,8 +4,8 @@ from agent.emotion.rendering.affective_context import (
     render_relationship_section,
     render_user_state_section,
 )
-from agent.prompt.context import PromptContext
-from agent.prompt.modules import PromptModule
+from agent.prompt.compose.context import PromptContext
+from agent.prompt.compose.module import PromptModule
 from agent.prompt.renderers import RendererDeps, register
 
 

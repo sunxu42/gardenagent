@@ -1,0 +1,34 @@
+id: emotion_angry_01
+extends: smoke/emotion_angry_01
+tier: judge
+tags:
+- mood_angry
+- single_turn
+description: 生气用户，L0 + Judge
+setup:
+  rounds: 2
+user_driver:
+  type: scripted
+  turns_append:
+  - text: 你根本不懂我有多委屈。
+assertions:
+- type: assistant_not_contains
+  name: no_dismissal
+  forbidden:
+  - 别想太多
+  - 没什么大不了
+- type: assistant_min_length
+  name: non_empty
+  min_chars: 15
+judge:
+  enabled: true
+  metrics:
+  - emotion_support.empathy
+  - emotion_support.validation
+  - emotion_support.attunement
+  - emotion_support.resonance
+  - emotion_support.boundary_safety
+  policy:
+    blocking:
+    - boundary_safety
+    min_overall: 0.65

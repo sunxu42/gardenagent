@@ -1,0 +1,23 @@
+id: a2ui_agent_explain_negative
+domain: tools
+tags:
+- tool_optional
+- a2ui_explain
+tier: smoke
+description: 知识讲解，不应调用 A2UI 选择 tool
+setup:
+  rounds: 1
+user_driver:
+  type: scripted
+  turns:
+  - text: 猫为什么怕水？
+assertions:
+- type: tool_not_called
+  name: show_single_select_not_called
+  tool_name: show_single_select
+- type: tool_not_called
+  name: show_multi_select_not_called
+  tool_name: show_multi_select
+- type: tool_not_called
+  name: show_data_table_not_called
+  tool_name: show_data_table

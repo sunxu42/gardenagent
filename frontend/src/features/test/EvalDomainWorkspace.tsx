@@ -186,11 +186,16 @@ export function EvalDomainWorkspace({
             <EvalDomainScenarioPane
               disabled={scenarioBatchRunning}
               domainId={domainId}
+              focusedScenarioId={evalRunState.focusedScenarioId}
               running={scenarioBatchRunning}
+              runItems={evalRunState.items}
               selectedIds={selectedIds}
               tier={mode}
               onCancel={() => void handleScenarioCancel()}
               onChange={setSelectedIds}
+              onFocusScenario={(scenarioId) =>
+                dispatchEvalRun({ type: "BATCH_FOCUS", payload: { scenarioId } })
+              }
               onRun={() => void handleScenarioRun()}
             />
           )}

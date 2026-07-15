@@ -36,8 +36,8 @@ describe("EvalRunProgressView", () => {
 
     expect(screen.getByText("完成")).toBeInTheDocument();
     const completedStep = screen.getByText("完成").closest("div");
-    expect(completedStep?.querySelector(".text-emerald-600")).toBeTruthy();
-    expect(container.querySelectorAll(".text-emerald-600").length).toBeGreaterThanOrEqual(5);
+    expect(completedStep?.querySelector(".test-text-pass")).toBeTruthy();
+    expect(container.querySelectorAll(".test-text-pass").length).toBeGreaterThanOrEqual(5);
   });
 
   it("shows failure icon on the completed step when the run failed", () => {
@@ -52,6 +52,6 @@ describe("EvalRunProgressView", () => {
     );
 
     const completedStep = screen.getByText("完成").closest("div");
-    expect(completedStep?.querySelector(".text-destructive")).toBeTruthy();
+    expect(completedStep?.querySelector(".test-text-fail")).toBeTruthy();
   });
 });

@@ -1,0 +1,715 @@
+/* Apple iOS 26 Liquid Glass — chat shell */
+
+.chat-ios {
+  --ios-blue: var(--apple-accent, #007aff);
+  --ios-blue-pressed: var(--apple-accent-pressed, #0062cc);
+  --ios-red: var(--apple-red, #ff3b30);
+  --ios-green: var(--apple-green, #34c759);
+  --ios-bg: var(--apple-bg, #ffffff);
+  --ios-grouped-bg: var(--apple-grouped-bg, #f2f2f7);
+  --ios-label: var(--apple-label, rgb(0 0 0 / 88%));
+  --ios-secondary-label: var(--apple-secondary-label, rgb(60 60 67 / 60%));
+  --ios-separator: var(--apple-separator, rgb(60 60 67 / 12%));
+  --ios-bubble-user: var(--apple-accent, #007aff);
+  --ios-bubble-user-fg: #ffffff;
+  --ios-bubble-assistant-bg: rgb(255 255 255 / 94%);
+  --ios-bubble-assistant-border: rgb(60 60 67 / 10%);
+  --ios-bubble-assistant-fg: var(--apple-label, rgb(0 0 0 / 88%));
+  --ios-bubble-assistant-shadow:
+    0 1px 2px rgb(0 0 0 / 4%),
+    0 6px 20px rgb(0 0 0 / 7%),
+    0 1px 0 rgb(255 255 255 / 100%) inset;
+  --ios-icon-muted: var(--apple-secondary-label, rgb(60 60 67 / 60%));
+  --ios-icon-active: var(--apple-accent, #007aff);
+  --glass-blur: var(--apple-glass-blur, 40px);
+  --glass-saturate: var(--apple-glass-saturate, 180%);
+  --glass-bg: var(--apple-glass-bg, rgb(255 255 255 / 58%));
+  --glass-border: var(--apple-glass-border, rgb(255 255 255 / 42%));
+  --glass-radius: var(--apple-radius-lg, 1.375rem);
+  --chrome-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --chrome-inset: 0.625rem;
+  --chat-footer-gap: 0.625rem;
+  --glass-highlight: rgb(255 255 255 / 72%);
+  --glass-shadow:
+    0 4px 24px rgb(0 0 0 / 8%),
+    0 1px 0 var(--glass-highlight) inset,
+    0 -1px 0 rgb(0 0 0 / 4%) inset;
+  --ios-shell-shadow: 0 8px 32px rgb(0 0 0 / 10%), 0 2px 8px rgb(0 0 0 / 6%);
+
+  font-family: ui-sans-serif, system-ui, -apple-system, "SF Pro Text", "PingFang SC",
+    "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background:
+    radial-gradient(ellipse 90% 55% at 8% -8%, rgb(0 122 255 / 10%), transparent 52%),
+    radial-gradient(ellipse 72% 48% at 96% 102%, rgb(88 86 214 / 8%), transparent 48%),
+    linear-gradient(180deg, #f6f7fb 0%, var(--ios-grouped-bg) 42%, #eaeaef 100%);
+  color: var(--ios-label);
+}
+
+[data-appearance="dark"] .chat-ios {
+  --ios-blue: #0a84ff;
+  --ios-blue-pressed: #409cff;
+  --ios-red: #ff453a;
+  --ios-green: #30d158;
+  --ios-bg: #000000;
+  --ios-grouped-bg: #1c1c1e;
+  --ios-label: rgb(255 255 255 / 92%);
+  --ios-secondary-label: rgb(235 235 245 / 48%);
+  --ios-separator: rgb(255 255 255 / 10%);
+  --ios-bubble-assistant-bg: rgb(255 255 255 / 12%);
+  --ios-bubble-assistant-border: rgb(255 255 255 / 16%);
+  --ios-bubble-assistant-fg: rgb(255 255 255 / 92%);
+  --ios-bubble-assistant-shadow:
+    0 4px 20px rgb(0 0 0 / 28%),
+    0 1px 0 rgb(255 255 255 / 10%) inset;
+  --ios-icon-muted: rgb(235 235 245 / 48%);
+  --glass-bg: rgb(44 44 46 / 52%);
+  --glass-border: rgb(255 255 255 / 14%);
+  --glass-highlight: rgb(255 255 255 / 12%);
+  --glass-shadow:
+    0 8px 32px rgb(0 0 0 / 36%),
+    0 1px 0 var(--glass-highlight) inset;
+  --ios-shell-shadow: 0 8px 40px rgb(0 0 0 / 52%), 0 0 1px rgb(255 255 255 / 8%);
+  background:
+    radial-gradient(ellipse 80% 55% at 15% -5%, rgb(10 132 255 / 12%), transparent 55%),
+    radial-gradient(ellipse 65% 45% at 90% 100%, rgb(94 92 230 / 10%), transparent 50%),
+    var(--ios-bg);
+}
+
+/* Shared Liquid Glass surface */
+.liquid-glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border: 0.5px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+/* ── Floating chrome layer ── */
+
+.chat-ios-chrome {
+  position: relative;
+  z-index: 2;
+  pointer-events: none;
+  padding-inline: var(--chrome-inset);
+}
+
+.chat-ios-chrome > * {
+  pointer-events: auto;
+}
+
+.chat-ios-chrome--top {
+  align-self: start;
+  padding-top: calc(env(safe-area-inset-top) + 0.375rem);
+}
+
+.chat-ios-chrome--bottom {
+  align-self: end;
+  padding-bottom: calc(env(safe-area-inset-bottom) + 0.375rem);
+}
+
+/* ── Header (floating glass bar) ── */
+
+.chat-ios-header {
+  position: relative;
+  display: grid;
+  align-items: center;
+  gap: 0.125rem;
+  min-height: 3rem;
+  padding: 0.5rem 0.625rem;
+  border-radius: var(--glass-radius);
+  transition:
+    min-height 420ms var(--chrome-ease),
+    padding 420ms var(--chrome-ease),
+    border-radius 420ms var(--chrome-ease),
+    box-shadow 420ms var(--chrome-ease);
+}
+
+.chat-ios-header--with-side {
+  grid-template-columns: auto 1fr auto;
+}
+
+.chat-ios-header__title {
+  margin: 0;
+  min-width: 0;
+  text-align: center;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  color: var(--ios-label);
+  transition:
+    font-size 420ms var(--chrome-ease),
+    line-height 420ms var(--chrome-ease);
+}
+
+.chat-ios-header__meta {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125rem;
+}
+
+.chat-ios[data-scroll-compact] .chat-ios-header {
+  min-height: 2.5rem;
+  padding-block: 0.375rem;
+  border-radius: 9999px;
+}
+
+.chat-ios[data-scroll-compact] .chat-ios-header__title {
+  font-size: 0.9375rem;
+}
+
+.chat-ios[data-scroll-compact] .chat-ios-header__meta .chat-ios-status {
+  max-height: 0;
+  margin-top: 0;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.chat-ios-icon-btn {
+  display: inline-flex;
+  height: 2.25rem;
+  width: 2.25rem;
+  flex-shrink: 0;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  border: 0.5px solid var(--glass-border);
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 22%);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  color: var(--ios-icon-active);
+  box-shadow: 0 1px 0 var(--glass-highlight) inset;
+  transition:
+    background-color 200ms ease,
+    color 200ms ease,
+    transform 280ms var(--chrome-ease),
+    box-shadow 200ms ease;
+}
+
+[data-appearance="dark"] .chat-ios-icon-btn {
+  background: rgb(255 255 255 / 8%);
+}
+
+.chat-ios-icon-btn:hover {
+  background: rgb(0 122 255 / 14%);
+}
+
+.chat-ios-icon-btn:active {
+  transform: scale(0.9);
+  background: rgb(0 122 255 / 22%);
+}
+
+[data-appearance="dark"] .chat-ios-icon-btn:hover {
+  background: rgb(10 132 255 / 18%);
+}
+
+[data-appearance="dark"] .chat-ios-icon-btn:active {
+  background: rgb(10 132 255 / 28%);
+}
+
+/* ── Connection status ── */
+
+.chat-ios-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  max-height: 1rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--ios-secondary-label);
+  transition:
+    max-height 420ms var(--chrome-ease),
+    opacity 320ms ease,
+    margin 420ms var(--chrome-ease);
+}
+
+.chat-ios-status__dot {
+  height: 0.375rem;
+  width: 0.375rem;
+  border-radius: 9999px;
+}
+
+.chat-ios-status--online .chat-ios-status__dot {
+  background: var(--ios-green);
+  box-shadow: 0 0 6px rgb(52 199 89 / 45%);
+}
+
+.chat-ios-status--offline {
+  color: var(--ios-red);
+}
+
+.chat-ios-status--offline .chat-ios-status__dot {
+  background: var(--ios-red);
+}
+
+/* ── Message list ── */
+
+.chat-ios .chat-scroll-area {
+  z-index: 0;
+  padding-top: calc(env(safe-area-inset-top) + 4.25rem);
+  padding-bottom: calc(
+    env(safe-area-inset-bottom) + var(--chat-footer-inset, 5rem) + var(--chat-footer-gap)
+  );
+}
+
+.chat-ios .chat-message-list {
+  gap: 0.375rem;
+  padding-inline: 0.75rem;
+}
+
+.chat-ios .chat-message-list > li:not(.msg-bubble--user):not(.msg-bubble--assistant) {
+  padding-block: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--ios-secondary-label);
+}
+
+.chat-ios .msg-bubble--user,
+.chat-ios .msg-bubble--assistant {
+  position: relative;
+  border: none;
+  padding: 0.5rem 0.75rem;
+  font-size: 1.0625rem;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+
+.chat-ios .msg-bubble--user {
+  max-width: 78%;
+}
+
+.chat-ios .msg-bubble--assistant {
+  width: 100%;
+  max-width: 78%;
+  min-width: 0;
+}
+
+.chat-ios .msg-bubble--user {
+  background: var(--ios-bubble-user);
+  color: var(--ios-bubble-user-fg);
+  border-radius: 1.125rem;
+  border-bottom-right-radius: 0.25rem;
+  box-shadow: 0 2px 8px rgb(0 122 255 / 22%);
+}
+
+.chat-ios .msg-bubble--assistant {
+  background: var(--ios-bubble-assistant-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border: 0.5px solid var(--ios-bubble-assistant-border);
+  color: var(--ios-bubble-assistant-fg);
+  border-radius: 1.125rem;
+  border-bottom-left-radius: 0.25rem;
+  box-shadow: var(--ios-bubble-assistant-shadow);
+}
+
+.chat-ios .msg-bubble--assistant .msg-text {
+  width: 100%;
+  min-width: 0;
+}
+
+.chat-ios .msg-bubble--assistant::before,
+.chat-ios .msg-bubble--user::after {
+  content: none;
+  display: none;
+}
+
+/* ── Assistant thinking (minimal fade-wave) ── */
+
+.chat-ios .msg-bubble--assistant[data-thinking="true"] {
+  width: auto;
+  max-width: none;
+  min-width: 3.125rem;
+  padding: 0.5625rem 0.8125rem;
+  transition:
+    width 280ms var(--chrome-ease),
+    padding 280ms var(--chrome-ease);
+}
+
+.chat-ios .ios-thinking {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chat-ios .ios-thinking__dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3125rem;
+  height: 0.4375rem;
+}
+
+.chat-ios .ios-thinking__dot {
+  width: 0.4375rem;
+  height: 0.4375rem;
+  border-radius: 9999px;
+  background: var(--ios-secondary-label);
+  opacity: 0.34;
+  animation: ios-thinking-fade 1.3s var(--chrome-ease) infinite;
+}
+
+.chat-ios .ios-thinking__dot:nth-child(2) {
+  animation-delay: 0.18s;
+}
+
+.chat-ios .ios-thinking__dot:nth-child(3) {
+  animation-delay: 0.36s;
+}
+
+@keyframes ios-thinking-fade {
+  0%,
+  80%,
+  100% {
+    opacity: 0.34;
+  }
+
+  40% {
+    opacity: 0.92;
+  }
+}
+
+/* ── Streaming text cursor ── */
+
+.chat-ios .ios-stream-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.05em;
+  margin-left: 1px;
+  vertical-align: text-bottom;
+  border-radius: 1px;
+  background: var(--ios-blue);
+  opacity: 0.75;
+  animation: ios-cursor-blink 1.05s step-end infinite;
+}
+
+@keyframes ios-cursor-blink {
+  0%,
+  100% {
+    opacity: 0.75;
+  }
+
+  50% {
+    opacity: 0.12;
+  }
+}
+
+/* ── Composer (floating glass capsule) ── */
+
+.chat-ios-footer {
+  padding: 0;
+  background: transparent;
+  border: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.chat-ios-composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+}
+
+.chat-ios-composer__field {
+  display: flex;
+  flex: 1;
+  align-items: flex-end;
+  gap: 0.5rem;
+  min-width: 0;
+  min-height: 2.75rem;
+  border-radius: 9999px;
+  padding: 0.4375rem 0.4375rem 0.4375rem 1rem;
+  transition:
+    box-shadow 280ms var(--chrome-ease),
+    transform 280ms var(--chrome-ease);
+}
+
+.chat-ios-composer__field:focus-within {
+  box-shadow:
+    var(--glass-shadow),
+    0 0 0 3px rgb(0 122 255 / 14%);
+  transform: translateY(-1px);
+}
+
+[data-appearance="dark"] .chat-ios-composer__field:focus-within {
+  box-shadow:
+    var(--glass-shadow),
+    0 0 0 3px rgb(10 132 255 / 20%);
+}
+
+.chat-ios .composer-textarea {
+  min-height: 1.75rem;
+  max-height: 7.5rem;
+  flex: 1;
+  resize: none;
+  border: none;
+  background: transparent;
+  padding: 0.3125rem 0;
+  font-size: 1.0625rem;
+  line-height: 1.35;
+  color: var(--ios-label);
+  box-shadow: none;
+}
+
+.chat-ios .composer-textarea::placeholder {
+  color: var(--ios-secondary-label);
+}
+
+.chat-ios .composer-textarea:focus,
+.chat-ios .composer-textarea:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.chat-ios-send-btn {
+  display: inline-flex;
+  height: 2.125rem;
+  min-width: 2.125rem;
+  flex-shrink: 0;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 9999px;
+  padding-inline: 0.625rem;
+  background: linear-gradient(180deg, rgb(64 156 255) 0%, var(--ios-blue) 48%, var(--ios-blue-pressed) 100%);
+  color: #ffffff;
+  box-shadow:
+    0 2px 10px rgb(0 122 255 / 38%),
+    inset 0 1px 0 rgb(255 255 255 / 28%);
+  transition:
+    background 200ms ease,
+    transform 320ms var(--chrome-ease),
+    box-shadow 200ms ease;
+}
+
+.chat-ios-send-btn:hover {
+  background: linear-gradient(180deg, rgb(80 168 255) 0%, #1a8cff 48%, var(--ios-blue-pressed) 100%);
+}
+
+.chat-ios-send-btn:active {
+  transform: scale(0.88);
+}
+
+.chat-ios-action-btn {
+  display: inline-flex;
+  height: 2.125rem;
+  min-width: 2.125rem;
+  flex-shrink: 0;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  border: 0.5px solid var(--glass-border);
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 18%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--ios-icon-muted);
+  transition:
+    background-color 200ms ease,
+    color 200ms ease,
+    transform 320ms var(--chrome-ease);
+}
+
+[data-appearance="dark"] .chat-ios-action-btn {
+  background: rgb(255 255 255 / 6%);
+}
+
+.chat-ios-action-btn:hover {
+  color: var(--ios-icon-active);
+  background: rgb(0 122 255 / 12%);
+}
+
+.chat-ios-action-btn:active {
+  transform: scale(0.88);
+}
+
+.chat-ios-voice-end {
+  display: inline-flex;
+  height: 3.75rem;
+  width: 3.75rem;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, #ff6961 0%, var(--ios-red) 55%, #d70015 100%);
+  color: #ffffff;
+  box-shadow:
+    0 6px 20px rgb(255 59 48 / 40%),
+    inset 0 1px 0 rgb(255 255 255 / 22%);
+  transition:
+    transform 320ms var(--chrome-ease),
+    box-shadow 280ms ease;
+}
+
+.chat-ios-voice-end:hover {
+  box-shadow:
+    0 8px 24px rgb(255 59 48 / 48%),
+    inset 0 1px 0 rgb(255 255 255 / 28%);
+}
+
+.chat-ios-voice-end:active {
+  transform: scale(0.9);
+}
+
+.chat-ios-voice-end--speaking {
+  box-shadow:
+    0 0 0 4px rgb(255 59 48 / 24%),
+    0 6px 20px rgb(255 59 48 / 40%),
+    inset 0 1px 0 rgb(255 255 255 / 22%);
+}
+
+/* ── Toast & hints ── */
+
+.chat-ios-toast {
+  max-width: 20rem;
+  border-radius: var(--glass-radius);
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: var(--ios-label);
+}
+
+.chat-ios-retry {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  border: 0.5px solid var(--glass-border);
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--ios-secondary-label);
+}
+
+/* ── Desktop shell framing ── */
+
+@media (min-width: 768px) {
+  .chat-ios.mobile-shell.mobile-chat-page {
+    border-radius: 1.75rem;
+    border: 0.5px solid var(--glass-border);
+    box-shadow: var(--ios-shell-shadow);
+    overflow: hidden;
+  }
+
+  .chat-ios .chat-scroll-area {
+    padding-top: 4.5rem;
+    padding-bottom: calc(
+      env(safe-area-inset-bottom) + var(--chat-footer-inset, 5.25rem) + var(--chat-footer-gap)
+    );
+  }
+}
+
+/* ── Accessibility: reduced transparency ── */
+
+@media (prefers-reduced-transparency: reduce) {
+  .chat-ios .liquid-glass,
+  .chat-ios-header,
+  .chat-ios-composer__field,
+  .chat-ios-toast,
+  .chat-ios-retry,
+  .chat-ios-icon-btn,
+  .chat-ios-action-btn {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: var(--ios-grouped-bg);
+  }
+
+  .chat-ios .msg-bubble--assistant {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: #ffffff;
+    border-color: rgb(60 60 67 / 12%);
+    box-shadow:
+      0 1px 2px rgb(0 0 0 / 5%),
+      0 4px 14px rgb(0 0 0 / 8%);
+  }
+
+  [data-appearance="dark"] .chat-ios .liquid-glass,
+  [data-appearance="dark"] .chat-ios-header,
+  [data-appearance="dark"] .chat-ios-composer__field,
+  [data-appearance="dark"] .chat-ios-toast,
+  [data-appearance="dark"] .chat-ios-retry,
+  [data-appearance="dark"] .chat-ios-icon-btn,
+  [data-appearance="dark"] .chat-ios-action-btn {
+    background: #2c2c2e;
+  }
+
+  [data-appearance="dark"] .chat-ios .msg-bubble--assistant {
+    background: #2c2c2e;
+    border-color: rgb(255 255 255 / 12%);
+  }
+}
+
+/* ── Accessibility: reduced motion ── */
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-ios .ios-thinking__dot,
+  .chat-ios .ios-stream-cursor {
+    animation: none;
+  }
+
+  .chat-ios .ios-thinking__dot {
+    opacity: 0.55;
+  }
+
+  .chat-ios-header,
+  .chat-ios-header__title,
+  .chat-ios-status,
+  .chat-ios-composer__field,
+  .chat-ios-send-btn,
+  .chat-ios-action-btn,
+  .chat-ios-icon-btn,
+  .chat-ios-voice-end {
+    transition: none !important;
+  }
+}
+
+.chat-app-shell[data-motion="reduced"] .chat-ios .ios-thinking__dot,
+.chat-app-shell[data-motion="reduced"] .chat-ios .ios-stream-cursor {
+  animation: none;
+}
+
+.chat-app-shell[data-motion="reduced"] .chat-ios .ios-thinking__dot {
+  opacity: 0.55;
+}
+
+.chat-app-shell[data-motion="reduced"] .chat-ios-header,
+.chat-app-shell[data-motion="reduced"] .chat-ios-header__title,
+.chat-app-shell[data-motion="reduced"] .chat-ios-status,
+.chat-app-shell[data-motion="reduced"] .chat-ios-composer__field,
+.chat-app-shell[data-motion="reduced"] .chat-ios-send-btn,
+.chat-app-shell[data-motion="reduced"] .chat-ios-action-btn,
+.chat-app-shell[data-motion="reduced"] .chat-ios-icon-btn,
+.chat-app-shell[data-motion="reduced"] .chat-ios-voice-end {
+  transition: none !important;
+}
+
+/* Message readability on wider chat columns */
+@media (min-width: 768px) {
+  .chat-ios .chat-message-list .msg-bubble--user {
+    max-width: 82%;
+  }
+
+  .chat-ios .chat-message-list .msg-bubble--assistant {
+    max-width: 82%;
+  }
+}
+
+@media (min-width: 1024px) {
+  .chat-ios .chat-message-list .msg-bubble--user {
+    max-width: 78%;
+  }
+
+  .chat-ios .chat-message-list .msg-bubble--assistant {
+    max-width: 78%;
+  }
+}

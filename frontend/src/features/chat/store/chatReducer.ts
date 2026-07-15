@@ -1,5 +1,21 @@
-import type { AffectTurnRecord, ChatAction, ChatMessage, ChatState } from "../types";
+import type {
+  A2uiPart,
+  AffectTurnRecord,
+  ChatAction,
+  ChatMessage,
+  ChatState,
+} from "../types";
+import type { A2UIMessage } from "a2ui-shadcn";
 import { EMPTY_AFFECT_LOCK } from "../types";
+import {
+  appendTextDelta,
+  createMessageFromText,
+  emptyTextParts,
+  syncMessageContent,
+} from "../lib/messageParts";
+import { applyAguiRunGuard } from "../../../services/agui/mapAguiEvent";
+import { isInteractiveA2uiSurface } from "../lib/a2uiInteractive";
+import { appendSelectionSnapshot } from "../lib/a2uiSelectionSnapshot";
 import { baseAgentVadForDelta, computeVadDelta, upsertAffectRecord } from "../lib/affectMerge";
 import { buildLogsClearedEntry } from "../../logs/logUtils";
 import { DEFAULT_TTS_VOICE } from "../ttsVoices";
@@ -26,7 +42,6 @@ export const initialChatState: ChatState = {
     voiceType: DEFAULT_TTS_VOICE,
     fontSize: "normal",
     motion: "normal",
-    theme: "mint-cute",
     appearance: "light",
   },
 };
@@ -54,6 +69,64 @@ function mergeHistoryMessages(
   return [...older, ...current];
 }
 
+function toProtocolMessage(operation: Record<string, unknown>): A2UIMessage | null {
+  if (operation.version !== "v0.9") {
+    return null;
+  }
+  if (
+    "createSurface" in operation ||
+    "updateComponents" in operation ||
+    "updateDataModel" in operation ||
+    "deleteSurface" in operation
+  ) {
+    return operation as A2UIMessage;
+  }
+  return null;
+}
+
+function mergeA2uiPart(
+  message: ChatMessage,
+  surfaceId: string,
+  operations: Record<string, unknown>[],
+): ChatMessage {
+  const nextPartMessages = operations
+    .map(toProtocolMessage)
+    .filter((item): item is A2UIMessage => item !== null);
+  if (nextPartMessages.length === 0) {
+    return message;
+  }
+  const existingIndex = message.parts.findIndex(
+    (part): part is A2uiPart => part.type === "a2ui" && part.surfaceId === surfaceId,
+  );
+  if (existingIndex >= 0) {
+    const current = message.parts[existingIndex] as A2uiPart;
+    const merged: A2uiPart = {
+      ...current,
+      status: "streaming",
+      messages: [...current.messages, ...nextPartMessages],
+      interaction:
+        current.interaction ??
+        (isInteractiveA2uiSurface(surfaceId) ? "pending" : undefined),
+    };
+    const parts = [...message.parts];
+    parts[existingIndex] = merged;
+    return syncMessageContent({ ...message, parts });
+  }
+  return syncMessageContent({
+    ...message,
+    parts: [
+      ...message.parts,
+      {
+        type: "a2ui",
+        surfaceId,
+        status: "streaming",
+        messages: nextPartMessages,
+        ...(isInteractiveA2uiSurface(surfaceId) ? { interaction: "pending" as const } : {}),
+      },
+    ],
+  });
+}
+
 export function chatReducer(state: ChatState, action: ChatAction): ChatState {
   switch (action.type) {
     case "inputChanged":
@@ -66,12 +139,12 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         ...state,
         messages: [
           ...state.messages,
-          {
-            id: action.payload.id,
-            role: action.payload.role,
-            content: action.payload.content,
-            status: "sending",
-          },
+          createMessageFromText(
+            action.payload.id,
+            action.payload.role,
+            action.payload.content,
+            "sending",
+          ),
         ],
       };
     case "messageStreamStart": {
@@ -81,25 +154,29 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
       }
       return {
         ...state,
-        messages: updateMessage(state.messages, action.payload.id, (message) => ({
-          ...message,
-          status: "streaming",
-          content: "",
-          ...(action.payload.agentName
-            ? { authorLabel: action.payload.agentName }
-            : {}),
-        })),
+        messages: updateMessage(state.messages, action.payload.id, (message) =>
+          syncMessageContent({
+            ...message,
+            status: "streaming",
+            parts: emptyTextParts(),
+            ...(action.payload.agentName
+              ? { authorLabel: action.payload.agentName }
+              : {}),
+          }),
+        ),
       };
     }
     case "messageStreaming":
       return {
         ...state,
-        messages: updateMessage(state.messages, action.payload.id, (message) => ({
-          ...message,
-          status: "streaming",
-          content: message.content + action.payload.content,
-          ...(action.payload.agentName ? { authorLabel: action.payload.agentName } : {}),
-        })),
+        messages: updateMessage(state.messages, action.payload.id, (message) => {
+          const next = appendTextDelta(message, action.payload.content);
+          return {
+            ...next,
+            status: "streaming",
+            ...(action.payload.agentName ? { authorLabel: action.payload.agentName } : {}),
+          };
+        }),
       };
     case "messageDone":
       return {
@@ -108,6 +185,119 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
           ...message,
           status: "done",
         })),
+      };
+    case "aguiRunStarted": {
+      const { messageId, runId, agentName } = action.payload;
+      const existing = state.messages.find((message) => message.id === messageId);
+      if (existing) {
+        const resumeDone = existing.status === "done";
+        return {
+          ...state,
+          messages: updateMessage(state.messages, messageId, (message) =>
+            syncMessageContent({
+              ...message,
+              status: "streaming",
+              runId,
+              parts: resumeDone ? message.parts : emptyTextParts(),
+              ...(agentName ? { authorLabel: agentName } : {}),
+            }),
+          ),
+        };
+      }
+      return {
+        ...state,
+        messages: [
+          ...state.messages,
+          syncMessageContent({
+            id: messageId,
+            role: "assistant",
+            parts: emptyTextParts(),
+            content: "",
+            status: "streaming",
+            runId,
+            ...(agentName ? { authorLabel: agentName } : {}),
+          }),
+        ],
+      };
+    }
+    case "aguiTextDelta":
+      return {
+        ...state,
+        messages: updateMessage(state.messages, action.payload.messageId, (message) => {
+          if (!applyAguiRunGuard(message, action.payload.runId, "aguiTextDelta")) {
+            return message;
+          }
+          const next = appendTextDelta(message, action.payload.delta);
+          return {
+            ...next,
+            status: "streaming",
+            runId: action.payload.runId,
+            ...(action.payload.agentName ? { authorLabel: action.payload.agentName } : {}),
+          };
+        }),
+      };
+    case "aguiA2uiOps":
+      return {
+        ...state,
+        messages: updateMessage(state.messages, action.payload.messageId, (message) => {
+          if (!applyAguiRunGuard(message, action.payload.runId, "aguiA2uiOps")) {
+            return message;
+          }
+          return mergeA2uiPart(message, action.payload.surfaceId, action.payload.operations);
+        }),
+      };
+    case "aguiRunFinished":
+      return {
+        ...state,
+        messages: updateMessage(state.messages, action.payload.messageId, (message) => {
+          if (!applyAguiRunGuard(message, action.payload.runId, "aguiRunFinished")) {
+            return message;
+          }
+          return {
+            ...message,
+            status: "done",
+            runId: action.payload.runId,
+            parts: message.parts.map((part) => {
+              if (part.type !== "a2ui") {
+                return part;
+              }
+              return {
+                ...part,
+                status: "ready",
+                interaction: part.interaction,
+              };
+            }),
+          };
+        }),
+      };
+    case "a2uiInteractionResolved":
+      return {
+        ...state,
+        messages: updateMessage(state.messages, action.payload.messageId, (message) => ({
+          ...message,
+          parts: message.parts.map((part) => {
+            if (part.type !== "a2ui" || part.surfaceId !== action.payload.surfaceId) {
+              return part;
+            }
+            const withSnapshot = appendSelectionSnapshot(part, action.payload.action);
+            return {
+              ...withSnapshot,
+              interaction: "resolved" as const,
+              status: "ready" as const,
+            };
+          }),
+        })),
+      };
+    case "aguiRunError":
+      return {
+        ...state,
+        messages: updateMessage(state.messages, action.payload.messageId, (message) => {
+          if (!applyAguiRunGuard(message, action.payload.runId, "aguiRunError")) {
+            return message;
+          }
+          const next = appendTextDelta(message, `\n[错误] ${action.payload.message}`);
+          return { ...next, status: "done", runId: action.payload.runId };
+        }),
       };
     case "connectionChanged":
       return {
@@ -147,22 +337,12 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
           ...(hasUser
             ? []
             : [
-                {
-                  id: userMessageId,
-                  role: "user" as const,
-                  content: text,
-                  status: "done" as const,
-                },
+                createMessageFromText(userMessageId, "user", text, "done"),
               ]),
           ...(hasAssistant
             ? []
             : [
-                {
-                  id: assistantMessageId,
-                  role: "assistant" as const,
-                  content: "",
-                  status: "sending" as const,
-                },
+                createMessageFromText(assistantMessageId, "assistant", "", "sending"),
               ]),
         ],
       };

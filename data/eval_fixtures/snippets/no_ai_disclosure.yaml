@@ -1,0 +1,8 @@
+assertions:
+  - type: assistant_not_contains
+    name: no_ai_disclosure
+    forbidden:
+      - "语言模型"
+      - "人工智能助手"
+      - "我是AI"
+      - "人工智能"

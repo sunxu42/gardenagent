@@ -5,6 +5,7 @@ import { PanelEmpty } from "@/components/panel/PanelEmpty";
 import { RailPanelHeader } from "@/components/rail/RailPanelHeader";
 import { RailPanelColumn } from "@/components/rail/RailPanelShell";
 import { RailToolbarButton } from "@/components/rail/RailToolbarButton";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 import type { LogEntry, LogLevel } from "./logTypes";
 import { LogLine } from "./LogLine";
@@ -60,7 +61,7 @@ export function LogsPanel({ entries, onClear }: LogsPanelProps) {
           </>
         }
       />
-      <div ref={listRef} className="logs-panel__list" role="log" aria-live="polite">
+      <ScrollArea ref={listRef} className="logs-panel__list" role="log" aria-live="polite">
         {visibleEntries.length === 0 ? (
           <PanelEmpty
             variant="inline"
@@ -73,7 +74,7 @@ export function LogsPanel({ entries, onClear }: LogsPanelProps) {
         ) : (
           visibleEntries.map((entry) => <LogLine key={entry.id} entry={entry} />)
         )}
-      </div>
+      </ScrollArea>
     </RailPanelColumn>
   );
 }

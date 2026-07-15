@@ -46,6 +46,7 @@ domains:
   - id: memory
     label: 记忆
     priority: 0
+    judge_expected: false
     recommended_tags:
       - memory_recall
       - memory_write
@@ -55,9 +56,13 @@ domains:
   - id: tools
     label: 工具与任务
     priority: 1
+    judge_expected: false
     recommended_tags:
       - tool_required
       - tool_optional
+      - a2ui_agent_init
+      - a2ui_explain
+      - a2ui_structured_list
 
   - id: dialogue
     label: 对话连贯
@@ -69,6 +74,7 @@ domains:
   - id: transport
     label: 传输与性能
     priority: 2
+    judge_expected: false
     recommended_tags:
       - happy_path
 
@@ -84,6 +90,13 @@ tag_groups:
   capability:
     label: 能力专项
     tags: [tool_required, tool_optional, memory_recall, memory_write]
+
+  a2ui:
+    label: A2UI 交互
+    tags:
+      - a2ui_agent_init
+      - a2ui_explain
+      - a2ui_structured_list
 
   mood:
     label: 情绪变体

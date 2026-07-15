@@ -1,0 +1,522 @@
+/* Apple HIG–inspired A2UI surface tokens (aligned with --apple-*) */
+
+.a2ui-apple-surface {
+  --a2ui-accent: var(--apple-accent, #007aff);
+  --a2ui-accent-soft: color-mix(in srgb, var(--apple-accent, #007aff) 12%, transparent);
+  --a2ui-group-bg: var(--apple-grouped-bg, #f2f2f7);
+  --a2ui-cell-bg: var(--apple-cell-bg, #ffffff);
+  --a2ui-cell-hover: var(--apple-cell-hover, #f9f9fb);
+  --a2ui-separator: var(--apple-separator, rgb(60 60 67 / 12%));
+  --a2ui-title: var(--apple-label, rgb(0 0 0 / 88%));
+  --a2ui-body: rgb(60 60 67 / 100%);
+  --a2ui-caption: var(--apple-secondary-label, rgb(60 60 67 / 60%));
+  --a2ui-shell-shadow: 0 1px 2px rgb(0 0 0 / 4%), 0 8px 24px rgb(0 0 0 / 6%);
+  --a2ui-secondary-fill: #e5e5ea;
+  --a2ui-secondary-text: #000000;
+
+  font-family: ui-sans-serif, system-ui, -apple-system, "SF Pro Text", "PingFang SC",
+    "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+[data-appearance="dark"] .a2ui-apple-surface {
+  --a2ui-body: rgb(235 235 245 / 72%);
+  --a2ui-shell-shadow: 0 1px 2px rgb(0 0 0 / 28%), 0 10px 28px rgb(0 0 0 / 36%);
+  --a2ui-secondary-fill: #3a3a3c;
+  --a2ui-secondary-text: #ffffff;
+}
+
+/* Shell */
+
+.a2ui-apple-surface__shell {
+  min-width: min(100%, 22rem);
+  border-radius: 1rem;
+  background: var(--a2ui-group-bg);
+  box-shadow: var(--a2ui-shell-shadow);
+  padding: 0.75rem;
+}
+
+/* Protocol root card — remove shadcn border card look */
+
+.a2ui-apple-protocol>.flex.flex-col.gap-0.rounded-lg {
+  gap: 0.75rem !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  overflow: visible !important;
+  box-shadow: none !important;
+}
+
+/* Title & body copy */
+
+.a2ui-apple-protocol h3 {
+  margin: 0;
+  padding: 0 0.125rem;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: var(--a2ui-title);
+}
+
+.a2ui-apple-protocol p {
+  margin: 0;
+  padding: 0 0.125rem;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: var(--a2ui-body);
+}
+
+/* Grouped list tray */
+
+.a2ui-apple-protocol .flex.flex-col.gap-4:has(.a2ui-plan-cell),
+.a2ui-apple-protocol .flex.flex-col.gap-4:has(.a2ui-multi-cell),
+.a2ui-apple-protocol .flex.flex-col.gap-4:has(.a2ui-emoji-cell) {
+  gap: 0 !important;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  background: var(--a2ui-cell-bg);
+}
+
+.a2ui-apple-protocol .flex.flex-col.gap-4:has(.a2ui-plan-cell)>.a2ui-plan-cell+.a2ui-plan-cell,
+.a2ui-apple-protocol .flex.flex-col.gap-4:has(.a2ui-multi-cell)>.a2ui-multi-cell+.a2ui-multi-cell,
+.a2ui-apple-protocol .flex.flex-col.gap-4:has(.a2ui-emoji-cell)>.a2ui-emoji-cell+.a2ui-emoji-cell {
+  border-top: 0.5px solid var(--a2ui-separator);
+}
+
+/* Read-only info card */
+
+.a2ui-apple-protocol .flex.flex-row.gap-2 {
+  flex-wrap: wrap;
+  padding: 0 0.125rem;
+}
+
+.a2ui-apple-protocol .inline-flex.rounded-full {
+  border-radius: 9999px;
+  background: var(--a2ui-secondary-fill);
+  color: var(--a2ui-body);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  border: none;
+}
+
+.a2ui-apple-protocol .h-px.w-full.bg-border {
+  background: var(--a2ui-separator);
+  margin: 0.25rem 0;
+}
+
+.a2ui-apple-protocol span.text-sm.text-muted-foreground {
+  color: var(--a2ui-caption);
+  font-size: 0.8125rem;
+  padding: 0 0.125rem;
+}
+
+/* Read-only data table */
+
+.a2ui-apple-protocol .overflow-x-auto.rounded-md.border {
+  overflow: hidden;
+  border: none !important;
+  border-radius: 0.75rem;
+  background: var(--a2ui-cell-bg);
+}
+
+.a2ui-apple-protocol table.w-full.text-sm {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.a2ui-apple-protocol table.w-full.text-sm thead tr {
+  background: var(--a2ui-secondary-fill);
+}
+
+.a2ui-apple-protocol table.w-full.text-sm th {
+  padding: 0.625rem 0.75rem;
+  text-align: start;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--a2ui-caption);
+  border-bottom: 0.5px solid var(--a2ui-separator);
+}
+
+.a2ui-apple-protocol table.w-full.text-sm td {
+  padding: 0.75rem;
+  color: var(--a2ui-body);
+  border-bottom: 0.5px solid var(--a2ui-separator);
+}
+
+.a2ui-apple-protocol table.w-full.text-sm tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Selectable data table */
+
+.a2ui-apple-protocol .flex.flex-col:has(> .a2ui-table-header) {
+  gap: 0 !important;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  background: var(--a2ui-cell-bg);
+}
+
+.a2ui-apple-protocol .a2ui-table-header {
+  border-radius: 0;
+}
+
+/* Date picker — inline calendar for A2UI chat */
+
+.a2ui-date-picker {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: var(--apple-radius-md, 0.75rem);
+  border: 0.5px solid var(--a2ui-separator);
+  background: var(--a2ui-cell-bg);
+}
+
+.a2ui-date-picker__selection {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.375rem;
+  padding: 1rem 1rem 0.875rem;
+  background: var(--a2ui-group-bg);
+}
+
+.a2ui-date-picker__selection-date {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  color: var(--a2ui-title);
+}
+
+.a2ui-date-picker__selection-weekday {
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--a2ui-caption);
+}
+
+.a2ui-date-picker__calendar {
+  padding: 0.25rem 0.625rem 0.625rem;
+  background: var(--a2ui-cell-bg);
+  min-height: calc(var(--cell-size) * 6 + 0.125rem * 5 + 2.5rem);
+}
+
+.a2ui-date-picker__rdp {
+  --rdp-accent-color: var(--a2ui-accent);
+  --rdp-accent-background-color: color-mix(in srgb, var(--a2ui-accent) 12%, transparent);
+}
+
+.a2ui-date-picker__caption {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--a2ui-title);
+}
+
+.a2ui-date-picker__nav-btn {
+  position: relative;
+  z-index: 1;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 2.25rem !important;
+  width: 2.25rem !important;
+  min-height: 2.25rem !important;
+  min-width: 2.25rem !important;
+  padding: 0 !important;
+  flex-shrink: 0;
+  cursor: pointer;
+  border-radius: var(--apple-radius-sm, 0.5rem);
+  border: 0.5px solid var(--a2ui-separator);
+  background: var(--a2ui-group-bg) !important;
+  color: var(--a2ui-title);
+  transition: background-color 200ms ease;
+}
+
+.a2ui-date-picker__nav-btn svg {
+  display: block;
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+.a2ui-date-picker__nav-btn:hover:not(:disabled) {
+  background: var(--a2ui-cell-hover) !important;
+}
+
+.a2ui-date-picker__nav-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.a2ui-date-picker__month-grid {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0 0.125rem;
+}
+
+.a2ui-date-picker__month-grid tbody {
+  display: table-row-group;
+}
+
+.a2ui-date-picker__weekdays,
+.a2ui-date-picker__rdp .rdp-weekdays {
+  display: table-row !important;
+}
+
+.a2ui-date-picker__week,
+.a2ui-date-picker__rdp .rdp-week {
+  display: table-row !important;
+  height: var(--cell-size);
+}
+
+.a2ui-date-picker__weekday,
+.a2ui-date-picker__rdp .rdp-weekday {
+  display: table-cell !important;
+  width: calc(100% / 7);
+  padding: 0.375rem 0 0.25rem;
+  text-align: center;
+  vertical-align: middle;
+  color: var(--a2ui-caption);
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+.a2ui-date-picker__rdp .rdp-day,
+.a2ui-date-picker__day {
+  display: table-cell !important;
+  width: calc(100% / 7);
+  height: var(--cell-size);
+  padding: 0;
+  text-align: center;
+  vertical-align: middle;
+  background: transparent !important;
+}
+
+.a2ui-date-picker__rdp .rdp-today {
+  background: transparent !important;
+}
+
+.a2ui-date-picker__rdp .rdp-day_button {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--cell-size);
+  height: var(--cell-size);
+  min-width: var(--cell-size);
+  min-height: var(--cell-size);
+  margin: 0 auto;
+  border-radius: 9999px;
+  color: var(--a2ui-title);
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  background: transparent !important;
+  box-shadow: inset 0 0 0 2px transparent;
+  --tw-ring-shadow: 0 0 #0000;
+  --tw-ring-offset-shadow: 0 0 #0000;
+  transition: background-color 200ms ease, color 200ms ease, box-shadow 200ms ease;
+}
+
+.a2ui-date-picker__rdp .rdp-day_button[class*="ring-"] {
+  --tw-ring-shadow: 0 0 #0000 !important;
+}
+
+.a2ui-date-picker__rdp .rdp-day_button:hover:not(:disabled):not([data-selected-single="true"]) {
+  background: var(--a2ui-cell-hover) !important;
+}
+
+.a2ui-date-picker__rdp .rdp-today:not(.rdp-selected) .rdp-day_button {
+  color: var(--a2ui-accent);
+  background: transparent !important;
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--a2ui-accent) 50%, transparent);
+}
+
+.a2ui-date-picker__rdp .rdp-selected .rdp-day_button,
+.a2ui-date-picker__rdp button[data-selected-single="true"] {
+  background: var(--a2ui-accent) !important;
+  color: #ffffff !important;
+  font-weight: 500;
+  box-shadow: inset 0 0 0 2px transparent;
+  cursor: default;
+}
+
+.a2ui-date-picker__rdp .rdp-selected .rdp-day_button:hover,
+.a2ui-date-picker__rdp .rdp-selected .rdp-day_button:hover:not(:disabled),
+.a2ui-date-picker__rdp button[data-selected-single="true"]:hover,
+.a2ui-date-picker__rdp button[data-selected-single="true"]:hover:not(:disabled) {
+  background: var(--a2ui-accent) !important;
+  color: #ffffff !important;
+}
+
+.a2ui-date-picker__rdp .rdp-day_button:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--a2ui-accent) 45%, transparent);
+}
+
+.a2ui-date-picker__rdp .rdp-selected .rdp-day_button:focus-visible,
+.a2ui-date-picker__rdp button[data-selected-single="true"]:focus-visible {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, #ffffff 60%, transparent);
+}
+
+.a2ui-date-picker__rdp .rdp-disabled .rdp-day_button {
+  opacity: 0.28;
+  cursor: default;
+}
+
+.a2ui-date-picker__footer {
+  padding: 0.75rem 0.875rem 0.875rem;
+  background: var(--a2ui-group-bg);
+}
+
+.a2ui-date-picker__confirm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.a2ui-date-picker__confirm:disabled {
+  opacity: 0.58;
+  cursor: default;
+}
+
+.a2ui-date-picker--confirmed .a2ui-date-picker__calendar {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.a2ui-date-picker--confirmed .a2ui-date-picker__selection-date {
+  color: color-mix(in srgb, var(--a2ui-accent) 72%, var(--a2ui-title));
+}
+
+.chat-ios .msg-bubble--assistant .a2ui-in-bubble .a2ui-date-picker__selection,
+.chat-ios .msg-bubble--assistant .a2ui-in-bubble .a2ui-date-picker__footer {
+  background: var(--apple-grouped-bg, #f2f2f7);
+}
+
+.chat-ios .msg-bubble--assistant .a2ui-in-bubble .a2ui-date-picker__calendar {
+  background: var(--apple-cell-bg, #ffffff);
+}
+
+[data-appearance="dark"] .chat-ios .msg-bubble--assistant .a2ui-in-bubble .a2ui-date-picker__selection,
+[data-appearance="dark"] .chat-ios .msg-bubble--assistant .a2ui-in-bubble .a2ui-date-picker__footer {
+  background: rgb(255 255 255 / 6%);
+}
+
+[data-appearance="dark"] .chat-ios .msg-bubble--assistant .a2ui-in-bubble .a2ui-date-picker__calendar {
+  background: transparent;
+}
+
+/* Binary choice row */
+
+.a2ui-apple-protocol .flex.flex-row:has(.a2ui-binary-segment) {
+  gap: 0.5rem !important;
+  background: transparent;
+  padding: 0;
+  flex-wrap: wrap;
+}
+
+/* Selection option cells — allow label text to wrap inside narrow chat width */
+
+.a2ui-plan-cell,
+.a2ui-multi-cell,
+.a2ui-emoji-cell,
+.a2ui-table-row,
+.a2ui-binary-segment {
+  height: auto;
+  white-space: normal;
+}
+
+.a2ui-plan-cell .min-w-0,
+.a2ui-multi-cell .min-w-0,
+.a2ui-emoji-cell .min-w-0,
+.a2ui-table-row > span:not([aria-hidden]) {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.a2ui-apple-surface[data-disabled="true"] {
+  opacity: 0.85;
+}
+
+.a2ui-apple-surface[data-disabled="true"] .a2ui-apple-protocol {
+  pointer-events: none;
+}
+
+/* Inside message bubbles — strip nested shell to avoid triple backgrounds */
+.chat-ios .msg-bubble--assistant .a2ui-in-bubble,
+.chat-ios .msg-bubble--assistant .a2ui-in-bubble .a2ui-apple-surface__shell,
+.chat-ios .msg-bubble--assistant .a2ui-in-bubble .a2ui-apple-protocol,
+.chat-ios .msg-bubble--user .a2ui-in-bubble .a2ui-apple-surface__shell {
+  width: 100%;
+  min-width: 0;
+}
+
+.chat-ios .msg-bubble--assistant .a2ui-in-bubble .a2ui-apple-surface__shell,
+.chat-ios .msg-bubble--user .a2ui-in-bubble .a2ui-apple-surface__shell {
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.chat-ios .msg-bubble--assistant .a2ui-in-bubble .a2ui-apple-protocol .flex.flex-col.gap-4:has(.a2ui-plan-cell),
+.chat-ios .msg-bubble--assistant .a2ui-in-bubble .a2ui-apple-protocol .flex.flex-col.gap-4:has(.a2ui-multi-cell),
+.chat-ios .msg-bubble--assistant .a2ui-in-bubble .a2ui-apple-protocol .flex.flex-col.gap-4:has(.a2ui-emoji-cell),
+.chat-ios .msg-bubble--assistant .a2ui-in-bubble .a2ui-apple-protocol .flex.flex-col:has(> .a2ui-table-header),
+.chat-ios .msg-bubble--assistant .a2ui-in-bubble .a2ui-apple-protocol .overflow-x-auto.rounded-md.border {
+  width: 100%;
+  background: var(--apple-grouped-bg, #f2f2f7);
+  border: 0.5px solid var(--apple-separator, rgb(60 60 67 / 12%));
+}
+
+[data-appearance="dark"] .chat-ios .msg-bubble--assistant .a2ui-in-bubble .a2ui-apple-protocol .flex.flex-col.gap-4:has(.a2ui-plan-cell),
+[data-appearance="dark"] .chat-ios .msg-bubble--assistant .a2ui-in-bubble .a2ui-apple-protocol .flex.flex-col.gap-4:has(.a2ui-multi-cell),
+[data-appearance="dark"] .chat-ios .msg-bubble--assistant .a2ui-in-bubble .a2ui-apple-protocol .flex.flex-col.gap-4:has(.a2ui-emoji-cell),
+[data-appearance="dark"] .chat-ios .msg-bubble--assistant .a2ui-in-bubble .a2ui-apple-protocol .flex.flex-col:has(> .a2ui-table-header),
+[data-appearance="dark"] .chat-ios .msg-bubble--assistant .a2ui-in-bubble .a2ui-apple-protocol .overflow-x-auto.rounded-md.border {
+  background: rgb(255 255 255 / 8%);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .a2ui-apple-surface__shell {
+    background: var(--apple-grouped-bg, var(--a2ui-group-bg));
+    backdrop-filter: none;
+  }
+
+  .chat-ios .msg-bubble--assistant .a2ui-in-bubble .a2ui-apple-protocol .flex.flex-col.gap-4:has(.a2ui-plan-cell),
+  .chat-ios .msg-bubble--assistant .a2ui-in-bubble .a2ui-apple-protocol .flex.flex-col.gap-4:has(.a2ui-multi-cell),
+  .chat-ios .msg-bubble--assistant .a2ui-in-bubble .a2ui-apple-protocol .flex.flex-col.gap-4:has(.a2ui-emoji-cell) {
+    background: var(--apple-cell-bg, var(--a2ui-cell-bg));
+  }
+}
+
+.chat-app-shell[data-motion="reduced"] .a2ui-plan-cell,
+.chat-app-shell[data-motion="reduced"] .a2ui-multi-cell,
+.chat-app-shell[data-motion="reduced"] .a2ui-emoji-cell,
+.chat-app-shell[data-motion="reduced"] .a2ui-date-picker__rdp .rdp-day_button,
+.chat-app-shell[data-motion="reduced"] .a2ui-table-row,
+.chat-app-shell[data-motion="reduced"] .a2ui-binary-segment,
+.chat-app-shell[data-motion="reduced"] .a2ui-confirm-btn {
+  transition: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .a2ui-plan-cell,
+  .a2ui-multi-cell,
+  .a2ui-emoji-cell,
+  .a2ui-date-picker__rdp .rdp-day_button,
+  .a2ui-table-row,
+  .a2ui-binary-segment,
+  .a2ui-confirm-btn {
+    transition: none !important;
+  }
+}

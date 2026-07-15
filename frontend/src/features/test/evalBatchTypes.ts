@@ -61,6 +61,20 @@ export function getNextPendingItem(state: EvalRunRootState): BatchEvalItem | nul
   return state.items.find((item) => item.status === "pending") ?? null;
 }
 
+export function getItemByScenarioId(
+  state: EvalRunRootState,
+  scenarioId: string,
+): BatchEvalItem | undefined {
+  return state.items.find((item) => item.scenarioId === scenarioId);
+}
+
+export function getExplicitFocusedItem(state: EvalRunRootState): BatchEvalItem | null {
+  if (!state.focusedScenarioId) {
+    return null;
+  }
+  return getItemByScenarioId(state, state.focusedScenarioId) ?? null;
+}
+
 export function shouldShowBatchQueue(state: EvalRunRootState): boolean {
   return state.items.length > 1;
 }

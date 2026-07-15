@@ -61,13 +61,15 @@ eval/
 ## 场景与指标数据
 
 - **Taxonomy**：`data/eval_fixtures/taxonomy.yaml`（8 能力域 + 受控 tags 词表）
-- **场景**：`data/eval_fixtures/scenarios/smoke/`（冒烟）、`judge/`（需 Judge）
+- **场景**：`data/eval_fixtures/scenarios/{domain}/{smoke|judge}/`（公共 id 仍为 `{tier}/{stem}`）
+- **断言片段**：`data/eval_fixtures/snippets/`（`assertion_sets`）
 - **指标定义**：`data/eval_fixtures/metrics/`（如 `emotion_support.yaml`、`safety.yaml`）
+- **结构说明**：`data/eval_fixtures/README.md`
 - **运行结果**：`runtime/eval_runs/eval_*.json`（gitignore）
 
 场景 YAML 必填字段：`domain`（能力域）、`tags`（1–3 个受控标签）。
 
-**L0 断言类型：** `assistant_not_contains`、`assistant_contains`、`assistant_min_length`、**`assistant_max_length`**（`max_chars`）、`agent_emotion_in`、`tool_called`
+**L0 断言类型：** `assistant_not_contains`、`assistant_contains`、`assistant_min_length`、**`assistant_max_length`**（`max_chars`）、`agent_emotion_in`、`tool_called`、**`tool_not_called`**、`text_not_matches`
 
 **emotion smoke 契约：** 每场景 7 条断言；共享禁 AI 套话 + `max_chars: 120`（happy/surprised 为 140）
 
@@ -81,15 +83,11 @@ eval/
 
 ## 运行测试
 
+评测通过 HTTP API / 前端 Test Panel 触发（数据在 `data/eval_fixtures/`），不再维护仓库内 pytest 套件。
+
 ```bash
-# 冒烟场景（PR 级）
-pytest -m smoke tests/eval/
-
-# Judge 场景（Nightly）
-pytest -m judge tests/eval/
-
-# 全量单元测试
-pytest tests/eval/unit/
+# 启动服务后，在前端 Test Panel 或调用 /api/eval/* 运行场景
+python -m server
 ```
 
 评测 API 随 `python -m server` 一同启动，无需单独进程。

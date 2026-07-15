@@ -12,10 +12,11 @@ data/
 │   ├── affective.yaml        # 用户侧回应策略
 │   └── manifest.yaml         # Prompt Composer 清单（可选）
 ├── eval_fixtures/
+│   ├── taxonomy.yaml
+│   ├── snippets/             # 可复用 L0 断言
 │   ├── scenarios/
-│   │   ├── smoke/            # 冒烟回归场景
-│   │   └── judge/              # 需 LLM Judge 的场景
-│   └── metrics/                # Judge 指标定义
+│   │   └── {domain}/{smoke|judge}/
+│   └── metrics/              # Judge 指标定义
 ├── agent_configs/
 │   ├── mcp_servers.yaml      # MCP 端点（供 agent/manager.py）
 │   └── subagents.yaml        # 子 Agent 配置
@@ -30,7 +31,9 @@ data/
 | 目录 | 消费者 | 说明 |
 |------|--------|------|
 | `prompts/` | `agent/middlewares/`、`server/api/prompt_editor/` | 每轮热加载；可通过前端 `/config` 编辑 `soul.yaml` |
-| `eval_fixtures/` | `eval/domain/` | 场景 YAML 与 Judge 指标；路径由 `shared/config/paths.py` 解析 |
+| `eval_fixtures/` | `eval/` 运行时 | 场景 YAML 与 Judge 指标；路径由 `shared/config/paths.py` 解析 |
+
+
 | `agent_configs/` | `agent/manager.py` | MCP 连接、子 Agent 声明 |
 | `reference/` | 开发参考 | 不参与运行时自动加载 |
 
@@ -41,7 +44,7 @@ data/
 - **Web UI**：聊天页笔形图标 → `/config`（桌面三栏，仅 `soul.yaml` 支持表单编辑）
 - **HTTP API**：`/api/prompt-editor/`（详见 `server/api/prompt_editor/`）
 
-`PersonaPromptMiddleware` 按通用模板渲染 `soul.yaml` 为 system prompt，修改后下一轮对话即生效，无需重启。
+`SystemPromptMiddleware`（Prompt Composer）按 `manifest.yaml` 拼装 `soul.yaml` 等模块为 system prompt，修改后下一轮对话即生效，无需重启。
 
 ## 记忆导出（可选）
 

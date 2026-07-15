@@ -5,6 +5,7 @@ import {
   loadRecentChatHistory,
   persistChatMessages,
 } from "../storage/chatHistoryService";
+import { messagePersistFingerprint } from "../storage/chatHistoryTypes";
 
 const PERSIST_DEBOUNCE_MS = 400;
 const SCROLL_LOAD_THRESHOLD_PX = 72;
@@ -61,10 +62,7 @@ export function useChatHistoryPersistence({
       return;
     }
 
-    const snapshot = messages
-      .filter((m) => m.content.trim())
-      .map((m) => `${m.id}:${m.status}:${m.content.length}`)
-      .join("|");
+    const snapshot = messages.map((message) => messagePersistFingerprint(message)).join("|");
     if (snapshot === lastPersistedSnapshotRef.current) {
       return;
     }
@@ -104,10 +102,7 @@ export function useChatHistoryPersistence({
         return;
       }
       const messagesToPersist = latestMessagesRef.current;
-      const snapshot = messagesToPersist
-        .filter((m) => m.content.trim())
-        .map((m) => `${m.id}:${m.status}:${m.content.length}`)
-        .join("|");
+      const snapshot = messagesToPersist.map((message) => messagePersistFingerprint(message)).join("|");
       if (!snapshot || snapshot === lastPersistedSnapshotRef.current) {
         return;
       }

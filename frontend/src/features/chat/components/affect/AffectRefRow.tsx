@@ -1,5 +1,6 @@
 import { Lock, LockOpen } from "lucide-react";
 import type { ReactNode } from "react";
+import { Button } from "@/components/ui/button";
 
 interface AffectRefRowProps {
   current?: boolean;
@@ -33,12 +34,14 @@ export function AffectRefRow({
             {locked ? (
               <span className="text-[10px] text-emerald-600 dark:text-emerald-400">已锁定</span>
             ) : null}
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               onClick={onToggleLock}
               aria-label={locked ? "解锁" : "锁定"}
               aria-pressed={locked}
-              className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              className="h-6 w-6 shrink-0 rounded-md shadow-none hover:bg-transparent"
             >
               <LockIcon
                 className={`h-3.5 w-3.5 ${
@@ -48,7 +51,7 @@ export function AffectRefRow({
                 }`}
                 aria-hidden
               />
-            </button>
+            </Button>
           </div>
         ) : null}
       </div>

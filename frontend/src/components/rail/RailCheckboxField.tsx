@@ -1,7 +1,7 @@
-import { Check } from "lucide-react";
 import { useId, type ReactNode } from "react";
 
-import { railCheckboxRowClass, railListCheckClass } from "@/components/rail/railButtonStyles";
+import { railCheckboxRowClass } from "@/components/rail/railButtonStyles";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 
 export interface RailCheckboxFieldProps {
@@ -13,7 +13,7 @@ export interface RailCheckboxFieldProps {
   id?: string;
 }
 
-/** Multi-select row: native checkbox + label (not a button). */
+/** Multi-select row backed by shadcn Checkbox. */
 export function RailCheckboxField({
   checked,
   disabled = false,
@@ -35,17 +35,19 @@ export function RailCheckboxField({
         className,
       )}
     >
-      <input
+      <Checkbox
         id={id}
-        type="checkbox"
         checked={checked}
         disabled={disabled}
-        className="sr-only"
-        onChange={(event) => onCheckedChange(event.target.checked)}
+        onCheckedChange={onCheckedChange}
+        className={cn(
+          "mt-0.5 h-3.5 w-3.5 rounded border shadow-none",
+          checked
+            ? "border-primary bg-primary text-primary-foreground"
+            : "border-rail-pick-border bg-rail-pick-check data-[state=checked]:bg-primary",
+          "[&_svg]:h-2.5 [&_svg]:w-2.5",
+        )}
       />
-      <span className={railListCheckClass(checked)} aria-hidden>
-        {checked ? <Check className="h-2.5 w-2.5" strokeWidth={3} /> : null}
-      </span>
       <span className="min-w-0 flex-1">{children}</span>
     </label>
   );

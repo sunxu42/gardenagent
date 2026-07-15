@@ -1,4 +1,4 @@
-"""情绪子系统装配：构建 EmotionService 与 middleware。"""
+"""情绪子系统装配：构建 EmotionService 与 appraisal middleware。"""
 
 from __future__ import annotations
 
@@ -25,11 +25,8 @@ from agent.emotion.llm.appraisal import (
     EmotionAppraiser,
     create_emotion_appraisal_model,
 )
-from agent.emotion.rendering.taxonomy import load_taxonomy
-from agent.middlewares.affective_context_middleware import AffectiveContextMiddleware
-from agent.middlewares.emotion_appraisal_middleware import EmotionAppraisalMiddleware
-from agent.middlewares.emotion_mood_middleware import EmotionMoodMiddleware
-from agent.middlewares.persona_prompt_middleware import resolve_soul_profile
+from agent.middlewares.emotion_appraisal import EmotionAppraisalMiddleware
+from agent.prompt.persona.soul_profile import resolve_soul_profile
 
 
 @dataclass
@@ -37,7 +34,6 @@ class EmotionSubsystem:
     service: EmotionService | None = None
     tts_voice_type: str | None = None
     appraisal_middleware: list[Any] = field(default_factory=list)
-    prompt_middleware: list[Any] = field(default_factory=list)
 
 
 def build_emotion_service(config, persona_id=None) -> tuple[EmotionService, str]:
@@ -72,7 +68,6 @@ def setup_emotion_subsystem(config) -> EmotionSubsystem:
     """构建情绪服务与 appraisal middleware。"""
     try:
         emotion_service, voice_type = build_emotion_service(config)
-        taxonomy = load_taxonomy(f"{config.prompts_dir}/agent_mood.yaml")
         appraisal_llm = create_emotion_appraisal_model(config)
         appraiser = EmotionAppraiser(
             appraisal_llm,
@@ -81,19 +76,11 @@ def setup_emotion_subsystem(config) -> EmotionSubsystem:
         appraisal_middleware = [
             EmotionAppraisalMiddleware(emotion_service, appraiser),
         ]
-        prompt_middleware: list[Any] = [
-            AffectiveContextMiddleware(
-                emotion_service,
-                affective_path=f"{config.prompts_dir}/affective.yaml",
-            ),
-            EmotionMoodMiddleware(emotion_service, taxonomy),
-        ]
 
         return EmotionSubsystem(
             service=emotion_service,
             tts_voice_type=voice_type,
             appraisal_middleware=appraisal_middleware,
-            prompt_middleware=prompt_middleware,
         )
     except Exception as e:
         print(f"[warn] emotion subsystem disabled: {e}")

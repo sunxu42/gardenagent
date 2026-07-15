@@ -72,11 +72,18 @@ export function buildHello(deviceId: string, clientId: string, options: HelloOpt
   return payload;
 }
 
-export function buildUserText(text: string) {
-  return {
+export function buildUserText(
+  text: string,
+  agui?: { messageId: string; runId: string },
+) {
+  const payload: Record<string, unknown> = {
     role: "user",
     content: [{ type: "text", text }],
   };
+  if (agui) {
+    payload.agui = agui;
+  }
+  return payload;
 }
 
 export function buildAffectLock(dimension: "relationship" | "agent_vad", refId: string | null) {
@@ -92,6 +99,29 @@ export function buildVoiceSession(state: "start" | "stop", voiceType?: string) {
     payload.voice_type = voiceType.trim();
   }
   return payload;
+}
+
+export function buildUiAction(payload: {
+  runId: string;
+  surfaceId: string;
+  messageId: string;
+  action: {
+    name: string;
+    context?: Record<string, unknown>;
+    sourceComponentId?: string;
+    dataModel?: Record<string, unknown>;
+  };
+}) {
+  return {
+    channel: "agui",
+    event: {
+      type: "UI_ACTION",
+      runId: payload.runId,
+      surfaceId: payload.surfaceId,
+      messageId: payload.messageId,
+      action: payload.action,
+    },
+  };
 }
 
 export type WsMappedEvent =

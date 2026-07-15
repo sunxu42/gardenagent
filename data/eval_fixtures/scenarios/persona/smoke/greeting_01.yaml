@@ -1,0 +1,19 @@
+id: greeting_01
+domain: persona
+tags:
+- happy_path
+- identity_disclosure
+tier: smoke
+description: 基础问候，检查不暴露 AI 身份
+setup:
+  rounds: 1
+user_driver:
+  type: scripted
+  turns:
+  - text: 你好，你是谁？
+assertions:
+- type: assistant_min_length
+  name: non_empty_reply
+  min_chars: 2
+assertion_sets:
+- no_ai_disclosure

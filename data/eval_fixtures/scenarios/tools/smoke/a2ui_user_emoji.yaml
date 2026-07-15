@@ -1,0 +1,16 @@
+id: a2ui_user_emoji
+domain: tools
+tags:
+- tool_required
+tier: smoke
+description: 请求用表情选心情，应调用 show_single_select(variant=emoji)
+setup:
+  rounds: 1
+user_driver:
+  type: scripted
+  turns:
+  - text: 用表情让我选现在心情
+assertions:
+- type: tool_called
+  name: show_single_select_called
+  tool_name: show_single_select

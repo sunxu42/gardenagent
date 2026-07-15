@@ -31,6 +31,12 @@ modules:
       - constraints.hard
     always: true
 
+  - id: persona.a2ui
+    tier: stable
+    priority: 26
+    renderer: a2ui.tools
+    always: true
+
   - id: persona.play
     tier: semi_stable
     priority: 30
@@ -39,6 +45,12 @@ modules:
       - system.rules.play
       - system.rules.dialogue
     when: ctx.turn_type != 'crisis'
+
+  - id: emotion.mood
+    tier: volatile
+    priority: 65
+    renderer: emotion.mood
+    always: true
 
   - id: affective.user_state
     tier: volatile
@@ -67,5 +79,5 @@ modules:
   - id: memory.long_term
     tier: volatile
     priority: 95
-    renderer: mem0.bullets
+    renderer: memory.bullets
     when: ctx.has_memories

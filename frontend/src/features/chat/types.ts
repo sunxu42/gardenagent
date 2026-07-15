@@ -1,13 +1,33 @@
 import type { LogEntry } from "../logs/logTypes";
+import type { A2UIMessage } from "a2ui-shadcn";
 
 export type MessageRole = "user" | "assistant";
 
 export type MessageStatus = "sending" | "streaming" | "done";
 
+export type TextPart = { type: "text"; text: string };
+
+export interface A2UIActionPayload {
+  name: string;
+  context?: Record<string, unknown>;
+  sourceComponentId?: string;
+  dataModel?: Record<string, unknown>;
+}
+
+export type A2uiPart = {
+  type: "a2ui";
+  surfaceId: string;
+  messages: A2UIMessage[];
+  status: "streaming" | "ready";
+  /** pending: awaiting user click; resolved: user already chose */
+  interaction?: "pending" | "resolved";
+};
+
+export type MessagePart = TextPart | A2uiPart;
+
 export type ConnectionStatus = "online" | "offline";
 
 export type VoiceState = "idle" | "listening" | "recognizing" | "sending" | "agentThinking" | "speaking";
-export type ThemeName = "mint-cute" | "pink-blossom" | "gray-mist" | "orange-sunrise";
 export type AppearanceMode = "light" | "dark";
 
 export interface ChatSettings {
@@ -16,15 +36,17 @@ export interface ChatSettings {
   voiceType: string;
   fontSize: "normal" | "large";
   motion: "normal" | "reduced";
-  theme: ThemeName;
   appearance: AppearanceMode;
 }
 
 export interface ChatMessage {
   id: string;
   role: MessageRole;
+  parts: MessagePart[];
+  /** 与 parts 中文本拼接保持同步，Plan 2 后移除 */
   content: string;
   status: MessageStatus;
+  runId?: string;
   /** 助手展示名（由 WebSocket agent_name 注入） */
   authorLabel?: string;
   /** IndexedDB 排序与分页用（新消息在首次持久化时写入） */
@@ -142,6 +164,32 @@ export type ChatAction =
       payload: { id: string; content: string; agentName?: string };
     }
   | { type: "messageDone"; payload: { id: string } }
+  | {
+      type: "aguiRunStarted";
+      payload: { messageId: string; runId: string; agentName?: string };
+    }
+  | {
+      type: "aguiTextDelta";
+      payload: { messageId: string; runId: string; delta: string; agentName?: string };
+    }
+  | {
+      type: "aguiA2uiOps";
+      payload: {
+        messageId: string;
+        runId: string;
+        surfaceId: string;
+        operations: Record<string, unknown>[];
+      };
+    }
+  | { type: "aguiRunFinished"; payload: { messageId: string; runId: string } }
+  | {
+      type: "a2uiInteractionResolved";
+      payload: { messageId: string; surfaceId: string; action: A2UIActionPayload };
+    }
+  | {
+      type: "aguiRunError";
+      payload: { messageId: string; runId: string; message: string };
+    }
   | { type: "connectionChanged"; payload: { status: ConnectionStatus } }
   | { type: "voiceListeningStarted" }
   | { type: "voiceTranscriptUpdated"; payload: { text: string } }

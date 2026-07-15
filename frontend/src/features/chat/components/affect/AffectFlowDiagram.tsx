@@ -36,7 +36,7 @@ const LAYER_STYLE: Record<
 > = {
   client: { stroke: "#a78bfa", accent: "#8b5cf6", gradA: "#c4b5fd", gradB: "#a78bfa" },
   transport: { stroke: "#94a3b8", accent: "#64748b", gradA: "#cbd5e1", gradB: "#94a3b8" },
-  handler: { stroke: "#38bdf8", accent: "#0284c7", gradA: "#38bdf8", gradB: "#0ea5e9" },
+  handler: { stroke: "#007aff", accent: "#0062cc", gradA: "#409cff", gradB: "#007aff" },
   emotion: { stroke: "#f59e0b", accent: "#d97706", gradA: "#fbbf24", gradB: "#f59e0b" },
   llm: { stroke: "#6366f1", accent: "#4f46e5", gradA: "#818cf8", gradB: "#6366f1" },
   tts: { stroke: "#34d399", accent: "#059669", gradA: "#34d399", gradB: "#10b981" },
@@ -56,7 +56,7 @@ export function AffectFlowDiagram() {
   const viewH = totalH + 16;
 
   return (
-    <div className="rounded-md bg-muted/15 py-2">
+    <div className="affect-guide-inset affect-guide-inset--indigo py-2">
       <svg
         viewBox={`0 0 300 ${viewH}`}
         className="mx-auto w-full max-w-[20rem]"

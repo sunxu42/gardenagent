@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from agent.emotion.synthesis.strategy_tags import strategy_tags_summary
-from agent.prompt.context import PromptContext
-from agent.prompt.modules import PromptModule
+from agent.prompt.compose.context import PromptContext
+from agent.prompt.compose.module import PromptModule
 from agent.prompt.renderers import RendererDeps, register
 
 

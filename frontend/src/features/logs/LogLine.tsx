@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import type { LogEntry } from "./logTypes";
 import { LEVEL_COLORS, MODULE_COLORS, MODULE_SHORT } from "./logColors";
 import { labelLogLevel, labelLogModule } from "@/lib/uiLabels";
@@ -55,15 +56,17 @@ export function LogLine({ entry }: LogLineProps) {
         </span>
         <span className="logs-line__message">{entry.message}</span>
         {expandable ? (
-          <button
+          <Button
             type="button"
-            className="logs-line__expand"
+            variant="outline"
+            size="icon"
+            className="logs-line__expand h-[1.25rem] w-[1.25rem] shrink-0 rounded border p-0 shadow-none"
             onClick={() => setExpanded((v) => !v)}
             aria-expanded={expanded}
             aria-label={expanded ? "收起详情" : "展开详情"}
           >
             {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-          </button>
+          </Button>
         ) : (
           <span className="logs-line__expand-spacer" aria-hidden />
         )}

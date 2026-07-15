@@ -1,5 +1,6 @@
 import { forwardRef, type ComponentPropsWithoutRef, type ElementType } from "react";
 
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
 type PolymorphicProps<T extends ElementType> = {
@@ -69,7 +70,7 @@ export const RailPanelScroll = forwardRef<HTMLDivElement, RailPanelScrollProps>(
   ref,
 ): JSX.Element {
   return (
-    <div
+    <ScrollArea
       ref={ref}
       className={cn("rail-panel-scroll", padded && "rail-panel-scroll--padded", className)}
       {...props}

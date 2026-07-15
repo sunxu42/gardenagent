@@ -11,6 +11,7 @@ import { AffectGuideNav } from "./affect/AffectGuideNav";
 import { AffectReferenceGuide } from "./affect/AffectReferenceGuide";
 import { AffectStatusOverview } from "./affect/AffectStatusOverview";
 import { GuideAnchorSection } from "./affect/GuideSection";
+import "./affect/affect-ios.css";
 
 interface AffectGuidePanelProps {
   focusedRecord?: AffectTurnRecord | null;
@@ -121,7 +122,7 @@ export function AffectGuidePanel({
             />
           </GuideAnchorSection>
 
-          <GuideAnchorSection id="affect-guide-s2" title="基线与衰减" accent="slate">
+          <GuideAnchorSection id="affect-guide-s2" title="基线与衰减" accent="sky">
             <AffectBaselineDecayGuide
               profile={emotionProfile}
               agentBaselineFallback={agentBaselineVad}

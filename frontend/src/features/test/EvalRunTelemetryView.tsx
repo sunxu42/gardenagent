@@ -24,7 +24,7 @@ interface EvalRunTelemetryViewProps {
 export function EvalRunTelemetryView({ result }: EvalRunTelemetryViewProps): JSX.Element {
   if (!hasTelemetryData(result)) {
     return (
-      <section className="rounded-lg border border-border/30 bg-muted/15 px-3.5 py-3">
+      <section className="test-panel-section">
         <p className="text-[11px] text-muted-foreground">无遥测数据（旧版记录）</p>
       </section>
     );
@@ -34,8 +34,8 @@ export function EvalRunTelemetryView({ result }: EvalRunTelemetryViewProps): JSX
   const telemetry = result.telemetry;
 
   return (
-    <section className="rounded-lg border border-border/30 bg-muted/15 px-3.5 py-3">
-      <h4 className="mb-2 text-[13px] font-medium text-foreground">运行遥测</h4>
+    <section className="test-panel-section">
+      <h4 className="test-panel-section__title">运行遥测</h4>
       <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-[11px]">
         <div>
           <dt className="text-muted-foreground">总耗时</dt>
@@ -69,10 +69,7 @@ export function EvalRunTelemetryView({ result }: EvalRunTelemetryViewProps): JSX
           <p className="mb-1.5 text-[10px] font-medium text-muted-foreground">阶段耗时</p>
           <ul className="flex flex-wrap gap-2">
             {Object.entries(telemetry.phase_durations_ms).map(([phase, ms]) => (
-              <li
-                className="rounded-md border border-border/25 bg-background/50 px-2 py-1 text-[10px]"
-                key={phase}
-              >
+              <li className="test-panel-card text-[10px]" key={phase}>
                 {labelEvalPhase(phase)} · {formatTelemetryDuration(ms)}
               </li>
             ))}

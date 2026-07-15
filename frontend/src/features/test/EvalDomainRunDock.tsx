@@ -1,12 +1,13 @@
-import { ClipboardList, FlaskConical, Sparkles } from "lucide-react";
+import { ClipboardList, Sparkles } from "lucide-react";
 
 import { PanelEmpty } from "@/components/panel/PanelEmpty";
 
-import { EvalBatchQueueView } from "@/features/test/EvalBatchQueueView";
 import { EvalRunProgressView } from "@/features/test/EvalRunProgressView";
 import { EvalRunResultView } from "@/features/test/EvalRunResultView";
+import { EvalScenarioDetailHeader } from "@/features/test/EvalScenarioDetailHeader";
 import { useEvalRun } from "@/features/test/EvalRunProvider";
-import { getFocusedItem, shouldShowBatchQueue } from "@/features/test/evalBatchTypes";
+import { getExplicitFocusedItem } from "@/features/test/evalBatchTypes";
+import { TestPanelCollapsibleSection } from "@/features/test/TestPanelCollapsibleSection";
 import { labelVerdict } from "@/lib/uiLabels";
 
 interface EvalDomainRunDockProps {
@@ -26,25 +27,24 @@ export function EvalDomainRunDock({
   emptyTitle,
   emptyDescription,
 }: EvalDomainRunDockProps): JSX.Element {
-  const { state: evalRunState, dispatch: dispatchEvalRun } = useEvalRun();
-  const focusedItem = getFocusedItem(evalRunState);
+  const { state: evalRunState } = useEvalRun();
+  const focusedItem = getExplicitFocusedItem(evalRunState);
   const focusedLive = focusedItem?.live;
-  const showBatchQueue = shouldShowBatchQueue(evalRunState);
-  const hasScenarioResult = Boolean(focusedLive?.liveResult.scenario_id);
   const isExploratoryLive = focusedLive?.tier === "exploratory";
   const isScenarioLive = focusedLive && focusedLive.tier !== "exploratory";
   const scenarioRunning = evalRunState.batchStatus === "running";
+  const isRunning = focusedLive?.status === "running";
 
   const defaultEmpty =
     mode === "exploratory"
       ? {
           title: "等待探索评测",
-          description: "填写左侧配置并点击开始测试，进度与评分将实时显示在这里。",
+          description: "填写左侧配置并点击开始测试，详情将显示在这里。",
           icon: Sparkles,
         }
       : {
-          title: "尚未开始评测",
-          description: "从左侧勾选场景并点击运行，断言与评判结果会显示在这里。",
+          title: "场景详情",
+          description: "运行后点击左侧场景行，可在此查看进度、断言与评判详情。",
           icon: ClipboardList,
         };
 
@@ -52,22 +52,31 @@ export function EvalDomainRunDock({
   const title = emptyTitle ?? defaultEmpty.title;
   const description = emptyDescription ?? defaultEmpty.description;
 
-  const showEmpty =
-    !scenarioRunning &&
-    !error &&
-    (mode === "exploratory" ? !isExploratoryLive : !hasScenarioResult);
+  const showScenarioDetail = mode === "scenario" && isScenarioLive && focusedItem != null;
+  const showExploratoryDetail = mode === "exploratory" && isExploratoryLive && focusedItem != null;
+  const showEmpty = !error && !showScenarioDetail && !showExploratoryDetail;
 
   return (
     <div className="eval-domain-run-dock">
-      <div className="eval-domain-run-dock__header">
-        <h3 className="text-xs font-medium text-foreground">
-          {mode === "exploratory" ? "探索过程" : "运行过程"}
-        </h3>
-        <p className="mt-0.5 text-[10px] text-muted-foreground">
-          {focusedLive?.progressMessage ??
-            (scenarioRunning ? "实时推送评测进度" : "运行后在此查看进度与结果")}
-        </p>
-      </div>
+      {showScenarioDetail || showExploratoryDetail ? (
+        <EvalScenarioDetailHeader
+          scenarioId={focusedItem.scenarioId}
+          tier={focusedLive.tier}
+          status={focusedLive.liveResult.status ?? focusedLive.status}
+          judgeOverallPassed={focusedLive.liveResult.judge_overall_passed}
+          progressMessage={focusedLive.progressMessage}
+          isRunning={isRunning}
+        />
+      ) : (
+        <div className="eval-domain-run-dock__header">
+          <h3 className="text-xs font-medium text-foreground">
+            {mode === "exploratory" ? "探索详情" : "场景详情"}
+          </h3>
+          <p className="mt-0.5 text-[10px] text-muted-foreground">
+            {scenarioRunning ? "点击左侧场景查看详情" : "选择或运行场景后查看详情"}
+          </p>
+        </div>
+      )}
 
       <div className="eval-domain-run-dock__body space-y-3">
         {error ? (
@@ -77,37 +86,22 @@ export function EvalDomainRunDock({
           </div>
         ) : null}
 
-        {mode === "scenario" && showBatchQueue ? (
-          <EvalBatchQueueView
-            focusedScenarioId={evalRunState.focusedScenarioId}
-            state={evalRunState}
-            onFocus={(scenarioId) =>
-              dispatchEvalRun({ type: "BATCH_FOCUS", payload: { scenarioId } })
-            }
-            onToggleExpand={(scenarioId) =>
-              dispatchEvalRun({ type: "BATCH_TOGGLE_EXPAND", payload: { scenarioId } })
-            }
-          />
-        ) : null}
-
-        {mode === "scenario" && isScenarioLive ? (
+        {showScenarioDetail ? (
           <>
-            <EvalRunProgressView state={focusedLive} />
-            <EvalRunResultView result={focusedLive.liveResult} />
+            <EvalRunProgressView state={focusedLive} variant="compact" />
+            <EvalRunResultView omitHeader result={focusedLive.liveResult} />
           </>
         ) : null}
 
-        {mode === "exploratory" && isExploratoryLive ? (
+        {showExploratoryDetail ? (
           <>
-            <EvalRunProgressView state={focusedLive} />
+            <EvalRunProgressView state={focusedLive} variant="compact" />
 
             {focusedLive.liveResult.summary ? (
-              <section className="rounded-lg border border-border/30 border-l-[3px] border-l-emerald-500/45 bg-emerald-500/[0.04] px-3.5 py-3">
+              <section className="test-panel-section">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                      总分
-                    </p>
+                    <p className="test-panel-section__eyebrow">综合结论</p>
                     <p className="text-xl font-semibold text-foreground">
                       {formatScore(focusedLive.liveResult.summary.overall_score)}
                     </p>
@@ -120,33 +114,28 @@ export function EvalDomainRunDock({
                   {focusedLive.liveResult.summary.conclusion}
                 </p>
                 {(focusedLive.liveResult.summary.improvement_suggestions?.length ?? 0) > 0 ? (
-                  <ul className="mt-2 list-disc space-y-0.5 pl-4 text-[11px] text-muted-foreground">
-                    {focusedLive.liveResult.summary.improvement_suggestions?.map((suggestion) => (
-                      <li key={suggestion}>{suggestion}</li>
-                    ))}
-                  </ul>
+                  <TestPanelCollapsibleSection className="mt-2 border-0 bg-transparent" defaultOpen={false} title="改进建议">
+                    <ul className="list-disc space-y-0.5 pl-4 text-[11px] text-muted-foreground">
+                      {focusedLive.liveResult.summary.improvement_suggestions?.map((suggestion) => (
+                        <li key={suggestion}>{suggestion}</li>
+                      ))}
+                    </ul>
+                  </TestPanelCollapsibleSection>
                 ) : null}
               </section>
             ) : null}
 
             {(focusedLive.liveResult.scores?.length ?? 0) > 0 ? (
-              <section className="rounded-lg border border-border/30 border-l-[3px] border-l-indigo-500/45 bg-indigo-500/[0.04] px-3.5 py-3">
-                <h4 className="mb-2 text-[13px] font-medium text-foreground">指标评分</h4>
-                <ul className="space-y-2">
+              <section className="test-panel-section">
+                <h4 className="test-panel-section__title">指标评分</h4>
+                <ul className="space-y-1.5">
                   {focusedLive.liveResult.scores?.map((metric) => (
-                    <li
-                      className="rounded-md border border-border/25 bg-background/40 px-2.5 py-2"
-                      key={metric.name}
-                    >
+                    <li className="test-panel-card" key={metric.name}>
                       <div className="flex items-center justify-between gap-2">
                         <p className="text-[11px] font-medium text-foreground/90">{metric.name}</p>
-                        <p className="text-[11px] font-semibold text-primary">
-                          {formatScore(metric.score)}
-                        </p>
+                        <p className="test-text-score text-[11px]">{formatScore(metric.score)}</p>
                       </div>
-                      <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">
-                        {metric.reason}
-                      </p>
+                      <p className="mt-1 text-[10px] leading-snug text-muted-foreground">{metric.reason}</p>
                     </li>
                   ))}
                 </ul>
@@ -154,25 +143,22 @@ export function EvalDomainRunDock({
             ) : null}
 
             {(focusedLive.liveResult.observations?.length ?? 0) > 0 ? (
-              <section className="rounded-lg border border-border/30 border-l-[3px] border-l-violet-500/45 bg-violet-500/[0.04] px-3.5 py-3">
-                <h4 className="mb-2 text-[13px] font-medium text-foreground">对话轮次</h4>
-                <ul className="space-y-2">
+              <TestPanelCollapsibleSection
+                defaultOpen={(focusedLive.liveResult.observations?.length ?? 0) <= 1}
+                title={`对话轮次（${focusedLive.liveResult.observations?.length ?? 0}）`}
+              >
+                <ul className="space-y-1.5">
                   {focusedLive.liveResult.observations?.map((turn) => (
-                    <li
-                      className="rounded-md border border-border/25 bg-background/40 px-2.5 py-2"
-                      key={turn.round}
-                    >
-                      <div className="mb-1.5 flex items-center justify-between gap-2">
-                        <p className="text-[10px] font-medium text-muted-foreground">
-                          第 {turn.round} 轮
-                        </p>
+                    <li className="test-panel-card" key={turn.round}>
+                      <div className="mb-1 flex items-center justify-between gap-2">
+                        <p className="text-[10px] font-medium text-muted-foreground">第 {turn.round} 轮</p>
                         {turn.agent_affect?.emotion ? (
                           <span className="test-status-badge test-status-badge--neutral">
                             {turn.agent_affect.emotion}
                           </span>
                         ) : null}
                       </div>
-                      <div className="space-y-1.5 text-[11px] leading-snug">
+                      <div className="space-y-1 text-[11px] leading-snug">
                         <p>
                           <span className="font-medium text-foreground/80">用户 </span>
                           <span className="text-muted-foreground">{turn.user}</span>
@@ -185,7 +171,7 @@ export function EvalDomainRunDock({
                     </li>
                   ))}
                 </ul>
-              </section>
+              </TestPanelCollapsibleSection>
             ) : null}
           </>
         ) : null}

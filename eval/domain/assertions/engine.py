@@ -13,6 +13,8 @@ _HANDLER_BY_TYPE = {
     "assistant_max_length": assertion_types.assistant_max_length,
     "agent_emotion_in": assertion_types.agent_emotion_in,
     "tool_called": assertion_types.tool_called,
+    "tool_not_called": assertion_types.tool_not_called,
+    "text_not_matches": assertion_types.text_not_matches,
 }
 
 

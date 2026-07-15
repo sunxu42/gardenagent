@@ -1,0 +1,16 @@
+id: a2ui_user_table_readonly
+domain: tools
+tags:
+- tool_required
+tier: smoke
+description: 请求表格对比展示，应调用 show_data_table 且 interactive=false
+setup:
+  rounds: 1
+user_driver:
+  type: scripted
+  turns:
+  - text: 把这几个方案对比一下，列成表给我看。
+assertions:
+- type: tool_called
+  name: show_data_table_called
+  tool_name: show_data_table
