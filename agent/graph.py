@@ -19,7 +19,7 @@ from langgraph.types import Checkpointer
 
 from deepagents._models import resolve_model
 from deepagents.backends import StateBackend
-from deepagents.backends.protocol import BackendFactory, BackendProtocol
+from deepagents.backends.protocol import BackendProtocol
 from deepagents.middleware.memory import MemoryMiddleware
 from deepagents.middleware.patch_tool_calls import PatchToolCallsMiddleware
 from deepagents.middleware.skills import SkillsMiddleware
@@ -59,7 +59,7 @@ def create_deep_agent(  # noqa: C901, PLR0912  # Complex graph assembly logic wi
     context_schema: type[Any] | None = None,
     checkpointer: Checkpointer | None = None,
     store: BaseStore | None = None,
-    backend: BackendProtocol | BackendFactory | None = None,
+    backend: BackendProtocol | None = None,
     interrupt_on: dict[str, bool | InterruptOnConfig] | None = None,
     debug: bool = False,
     name: str | None = None,
@@ -125,10 +125,10 @@ def create_deep_agent(  # noqa: C901, PLR0912  # Complex graph assembly logic wi
         context_schema: The schema of the deep agent.
         checkpointer: Optional `Checkpointer` for persisting agent state between runs.
         store: Optional store for persistent storage (required if backend uses `StoreBackend`).
-        backend: Optional backend for file storage and execution.
+        backend: Optional backend instance for file storage and execution.
 
-            Pass either a `Backend` instance or a callable factory like `lambda rt: StateBackend(rt)`.
-            For execution support, use a backend that implements `SandboxBackendProtocol`.
+            Defaults to `StateBackend()`. For execution support, use a backend that
+            implements `SandboxBackendProtocol`.
         interrupt_on: Mapping of tool names to interrupt configs.
 
             Pass to pause agent execution at specified tool calls for human approval or modification.
@@ -143,7 +143,7 @@ def create_deep_agent(  # noqa: C901, PLR0912  # Complex graph assembly logic wi
     """
     model = get_default_model() if model is None else resolve_model(model)
 
-    backend = backend if backend is not None else (StateBackend)
+    backend = backend if backend is not None else StateBackend()
 
     # Build general-purpose subagent with default middleware stack
     gp_middleware: list[AgentMiddleware[Any, Any, Any]] = [

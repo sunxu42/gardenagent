@@ -13,7 +13,7 @@ _log = get_logger(LogModule.AGENT)
 
 SOUL_RELPATH = Path("soul.yaml")
 SKIP_RENDER_KEYS = frozenset({"meta", "voice", "baseline", "relationship_baseline"})
-DEFAULT_VOICE_TYPE = "zh_female_shuangkuaisisi_emo_v2_mars_bigtts"
+DEFAULT_VOICE_TYPE = "longanlingxin"
 DEFAULT_BASELINE = {"v": 0.3, "a": 0.55, "d": 0.1}
 
 

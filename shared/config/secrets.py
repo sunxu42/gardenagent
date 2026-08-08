@@ -26,14 +26,19 @@ def _env(name: str) -> str | None:
     return text if text else None
 
 
+def _first_non_empty(*values: str | None) -> str | None:
+    for value in values:
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
 @dataclass(frozen=True)
 class Secrets:
     """`.env` 中的凭证与少量运行时覆盖项。"""
 
-    glm_api_key: str | None = None
-    emotion_appraisal_api_key: str | None = None
-    mem0_llm_api_key: str | None = None
-    eval_llm_api_key: str | None = None
+    # 阿里百炼（DashScope）统一 LLM API Key，供主对话 / 情绪 / Mem0 / 评测等共用
+    dashscope_api_key: str | None = None
 
     doubao_asr_appid: str | None = None
     doubao_asr_token: str | None = None
@@ -54,10 +59,10 @@ def load_secrets() -> Secrets:
     """读取 `.env` 并解析为 `Secrets`（幂等，结果缓存）。"""
     load_dotenv(ENV_FILE)
     return Secrets(
-        glm_api_key=_env("GLM_OPENAI_API_KEY"),
-        emotion_appraisal_api_key=_env("EMOTION_APPRAISAL_API_KEY"),
-        mem0_llm_api_key=_env("MEM0_LLM_API_KEY"),
-        eval_llm_api_key=_env("EVAL_LLM_API_KEY"),
+        dashscope_api_key=_first_non_empty(
+            _env("DASHSCOPE_API_KEY"),
+            _env("GLM_OPENAI_API_KEY"),  # 兼容旧配置
+        ),
         doubao_asr_appid=_env("DOUBAO_STREAMING_ASR_APPID"),
         doubao_asr_token=_env("DOUBAO_STREAMING_ASR_ACCESS_TOKEN"),
         huoshan_appid=_env("HUOSHAN_APPID"),

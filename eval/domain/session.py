@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 from collections.abc import Awaitable, Callable, Sequence
 from typing import Protocol
 from uuid import uuid4
@@ -20,8 +19,9 @@ from eval.domain.progress import EvalProgressEvent
 from eval.infrastructure.record import EvalRunRecord
 from eval.infrastructure.recorder import RunRecorder
 from eval.domain.runner import _emit
+from shared.observability.logging import LogModule, get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(LogModule.EVAL)
 
 ProgressCallback = Callable[[EvalProgressEvent], Awaitable[None] | None]
 

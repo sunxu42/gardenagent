@@ -70,11 +70,11 @@ async def _clear_checkpoints(user_id: str) -> int:
 
 def _clear_mem0(user_id: str) -> dict[str, Any]:
     from shared.config.resolve_agent import resolve_agent_runtime
-    from agent.configs.secrets import load_secrets
-    from agent.configs.settings import load_settings
+    from shared.config.secrets import load_secrets
+    from shared.config.agent import load_agent_settings
     from agent.memory.mem0.service import Mem0Service
 
-    cfg = resolve_agent_runtime(load_settings(), load_secrets())
+    cfg = resolve_agent_runtime(load_agent_settings(), load_secrets())
     if not cfg.memory_enabled:
         return {"skipped": True, "reason": "memory_disabled"}
     service = Mem0Service.create(cfg)

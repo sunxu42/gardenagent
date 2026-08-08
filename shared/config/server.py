@@ -11,6 +11,13 @@ from shared.config.loader import read_config_yaml
 class TTSConfig(BaseModel):
     tts_provider_name: str = "HuoshanTTS"
 
+    dashscope_api_key: str = ""
+    tts_model: str = "qwen-audio-3.0-tts-plus"
+    tts_voice: str = ""
+    tts_websocket_url: str = ""
+    tts_volume: int = 50
+    tts_language_hints: list[str] = Field(default_factory=list)
+
     huoshan_tts_appid: str = ""
     huoshan_tts_access_token: str = ""
     huoshan_tts_resource_id: str = "volc.service_type.10029"
@@ -32,6 +39,11 @@ class AudioConfig(BaseModel):
     bits_per_sample: int = 16
 
     asr_provider_name: str = "DoubaoStreamingASR"
+
+    dashscope_api_key: str = ""
+    asr_model: str = "fun-asr-realtime-2026-02-28"
+    asr_format: str = "pcm"
+    asr_language_hints: list[str] = Field(default_factory=lambda: ["zh", "en"])
 
     doubao_streaming_asr_appid: str = ""
     doubao_streaming_asr_access_token: str = ""

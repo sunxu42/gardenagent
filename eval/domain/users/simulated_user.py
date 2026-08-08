@@ -7,7 +7,7 @@ from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 
 from eval.api.schemas import EmotionEvalRequest, EmotionTurnResult
-from agent.configs.settings import Config
+from shared.config.agent import Config
 
 
 class _LlmResponse(Protocol):

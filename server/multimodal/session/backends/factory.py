@@ -1,5 +1,6 @@
 from typing import Any
-import importlib
+
+from server.multimodal.common.importlib_registry import load_class
 
 
 BACKEND_REGISTRY = {
@@ -8,12 +9,6 @@ BACKEND_REGISTRY = {
     "agent_manager": "agent.manager.AgentManager",
     "yard_manager": "agent.manager.AgentManager",
 }
-
-
-def load_class(class_type: str):
-    module_path, class_name = class_type.rsplit(".", 1)
-    module = importlib.import_module(module_path)
-    return getattr(module, class_name)
 
 
 class SessionBackendFactory:

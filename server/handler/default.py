@@ -19,74 +19,18 @@ import uuid
 from contextlib import contextmanager
 from typing import Any, Dict, Iterator, List, Optional
 
-from shared.observability.logging import LogModule, bind_session, get_logger, set_turn_id
+from shared.observability.logging import LogModule, bind_session, get_logger
 from shared.observability.logging.metrics import TurnMetricsAggregator
 from shared.observability.logging.formatting import format_latency_summary
 from shared.observability.logging.turn_log import (
     log_agent_response_complete,
-    log_emotion_settled,
     log_llm_ttft,
     log_tts_first_chunk,
     log_user_to_agent,
 )
 from server.multimodal.audio.opus import OpusCodecUtils
+from server.handler.turn_orchestrator import TurnOrchestrator
 from server.transport.base import TransportBase
-from agent.emotion.llm.appraisal import user_text_digest
-
-
-def _build_affect_appraised_payload(turn: dict, metrics: dict) -> dict | None:
-    user_affect = metrics.get("user_affect_vad") or metrics.get("utterance_vad")
-    rel = metrics.get("relationship")
-    policy = metrics.get("response_policy")
-    target = metrics.get("agent_vad_target")
-    if not isinstance(user_affect, dict) or not isinstance(rel, dict):
-        return None
-    return {
-        "type": "affect_turn_appraised",
-        "schema_version": metrics.get("schema_version", 2),
-        "turn_id": turn.get("turn_id", ""),
-        "user_text": turn.get("text", ""),
-        "timestamp": int(time.time() * 1000),
-        "user_affect_vad": user_affect,
-        "user_weight": metrics.get("user_weight"),
-        "relationship": rel,
-        "interpersonal_cue": metrics.get("interpersonal_cue", ""),
-        "response_policy": policy if isinstance(policy, dict) else {},
-        "agent_vad_target": target if isinstance(target, dict) else None,
-        "actuation_weight": metrics.get("actuation_weight") or metrics.get("weight"),
-        "synthesis_rule": metrics.get("synthesis_rule"),
-        "strategy_tags": metrics.get("strategy_tags"),
-    }
-
-
-def _build_affect_settled_payload(turn_id: str, metrics: dict) -> dict | None:
-    after = metrics.get("agent_vad_after")
-    if not isinstance(after, dict):
-        return None
-    return {
-        "type": "affect_turn_settled",
-        "schema_version": metrics.get("schema_version", 2),
-        "turn_id": turn_id,
-        "timestamp": int(time.time() * 1000),
-        "agent_vad_after": after,
-        "agent_emotion": metrics.get("agent_emotion", "neutral"),
-        "emotion_scale": metrics.get("emotion_scale", 4),
-    }
-
-
-def _build_vad_turn_evaluated_v1(turn: dict, metrics: dict) -> dict | None:
-    utterance = metrics.get("utterance_vad")
-    after = metrics.get("agent_vad_after")
-    if not isinstance(utterance, dict) or not isinstance(after, dict):
-        return None
-    return {
-        "type": "vad_turn_evaluated",
-        "turn_id": turn.get("turn_id", ""),
-        "user_text": turn.get("text", ""),
-        "utterance_vad": utterance,
-        "agent_vad_after": after,
-        "timestamp": int(time.time() * 1000),
-    }
 
 
 class Handler:
@@ -120,19 +64,6 @@ class Handler:
         self.client_is_speaking = False
         self.is_interrupting = False  # 打断标志，防止打断过程中的重复触发
 
-        # 统计时延（user_voice_stop_time 为 None 表示客户端未上报停说时刻）
-        self.timing_stats = {
-            "user_voice_stop_time": None,
-            "asr_stop_time": 0.0,
-            "agent_first_token_time": 0.0,
-            "tts_first_chunk_time": 0.0,
-            "asr_recognition_latency": 0.0,  # ASR识别时延（见日志说明）
-            "text_response_latency": 0.0,
-            "audio_response_latency": 0.0,
-        }
-        # 末次 ASR 中间结果时间，用于在未上报停说时估算「末段→final」时延
-        self._last_asr_partial_time: Optional[float] = None
-
         # 断开时间戳（用于超时清理）
         self._disconnected_at: Optional[float] = None
         # 输入/输出模态配置
@@ -142,29 +73,30 @@ class Handler:
         self.enable_audio_output = "audio" in self.output_modality
         self.voice_type_override: Optional[str] = None
         self.client_voice_session_active = False
-        self._last_user_turn: Optional[Dict[str, Any]] = None
-        self._emitted_appraised_turn_ids: set[str] = set()
-        self._emitted_settled_turn_ids: set[str] = set()
-        self._turn_seq = 0
-        # 用户 final 入队；appraisal 快照就绪后按 digest 匹配并下发 VAD 事件
-        self._vad_pending_turns: List[Dict[str, Any]] = []
-        # 待回复结束后下发 settled / vad_turn_evaluated
-        self._pending_settle: List[Dict[str, Any]] = []
         self._log = get_logger(LogModule.HANDLER)
         self._metrics = TurnMetricsAggregator(audio_output=self.enable_audio_output)
+        self._turns = TurnOrchestrator(
+            session_id="",
+            client_id=client_id,
+            send_json=self.send_json_to_client,
+            session_accessor=lambda: self.session_service,
+            metrics=self._metrics,
+            session_context=self._session_context,
+            log=self._log,
+        )
         self.text_buffer: List[str] = []
         self.agui_text_buffer: List[str] = []
 
+    @property
+    def timing_stats(self) -> dict[str, float | None]:
+        return self._turns.timing_stats
+
+    @timing_stats.setter
+    def timing_stats(self, value: dict[str, float | None]) -> None:
+        self._turns.timing_stats = value
+
     def _reset_timing_stats(self) -> None:
-        self.timing_stats = {
-            "user_voice_stop_time": None,
-            "asr_stop_time": 0.0,
-            "agent_first_token_time": 0.0,
-            "tts_first_chunk_time": 0.0,
-            "asr_recognition_latency": 0.0,
-            "text_response_latency": 0.0,
-            "audio_response_latency": 0.0,
-        }
+        self._turns.reset_timing_stats()
 
     def _try_emit_metrics(self, interrupted: bool = False) -> None:
         payload = self._metrics.finalize(interrupted=interrupted)
@@ -397,9 +329,7 @@ class Handler:
         await self.send_json_to_client(payload)
 
     async def handle_hello(self, data: Dict[str, Any]):
-        self._emitted_appraised_turn_ids.clear()
-        self._emitted_settled_turn_ids.clear()
-        self._pending_settle.clear()
+        self._turns.reset_session_state()
         if self.session_service:
             self.session_service.clear_affect_locks()
         incoming_voice = data.get("voice_type")
@@ -407,6 +337,7 @@ class Handler:
             self.voice_type_override = incoming_voice.strip()
         self.client_voice_session_active = bool(data.get("voice_session"))
         self.session_id = self.client_id
+        self._turns.update_session_id(self.session_id)
         param_version = (
             data.get("param_version")
             or data.get("version")
@@ -459,7 +390,7 @@ class Handler:
         self._log.info(f"发送 hello 响应到客户端")
 
     async def handle_timestamp(self):
-        self.timing_stats["user_voice_stop_time"] = time.time()
+        self._turns.record_user_voice_stop()
 
     async def handle_user_message(self, data: Dict[str, Any]):
         incoming_voice = data.get("voice_type")
@@ -502,85 +433,10 @@ class Handler:
         await self.asr_result_handler(result)
 
     def _on_appraisal_snapshot_ready(self, digest: str) -> None:
-        try:
-            asyncio.get_running_loop().create_task(self._emit_vad_for_digest(digest))
-        except RuntimeError:
-            self._log.debug("VAD emit skipped: no running event loop")
-
-    async def _emit_vad_for_digest(self, digest: str) -> None:
-        key = (digest or "").strip()
-        if not key:
-            return
-        matching = [t for t in self._vad_pending_turns if t.get("digest") == key]
-        if not matching:
-            self._log.debug(f"VAD history skip: no pending turn for digest={key[:8]}")
-            return
-        metrics = None
-        if self.session_service:
-            metrics = self.session_service.vad_snapshot_for_digest(key)
-        if not isinstance(metrics, dict):
-            self._log.debug("VAD history skip: vad snapshot unavailable")
-            return
-
-        is_v2 = metrics.get("schema_version") == 2 or isinstance(metrics.get("response_policy"), dict)
-
-        for turn in matching:
-            turn_id = str(turn.get("turn_id") or "").strip()
-            if not turn_id:
-                self._log.debug("VAD history skip: invalid turn_id")
-                continue
-            if is_v2:
-                if turn_id not in self._emitted_appraised_turn_ids:
-                    payload = _build_affect_appraised_payload(turn, metrics)
-                    if payload:
-                        await self.send_json_to_client(payload)
-                        self._emitted_appraised_turn_ids.add(turn_id)
-                        self._log.debug(f"affect_turn_appraised emitted: turn_id={turn_id}")
-                if turn_id not in self._emitted_settled_turn_ids and not any(
-                    item.get("turn_id") == turn_id for item in self._pending_settle
-                ):
-                    self._pending_settle.append({"turn_id": turn_id, "turn": turn, "is_v2": True})
-            elif turn_id not in self._emitted_settled_turn_ids and not any(
-                item.get("turn_id") == turn_id for item in self._pending_settle
-            ):
-                self._pending_settle.append({"turn_id": turn_id, "turn": turn, "is_v2": False})
-
-        self._vad_pending_turns = [t for t in self._vad_pending_turns if t.get("digest") != key]
+        self._turns.on_appraisal_snapshot_ready(digest)
 
     async def _emit_settled_for_next_turn(self) -> None:
-        if not self._pending_settle:
-            return
-        item = self._pending_settle.pop(0)
-        turn_id = str(item.get("turn_id") or "").strip()
-        if not turn_id or turn_id in self._emitted_settled_turn_ids:
-            return
-        metrics: dict | None = None
-        if self.session_service:
-            self.session_service.end_emotion_turn()
-            metrics = self.session_service.affect_settled_metrics()
-        if not isinstance(metrics, dict):
-            self._log.debug(f"settled skip: metrics unavailable turn_id={turn_id}")
-            return
-
-        if item.get("is_v2"):
-            payload = _build_affect_settled_payload(turn_id, metrics)
-            if payload:
-                await self.send_json_to_client(payload)
-                self._emitted_settled_turn_ids.add(turn_id)
-                with self._session_context():
-                    set_turn_id(turn_id)
-                    log_emotion_settled(metrics=metrics)
-                after = metrics.get("agent_vad_after") or {}
-                a_val = after.get("a") if isinstance(after, dict) else None
-                self._log.debug(f"affect_turn_settled emitted: turn_id={turn_id}, a={a_val}")
-        else:
-            turn = item.get("turn") if isinstance(item.get("turn"), dict) else {"turn_id": turn_id}
-            payload = _build_vad_turn_evaluated_v1(turn, metrics)
-            if payload:
-                await self.send_json_to_client(payload)
-                self._emitted_settled_turn_ids.add(turn_id)
-                self._log.debug(f"vad_turn_evaluated emitted: turn_id={turn_id}")
-
+        await self._turns.emit_settled_for_next_turn()
 
     async def handle_client_audio_data(self, audio_data: bytes):
         if not self.client_voice_session_active:
@@ -624,35 +480,10 @@ class Handler:
             is_final = result.get('is_final', False)
 
             if not is_final and text and text.strip():
-                self._last_asr_partial_time = time.time()
+                self._turns.record_asr_partial()
 
             if is_final:
-                captured_voice_stop = self.timing_stats["user_voice_stop_time"]
-                captured_partial = self._last_asr_partial_time
-                self._turn_seq += 1
-                turn_id = f"{self.session_id or self.client_id}-turn-{self._turn_seq}"
-                set_turn_id(turn_id)
-                self._metrics.begin_turn(turn_id)
-                self._reset_timing_stats()
-                digest = user_text_digest(text)
-                turn_record = {
-                    "turn_id": turn_id,
-                    "text": text,
-                    "digest": digest,
-                }
-                self._last_user_turn = turn_record
-                self._vad_pending_turns.append(turn_record)
-                asr_t = time.time()
-                self.timing_stats["asr_stop_time"] = asr_t
-                if captured_voice_stop is not None:
-                    self.timing_stats["asr_recognition_latency"] = asr_t - captured_voice_stop
-                    self.timing_stats["user_voice_stop_time"] = captured_voice_stop
-                elif captured_partial is not None:
-                    self.timing_stats["asr_recognition_latency"] = asr_t - captured_partial
-                self._last_asr_partial_time = None
-                asr_sec = float(self.timing_stats["asr_recognition_latency"])
-                if asr_sec > 0:
-                    self._metrics.mark_asr(asr_sec)
+                self._turns.begin_final_turn(text)
 
             if not text:
                 return
@@ -676,8 +507,8 @@ class Handler:
 
             # 将 ASR 结果发送到 Agent 服务队列
             if is_final and text.strip() and self.session_service and self.session_service.queue:
-                turn_id = f"{self.session_id or self.client_id}-turn-{self._turn_seq}"
-                asr_sec = float(self.timing_stats["asr_recognition_latency"])
+                turn_id = self._turns.current_turn_id()
+                asr_sec = self._turns.asr_latency_sec()
                 log_user_to_agent(text=text, source=source, asr_sec=asr_sec if asr_sec > 0 else None)
                 message = {
                     'text': text,
@@ -699,6 +530,18 @@ class Handler:
         """
         with self._session_context():
             await self._agent_result_handler_impl(result)
+
+    async def _pause_asr_during_reply(self) -> None:
+        """Agent 开始播报时关闭 ASR，避免空闲连接在 TTS 期间超时。"""
+        audio_service = self.audio_service
+        if audio_service is None:
+            return
+        asr = getattr(audio_service, "asr_service", None)
+        if asr is None:
+            return
+        stop = getattr(asr, "stop_processing", None)
+        if callable(stop):
+            stop()
 
     async def _agent_result_handler_impl(self, result: Dict[str, Any]):
         try:
@@ -725,6 +568,8 @@ class Handler:
                 self.text_buffer = []
                 self.agui_text_buffer = []
                 text = "SENTENCE_START"
+                if self.client_voice_session_active:
+                    await self._pause_asr_during_reply()
                 if not use_agui:
                     await self.send_assistant_to_client({"role": "assistant", "content": "SENTENCE_START"})
             elif msg_type == "SENTENCE_END":
@@ -743,16 +588,7 @@ class Handler:
             elif msg_type == "response":
                 response = result.get('response', '')
                 if self.first_token:
-                    first_t = time.time()
-                    self.timing_stats["agent_first_token_time"] = first_t
-                    voice_stop = self.timing_stats["user_voice_stop_time"]
-                    if voice_stop is not None:
-                        self.timing_stats["text_response_latency"] = first_t - voice_stop
-                    elif self.timing_stats["asr_stop_time"]:
-                        self.timing_stats["text_response_latency"] = (
-                            first_t - self.timing_stats["asr_stop_time"]
-                        )
-                    ttft_sec = float(self.timing_stats["text_response_latency"])
+                    ttft_sec = self._turns.mark_agent_first_token()
                     log_llm_ttft(ttft_sec)
                     self._metrics.mark_llm_ttft(ttft_sec)
                     self.first_token = False
@@ -836,23 +672,9 @@ class Handler:
             audio_data = result.get('audio_data', '')
             end_of_stream = result.get('end_of_stream', False)
             if self.first_audio_chunk and audio_data:
-                now = time.time()
-                self.timing_stats["tts_first_chunk_time"] = now
-                voice_stop = self.timing_stats["user_voice_stop_time"]
-                if voice_stop is not None:
-                    self.timing_stats["audio_response_latency"] = now - voice_stop
-                elif self.timing_stats["agent_first_token_time"]:
-                    self.timing_stats["audio_response_latency"] = (
-                        now - self.timing_stats["agent_first_token_time"]
-                    )
-                elif self.timing_stats["asr_stop_time"]:
-                    self.timing_stats["audio_response_latency"] = (
-                        now - self.timing_stats["asr_stop_time"]
-                    )
-                tts_sec = 0.0
-                if self.timing_stats["agent_first_token_time"]:
-                    tts_sec = now - self.timing_stats["agent_first_token_time"]
-                audio_e2e_sec = float(self.timing_stats["audio_response_latency"])
+                self.flow_control["start_time"] = time.perf_counter()
+                self.flow_control["packet_count"] = 0
+                tts_sec, audio_e2e_sec = self._turns.mark_tts_first_chunk()
                 if tts_sec > 0:
                     log_tts_first_chunk(tts_sec)
                     self._metrics.mark_tts_first_chunk(tts_sec)

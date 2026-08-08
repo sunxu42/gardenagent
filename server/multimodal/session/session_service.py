@@ -7,6 +7,7 @@ from typing import Any, Callable, Dict, Optional
 from agent.events import InputEvent, USER_INPUT_EVENT
 from server.agui.bridge import AgUIBridge
 from server.agui.interactive import surface_requires_ui_interaction
+from server.multimodal.session.backend_protocol import AgentSessionBackend
 from server.multimodal.session.backends.factory import SessionBackendFactory
 from shared.observability.logging import bind_session, get_logger, set_turn_id
 from shared.observability.logging.modules import LogModule
@@ -20,7 +21,7 @@ class SessionService:
     def __init__(self, session_config: dict | None = None):
         self.session_config = session_config or {}
 
-        self.backend = None
+        self.backend: AgentSessionBackend | None = None
         self.queue: asyncio.Queue = asyncio.Queue(maxsize=1000)
         self.result_callback: Optional[Callable[[Dict[str, Any]], Any]] = None
 
@@ -41,86 +42,72 @@ class SessionService:
     def set_result_callback(self, callback: Callable[[Dict[str, Any]], Any]):
         self.result_callback = callback
 
+    def _require_backend(self) -> AgentSessionBackend:
+        if self.backend is None:
+            raise RuntimeError("session backend is not initialized")
+        return self.backend
+
+    def _backend_or_none(self) -> AgentSessionBackend | None:
+        return self.backend
+
     def current_tts_voice(self):
-        backend = self.backend
-        if backend is not None and hasattr(backend, "current_tts_voice"):
-            return backend.current_tts_voice()
-        return None
+        backend = self._backend_or_none()
+        return backend.current_tts_voice() if backend is not None else None
 
     def current_tts_emotion(self):
-        backend = self.backend
-        if backend is not None and hasattr(backend, "current_tts_emotion"):
-            return backend.current_tts_emotion()
-        return None, 4
+        backend = self._backend_or_none()
+        return backend.current_tts_emotion() if backend is not None else (None, 4)
 
     def current_vad_metrics(self):
-        backend = self.backend
-        if backend is not None and hasattr(backend, "current_vad_metrics"):
-            return backend.current_vad_metrics()
-        return None
+        backend = self._backend_or_none()
+        return backend.current_vad_metrics() if backend is not None else None
 
     def baseline_vad(self):
-        backend = self.backend
-        if backend is not None and hasattr(backend, "baseline_vad"):
-            return backend.baseline_vad()
-        return None
+        backend = self._backend_or_none()
+        return backend.baseline_vad() if backend is not None else None
 
     def emotion_ui_profile(self):
-        backend = self.backend
-        if backend is not None and hasattr(backend, "emotion_ui_profile"):
-            return backend.emotion_ui_profile()
-        return None
+        backend = self._backend_or_none()
+        return backend.emotion_ui_profile() if backend is not None else None
 
     def current_relationship_snapshot(self):
-        backend = self.backend
-        if backend is not None and hasattr(backend, "current_relationship_snapshot"):
-            return backend.current_relationship_snapshot()
-        return None
+        backend = self._backend_or_none()
+        return backend.current_relationship_snapshot() if backend is not None else None
 
     def vad_snapshot_for_digest(self, digest: str):
-        backend = self.backend
-        if backend is not None and hasattr(backend, "vad_snapshot_for_digest"):
-            return backend.vad_snapshot_for_digest(digest)
-        return None
+        backend = self._backend_or_none()
+        return backend.vad_snapshot_for_digest(digest) if backend is not None else None
 
     def end_emotion_turn(self) -> None:
-        backend = self.backend
-        if backend is not None and hasattr(backend, "end_emotion_turn"):
+        backend = self._backend_or_none()
+        if backend is not None:
             backend.end_emotion_turn()
 
     def affect_settled_metrics(self):
-        backend = self.backend
-        if backend is not None and hasattr(backend, "affect_settled_metrics"):
-            return backend.affect_settled_metrics()
-        return None
+        backend = self._backend_or_none()
+        return backend.affect_settled_metrics() if backend is not None else None
 
     def current_tts_prosody(self):
-        backend = self.backend
-        if backend is not None and hasattr(backend, "current_tts_prosody"):
-            return backend.current_tts_prosody()
-        return 0, 0, 0
+        backend = self._backend_or_none()
+        return backend.current_tts_prosody() if backend is not None else (0, 0, 0)
 
     def set_appraisal_snapshot_listener(self, listener) -> None:
-        backend = self.backend
-        if backend is not None and hasattr(backend, "set_appraisal_snapshot_listener"):
+        backend = self._backend_or_none()
+        if backend is not None:
             backend.set_appraisal_snapshot_listener(listener)
 
     def clear_affect_locks(self) -> None:
-        backend = self.backend
-        if backend is not None and hasattr(backend, "clear_affect_locks"):
+        backend = self._backend_or_none()
+        if backend is not None:
             backend.clear_affect_locks()
 
     def set_affect_lock(self, dimension: str, ref_id: str | None) -> dict | None:
-        backend = self.backend
-        if backend is not None and hasattr(backend, "set_affect_lock"):
-            return backend.set_affect_lock(dimension, ref_id)
-        return None
+        backend = self._require_backend()
+        return backend.set_affect_lock(dimension, ref_id)
 
     def affect_lock_state(self) -> dict | None:
-        backend = self.backend
-        if backend is not None and hasattr(backend, "affect_lock_state"):
-            return backend.affect_lock_state()
-        return None
+        backend = self._backend_or_none()
+        return backend.affect_lock_state() if backend is not None else None
 
     def _validate_backend(self) -> None:
         if not hasattr(self.backend, "agent_output_queue"):

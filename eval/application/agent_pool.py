@@ -1,46 +1,34 @@
+"""Eval agent lifecycle — per-run AgentManager instances."""
+
 from __future__ import annotations
 
 import asyncio
 from contextlib import asynccontextmanager
-from typing import Any
 
 from eval.application.agent_client import EvalAgentClient
 
 
-class EvalAgentPool:
-    """Process-wide reusable AgentManager for scenario evaluation."""
+class EvalAgentFactory:
+    """Create isolated eval agent clients; serialize runs when needed."""
 
-    _init_lock = asyncio.Lock()
     _run_lock = asyncio.Lock()
-    _agent_manager: Any | None = None
 
     @classmethod
-    async def acquire_client(cls) -> tuple[EvalAgentClient, bool]:
-        """Return a shared agent client and whether this call performed cold start."""
-
-        async with cls._init_lock:
-            cold_start = cls._agent_manager is None
-            if cold_start:
-                cls._agent_manager = await EvalAgentClient.create_agent_manager()
-            client = EvalAgentClient(cls._agent_manager, owns_manager=False)
-            return client, cold_start
+    async def create_client(cls) -> EvalAgentClient:
+        """Create a fresh AgentManager-backed client for one eval run."""
+        return await EvalAgentClient.create()
 
     @classmethod
     @asynccontextmanager
     async def run_guard(cls):
-        """Serialize eval runs against the shared AgentManager instance."""
-
+        """Serialize eval runs to avoid overwhelming shared resources."""
         async with cls._run_lock:
             yield
 
     @classmethod
     async def reset(cls) -> None:
-        """Release the pooled agent — intended for tests."""
+        """No-op — kept for test compatibility after pool removal."""
 
-        async with cls._init_lock:
-            if cls._agent_manager is None:
-                return
-            closer = getattr(cls._agent_manager, "aclose", None)
-            if callable(closer):
-                await closer()
-            cls._agent_manager = None
+
+# Backward-compatible alias.
+EvalAgentPool = EvalAgentFactory

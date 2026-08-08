@@ -56,6 +56,28 @@ export default defineConfig({
         target: "http://127.0.0.1:8005",
         ws: true,
         changeOrigin: true,
+        configure: (proxy) => {
+          const isBenignProxyError = (err: NodeJS.ErrnoException) =>
+            err.code === "EPIPE" ||
+            err.code === "ECONNRESET" ||
+            err.code === "ECONNREFUSED";
+
+          proxy.on("error", (err) => {
+            if (isBenignProxyError(err)) {
+              return;
+            }
+            console.error("[vite] ws proxy error:", err);
+          });
+
+          proxy.on("proxyReqWs", (_proxyReq, _req, socket) => {
+            socket.on("error", (err) => {
+              if (isBenignProxyError(err)) {
+                return;
+              }
+              console.error("[vite] ws proxy socket error:", err);
+            });
+          });
+        },
       },
       "/api/prompt-editor": {
         target: "http://127.0.0.1:8005",

@@ -33,17 +33,7 @@ _log = get_logger(LogModule.TTS)
 from shared.config.server import TTSConfig
 from server.multimodal.tts.backends.factory import TTSFactory
 
-def clean_markdown(text: str) -> str:
-    # 移除常见的markdown标记
-    import re
-    # 移除粗体、斜体、代码块等
-    text = re.sub(r'\*\*([^*]+)\*\*', r'\1', text)  # 粗体
-    text = re.sub(r'\*([^*]+)\*', r'\1', text)  # 斜体
-    text = re.sub(r'`([^`]+)`', r'\1', text)  # 行内代码
-    text = re.sub(r'```[\s\S]*?```', '', text)  # 代码块
-    text = re.sub(r'#+\s*', '', text)  # 标题
-    text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', text)  # 链接
-    return text.strip()
+from server.multimodal.common.markdown import strip_markdown_for_tts
 
 
 class TTSService:
@@ -130,7 +120,7 @@ class TTSService:
     async def process_text_message(self, message):
         try:
             text = message.get('text', '')
-            if clean_markdown(text):
+            if strip_markdown_for_tts(text):
                 # _log.debug(f"收到文本消息: {text}")
                 if  text == "SENTENCE_START":
                     voice = message.get('voice_type')

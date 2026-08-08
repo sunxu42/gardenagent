@@ -31,8 +31,8 @@ from agent.middlewares.tool_loop_guard import ToolLoopGuardMiddleware
 from agent.prompt.persona.soul_profile import resolve_soul_profile
 from agent.graph import create_deep_agent
 from shared.config.resolve_agent import resolve_agent_runtime
-from agent.configs.secrets import load_secrets
-from agent.configs.settings import load_settings
+from shared.config.secrets import load_secrets
+from shared.config.agent import load_agent_settings, load_settings
 from agent.init_workspace import init_workspace
 from agent.heartbeat import run_heartbeat_enqueue_loop
 from agent.memory.runtime.flush import mark_conversation_turn_finished
@@ -55,7 +55,25 @@ _log = get_logger(LogModule.AGENT)
 from shared.observability.langfuse_safe import init_langfuse, safe_flush
 
 
+def _build_llm_extra_body(config) -> dict[str, Any]:
+    """Build DashScope/OpenAI-compatible extra_body for the main chat model."""
+    extra_body: dict[str, Any] = {
+        "thinking": {"type": "disabled"},
+    }
+    if config.llm_enable_search:
+        extra_body["enable_search"] = True
+        if config.llm_search_options:
+            extra_body["search_options"] = config.llm_search_options
+    return extra_body
+
+
 def create_glm_model(config):
+    extra_body = _build_llm_extra_body(config)
+    if config.llm_enable_search:
+        _log.info(
+            "主对话模型已启用百炼联网搜索 "
+            f"(model={config.llm_model_name}, search_options={config.llm_search_options!r})"
+        )
     model = ChatOpenAI(
         model=config.llm_model_name,
         api_key=config.llm_api_key,
@@ -63,9 +81,7 @@ def create_glm_model(config):
         temperature=0.7,
         max_tokens=20000,
         streaming=True,
-        extra_body={
-            "thinking": {"type": "disabled"},
-        },
+        extra_body=extra_body,
     )
     return model
 

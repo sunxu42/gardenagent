@@ -11,22 +11,11 @@ from typing import Dict, Any, Optional
 from datetime import datetime
 from urllib import parse
 from shared.observability.logging import LogModule, get_logger
+from server.multimodal.common.markdown import strip_markdown_for_tts
 
 _log = get_logger(LogModule.TTS)
 from .base import BaseTTS
 import requests
-
-def clean_markdown(text: str) -> str:
-    # 移除常见的markdown标记
-    import re
-    # 移除粗体、斜体、代码块等
-    text = re.sub(r'\*\*([^*]+)\*\*', r'\1', text)  # 粗体
-    text = re.sub(r'\*([^*]+)\*', r'\1', text)  # 斜体
-    text = re.sub(r'`([^`]+)`', r'\1', text)  # 行内代码
-    text = re.sub(r'```[\s\S]*?```', '', text)  # 代码块
-    text = re.sub(r'#+\s*', '', text)  # 标题
-    text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', text)  # 链接
-    return text.strip()
 
 class AccessToken:
     
@@ -114,7 +103,7 @@ class AliyunStreamingTTS(BaseTTS):
         self.volume = self.VOLUME
         self.speech_rate = self.SPEECH_RATE
         self.pitch_rate = self.PITCH_RATE
-        
+
         # WebSocket配置
         self.host = self.config.get("aliyun_host", "nls-gateway-cn-beijing.aliyuncs.com")
         if "-internal." in self.host:
@@ -138,6 +127,11 @@ class AliyunStreamingTTS(BaseTTS):
         if not self.token:
             raise ValueError("无法获取有效的访问Token，请提供 access_key_id/access_key_secret 或 token")
         self._server_ready = False
+
+    def set_voice(self, voice_type: str) -> None:
+        """覆盖默认音色（阿里云 voice 名称，如 longxiaochun）。"""
+        if voice_type:
+            self.voice = voice_type
 
 
     def _refresh_token(self):
@@ -295,7 +289,7 @@ class AliyunStreamingTTS(BaseTTS):
                 return
         try:
             # 简单的文本清理（移除markdown标记）
-            filtered_text = clean_markdown(text)
+            filtered_text = strip_markdown_for_tts(text)
             # 阿里云要求 RunSynthesis 必须携带非空文本，过滤掉空请求
             if not filtered_text.strip():
                 _log.warning(

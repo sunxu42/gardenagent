@@ -11,7 +11,7 @@ from eval.domain.models import TurnObservation
 from eval.domain.scenario import JudgeConfig, JudgePolicyConfig
 
 if TYPE_CHECKING:
-    from agent.configs.settings import Config
+    from shared.config.agent import Config
 
 EXPLORATORY_METRIC_REFS = [
     "emotion_support.empathy",

@@ -30,6 +30,15 @@ def setup_memory_subsystem(config, agent_holder: Any) -> MemorySubsystem:
     if not config.memory_enabled:
         return MemorySubsystem()
 
+    if not config.mem0_embedding_model:
+        raise ValueError(
+            "memory_enabled=true 需要在 .config.yaml 中配置 mem0_embedding_model"
+        )
+
+    from agent.memory.mem0.config import resolve_faiss_path
+
+    resolve_faiss_path(config).mkdir(parents=True, exist_ok=True)
+
     try:
         mem0_service = Mem0Service.create(config)
         session_buffer = SessionBuffer()

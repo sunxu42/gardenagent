@@ -38,6 +38,23 @@ class EmotionSubsystem:
 
 def build_emotion_service(config, persona_id=None) -> tuple[EmotionService, str]:
     """据 soul.yaml（或默认）的 baseline/voice_type 构建 EmotionService。"""
+    alpha = float(getattr(config, "emotion_alpha", EMOTION_ALPHA) or EMOTION_ALPHA)
+    beta = float(getattr(config, "emotion_beta", EMOTION_BETA) or EMOTION_BETA)
+    tau_sec = float(getattr(config, "emotion_tau_sec", EMOTION_TAU_SEC) or EMOTION_TAU_SEC)
+    rel_alpha = float(getattr(config, "emotion_rel_alpha", EMOTION_REL_ALPHA) or EMOTION_REL_ALPHA)
+    rel_tau_sec = float(
+        getattr(config, "emotion_rel_tau_sec", EMOTION_REL_TAU_SEC) or EMOTION_REL_TAU_SEC
+    )
+    snapshot_max = int(
+        getattr(config, "emotion_appraisal_snapshot_max", EMOTION_APPRAISAL_SNAPSHOT_MAX)
+        or EMOTION_APPRAISAL_SNAPSHOT_MAX
+    )
+    user_key = str(getattr(config, "emotion_user_key", EMOTION_USER_KEY) or EMOTION_USER_KEY)
+    allowed = getattr(config, "emotion_allowed", None)
+    allowed_emotions = set(allowed) if allowed else set(EMOTION_ALLOWED)
+    state_path = Path(getattr(config, "emotion_state_path", "") or "")
+    if not str(state_path):
+        state_path = Path(config.workspace_dir) / "emotion" / "emotion_state.json"
     prof = resolve_soul_profile(config.prompts_dir, persona_id)
     base = prof["baseline"]
     rel_base = prof.get("relationship_baseline") or {}
@@ -47,35 +64,42 @@ def build_emotion_service(config, persona_id=None) -> tuple[EmotionService, str]
         baseline_trust=float(rel_base.get("trust", 0.5)),
         baseline_warmth=float(rel_base.get("warmth", 0.4)),
     )
-    state_path = Path(config.workspace_dir) / "emotion" / "emotion_state.json"
     service = EmotionService(
-        key=EMOTION_USER_KEY,
+        key=user_key,
         baseline=VAD(base["v"], base["a"], base["d"]),
         store=EmotionStore(str(state_path)),
-        allowed_emotions=set(EMOTION_ALLOWED),
-        alpha=EMOTION_ALPHA,
-        beta=EMOTION_BETA,
-        tau_sec=EMOTION_TAU_SEC,
-        rel_alpha=EMOTION_REL_ALPHA,
-        rel_tau_sec=EMOTION_REL_TAU_SEC,
+        allowed_emotions=allowed_emotions,
+        alpha=alpha,
+        beta=beta,
+        tau_sec=tau_sec,
+        rel_alpha=rel_alpha,
+        rel_tau_sec=rel_tau_sec,
         relationship_baseline=relationship_baseline,
-        appraisal_snapshot_max=EMOTION_APPRAISAL_SNAPSHOT_MAX,
+        appraisal_snapshot_max=snapshot_max,
     )
     return service, prof["voice_type"]
 
 
 def setup_emotion_subsystem(config) -> EmotionSubsystem:
     """构建情绪服务与 appraisal middleware。"""
+    if not getattr(config, "emotion_enabled", True):
+        return EmotionSubsystem()
     try:
         emotion_service, voice_type = build_emotion_service(config)
-        appraisal_llm = create_emotion_appraisal_model(config)
-        appraiser = EmotionAppraiser(
-            appraisal_llm,
-            max_user_chars=EMOTION_APPRAISAL_MAX_USER_CHARS,
-        )
-        appraisal_middleware = [
-            EmotionAppraisalMiddleware(emotion_service, appraiser),
-        ]
+        appraisal_middleware: list[Any] = []
+        if getattr(config, "emotion_appraisal_enabled", True):
+            appraisal_llm = create_emotion_appraisal_model(config)
+            max_user_chars = int(
+                getattr(config, "emotion_appraisal_max_user_chars", EMOTION_APPRAISAL_MAX_USER_CHARS)
+                or EMOTION_APPRAISAL_MAX_USER_CHARS
+            )
+            appraiser = EmotionAppraiser(
+                appraisal_llm,
+                max_user_chars=max_user_chars,
+            )
+            appraisal_middleware = [
+                EmotionAppraisalMiddleware(emotion_service, appraiser),
+            ]
 
         return EmotionSubsystem(
             service=emotion_service,

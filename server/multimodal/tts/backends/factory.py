@@ -1,11 +1,6 @@
-import importlib
-from typing import Dict, Any
+from typing import Any, Dict
 
-
-def load_class(class_type):
-    module_path, class_name = class_type.rsplit(".", 1)
-    module = importlib.import_module(module_path)
-    return getattr(module, class_name)
+from server.multimodal.common.importlib_registry import load_class
 
 
 class TTSFactory:
@@ -13,6 +8,7 @@ class TTSFactory:
     provider_to_class = {
         "HuoshanTTS": "server.multimodal.tts.backends.huoshan_double_streaming_tts.HuoshanTTS",
         "AliyunTTS": "server.multimodal.tts.backends.aliyun_streaming_tts.AliyunStreamingTTS",
+        "DashscopeTTS": "server.multimodal.tts.backends.dashscope_streaming_tts.DashscopeStreamingTTS",
     }
 
     @classmethod

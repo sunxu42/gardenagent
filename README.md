@@ -105,7 +105,7 @@ uv pip install -e .
 **`.env`（密钥）** — 复制 `env.example` 为 `.env`，至少配置：
 
 ```dotenv
-GLM_OPENAI_API_KEY=...
+DASHSCOPE_API_KEY=...
 ```
 
 **`.config.yaml`（运行时参数）** — 参考 `config.example.yaml`，至少配置：
@@ -197,7 +197,7 @@ Session 写入策略（默认）：
 
 ## 常见坑
 
-- **启动报 LLM 相关错误**：检查 `.env` 的 `GLM_OPENAI_API_KEY` 与 `.config.yaml` 的 `llm_base_url`。
+- **启动报 LLM 相关错误**：检查 `.env` 的 `DASHSCOPE_API_KEY` 与 `.config.yaml` 的 `llm_base_url`。
 - **WebSocket 连接后立刻断开**：检查 ASR/TTS 工厂模块路径、Opus 库是否安装（conda 环境 `igard` 已包含）。
 - **智能体调不到设备工具**：确认 MCP Server 已启动且 `mcp_servers.yaml` 已放开配置。
 - **局域网语音**：手机 / 局域网 IP 访问需 HTTPS，证书见 `web-portal/ssl/README.txt`。

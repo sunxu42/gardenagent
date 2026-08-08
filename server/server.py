@@ -10,12 +10,13 @@ import uvicorn
 
 from shared.config.resolve_server import resolve_server_runtime
 from shared.config.server import load_settings
-from shared.observability.logging import configure_logging
+from shared.config.secrets import load_secrets
+from shared.observability.bootstrap import configure_observability
 
 
 def main() -> None:
     cfg = resolve_server_runtime(load_settings())
-    configure_logging()
+    configure_observability(load_secrets())
     uvicorn.run(
         "server.app:app",
         host=cfg.host,

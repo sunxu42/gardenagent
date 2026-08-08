@@ -12,7 +12,7 @@ from langchain_openai import ChatOpenAI
 from shared.observability.logging import LogModule, get_logger
 
 _log = get_logger(LogModule.EMOTION)
-from agent.configs.settings import Config
+from shared.config.agent import Config
 from agent.emotion.constants import EMOTION_APPRAISAL_TEMPERATURE
 from agent.emotion.core.policy import TurnAppraisalV2
 
@@ -40,7 +40,7 @@ Task 2 — 对助手的态度变化（Relationship Delta）：
 
 
 def create_emotion_appraisal_model(config: Config) -> ChatOpenAI:
-    """使用 emotion_appraisal_model；Key 可独立配置 emotion_appraisal_api_key。"""
+    """使用 emotion_appraisal_model；API Key 复用 .env 的 DASHSCOPE_API_KEY。"""
     default_llm_model = Config.model_fields["llm_model_name"].default or "glm-4-flash"
     model_name = (config.emotion_appraisal_model or "").strip() or default_llm_model
     return ChatOpenAI(

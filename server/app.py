@@ -10,11 +10,13 @@ from starlette.websockets import WebSocket
 
 from shared.config.resolve_server import resolve_server_runtime
 from shared.config.server import load_settings
+from shared.config.secrets import load_secrets
 from eval.api.routes import create_eval_routes
 from eval.application.job_manager import EvalJobManager
 from server.handler.handler_manager import HandlerManager
 from prompt_editor.api.routes import create_prompt_editor_routes
 from server.transport import WebSocketTransport
+from shared.observability.bootstrap import configure_observability
 from shared.observability.logging import set_session_log_deliver
 
 from shared.config.paths import resolve_prompts_dir
@@ -27,6 +29,7 @@ def create_app() -> Starlette:
     """Build the unified server with WebSocket and prompt-editor routes."""
     settings = load_settings()
     cfg = resolve_server_runtime(settings)
+    configure_observability(load_secrets())
     transport = WebSocketTransport(host=cfg.host, port=cfg.port)
     job_manager = EvalJobManager(transport)
     handler_manager = HandlerManager(transport, cfg.handler_type, cfg)

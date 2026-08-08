@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import logging
 from dataclasses import asdict, is_dataclass
 from datetime import UTC, datetime
 from enum import Enum
@@ -20,8 +19,9 @@ from eval.domain.models import (
 )
 from eval.infrastructure.record import EvalRunRecord, PersistedEvent, RunEnvironment, RunTelemetry
 from shared.config.paths import resolve_eval_runs_dir
+from shared.observability.logging import LogModule, get_logger
 
-_log = logging.getLogger(__name__)
+_log = get_logger(LogModule.EVAL)
 
 
 def _resolve_runs_dir(base_dir: str | Path | None) -> Path:

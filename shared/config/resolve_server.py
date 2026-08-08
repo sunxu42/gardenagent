@@ -20,6 +20,7 @@ def apply_media_secrets(settings: ServerConfig, secrets: Secrets) -> ServerConfi
 
     config.audio_config.doubao_streaming_asr_appid = secrets.doubao_asr_appid or ""
     config.audio_config.doubao_streaming_asr_access_token = secrets.doubao_asr_token or ""
+    config.audio_config.dashscope_api_key = secrets.dashscope_api_key or ""
     config.audio_config.aliyun_access_key_id = secrets.aliyun_access_key_id or ""
     config.audio_config.aliyun_access_key_secret = secrets.aliyun_access_key_secret or ""
     config.audio_config.aliyun_appkey = secrets.aliyun_appkey or ""
@@ -27,6 +28,7 @@ def apply_media_secrets(settings: ServerConfig, secrets: Secrets) -> ServerConfi
 
     config.tts_config.huoshan_tts_appid = secrets.huoshan_appid or ""
     config.tts_config.huoshan_tts_access_token = secrets.huoshan_token or ""
+    config.tts_config.dashscope_api_key = secrets.dashscope_api_key or ""
     config.tts_config.aliyun_access_key_id = secrets.aliyun_access_key_id or ""
     config.tts_config.aliyun_access_key_secret = secrets.aliyun_access_key_secret or ""
     config.tts_config.aliyun_appkey = secrets.aliyun_appkey or ""

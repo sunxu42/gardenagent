@@ -1,5 +1,9 @@
 """Garden unified logging — public API."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from shared.observability.logging import config as logging_config
 from shared.observability.logging.context import (
     bind_session,
@@ -11,15 +15,18 @@ from shared.observability.logging.logger import GardenLogger, get_logger
 from shared.observability.logging.modules import LogModule, module_color, module_short_name
 from shared.observability.logging.record import LogLevel, LogRecord
 from shared.observability.logging import registry
-from shared.observability.logging.paths import resolve_log_file
+from shared.observability.logging.paths import resolve_log_dir, resolve_log_file
 from shared.observability.logging.sinks.console import ConsoleSink
 from shared.observability.logging.sinks.jsonl import JsonlSink
 from shared.observability.logging.sinks.websocket import WebSessionSink
 
+if TYPE_CHECKING:
+    from shared.config.secrets import Secrets
+
 _web_sink: WebSessionSink | None = None
 
 
-def configure_logging() -> WebSessionSink:
+def configure_logging(secrets: Secrets | None = None) -> WebSessionSink:
     global _web_sink
     registry.clear_sinks()
     if logging_config.LOG_CONSOLE_ENABLED:
@@ -27,7 +34,8 @@ def configure_logging() -> WebSessionSink:
             ConsoleSink(min_level=LogLevel(logging_config.LOG_LEVEL))
         )
     if logging_config.LOG_FILE_ENABLED:
-        path = resolve_log_file(logging_config.LOG_DIR, logging_config.LOG_FILE)
+        log_dir = resolve_log_dir()
+        path = resolve_log_file(str(log_dir), logging_config.LOG_FILE)
         registry.register_sink(
             JsonlSink(path, min_level=LogLevel(logging_config.LOG_FILE_LEVEL))
         )

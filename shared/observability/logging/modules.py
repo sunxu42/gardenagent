@@ -10,6 +10,7 @@ class LogModule(str, Enum):
     TRANSPORT = "TRANSPORT"
     METRICS = "METRICS"
     MEMORY = "MEMORY"
+    EVAL = "EVAL"
     SYSTEM = "SYSTEM"
 
 
@@ -22,6 +23,7 @@ _SHORT: dict[LogModule, str] = {
     LogModule.TRANSPORT: "TRN",
     LogModule.METRICS: "MET",
     LogModule.MEMORY: "MEM",
+    LogModule.EVAL: "EVL",
     LogModule.SYSTEM: "SYS",
 }
 
@@ -34,6 +36,7 @@ _COLORS: dict[LogModule, str] = {
     LogModule.TRANSPORT: "#94a3b8",
     LogModule.METRICS: "#34d399",
     LogModule.MEMORY: "#fbbf24",
+    LogModule.EVAL: "#c084fc",
     LogModule.SYSTEM: "#e2e8f0",
 }
 

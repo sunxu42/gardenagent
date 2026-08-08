@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 from uuid import uuid4
 
 from eval.api.schemas import EmotionEvalRequest
-from eval.application.agent_pool import EvalAgentPool
+from eval.application.agent_pool import EvalAgentFactory
 from eval.domain.judge.model_factory import build_eval_model
 from eval.domain.judge.runner import JudgeRunner
 from eval.domain.progress import EvalProgressEvent
@@ -17,10 +16,11 @@ from eval.domain.scenario import resolve_scenario_by_id
 from eval.domain.session import EvalSession, build_exploratory_record
 from eval.application.ports import EvalProgressNotifier
 from shared.config.resolve_agent import resolve_agent_runtime
-from agent.configs.secrets import load_secrets
+from shared.config.secrets import load_secrets
 from shared.config.agent import load_agent_settings
+from shared.observability.logging import LogModule, get_logger
 
-_log = logging.getLogger(__name__)
+_log = get_logger(LogModule.EVAL)
 
 
 class EvalJobConflictError(Exception):
@@ -118,7 +118,7 @@ class EvalJobManager:
     ) -> None:
         recorder: RunRecorder | None = None
         try:
-            async with EvalAgentPool.run_guard():
+            async with EvalAgentFactory.run_guard():
                 config = resolve_agent_runtime(load_agent_settings(), load_secrets())
                 await self._push_setup_progress(
                     client_id,
@@ -148,13 +148,13 @@ class EvalJobManager:
                     "正在获取评测 Agent（首次运行需初始化，可能较慢）…",
                     recorder=recorder,
                 )
-                agent_client, cold_start = await EvalAgentPool.acquire_client()
-                recorder.set_telemetry(agent_cold_start=cold_start, agent_reused=not cold_start)
+                agent_client = await EvalAgentFactory.create_client()
+                recorder.set_telemetry(agent_cold_start=True, agent_reused=False)
                 await self._push_setup_progress(
                     client_id,
                     run_id,
-                    "评测 Agent 已就绪" if not cold_start else "评测 Agent 初始化完成",
-                    reused_agent=not cold_start,
+                    "评测 Agent 初始化完成",
+                    reused_agent=False,
                     recorder=recorder,
                 )
 
@@ -174,20 +174,23 @@ class EvalJobManager:
                         recorder=recorder,
                     )
 
-                async def on_progress(event: EvalProgressEvent) -> None:
-                    await self._push_event(client_id, event)
+                try:
+                    async def on_progress(event: EvalProgressEvent) -> None:
+                        await self._push_event(client_id, event)
 
-                await EvalRunner(
-                    agent_client=agent_client,
-                    judge_runner=judge_runner,
-                ).run_scenario(
-                    scenario,
-                    persist=True,
-                    progress_callback=on_progress,
-                    cancel_event=cancel_event,
-                    run_id=run_id,
-                    recorder=recorder,
-                )
+                    await EvalRunner(
+                        agent_client=agent_client,
+                        judge_runner=judge_runner,
+                    ).run_scenario(
+                        scenario,
+                        persist=True,
+                        progress_callback=on_progress,
+                        cancel_event=cancel_event,
+                        run_id=run_id,
+                        recorder=recorder,
+                    )
+                finally:
+                    await agent_client.aclose()
         except Exception as exc:
             _log.exception("eval job failed: run_id=%s", run_id)
             if recorder is not None:
@@ -215,7 +218,7 @@ class EvalJobManager:
         recorder: RunRecorder | None = None
         session: EvalSession | None = None
         try:
-            async with EvalAgentPool.run_guard():
+            async with EvalAgentFactory.run_guard():
                 config = resolve_agent_runtime(load_agent_settings(), load_secrets())
                 recorder = RunRecorder(
                     run_id=run_id,
@@ -235,13 +238,13 @@ class EvalJobManager:
                 from eval.domain.emotion_metrics import EmotionSupportEvaluator
                 from eval.domain.simulated_user import SimulatedUser
 
-                agent_client, cold_start = await EvalAgentPool.acquire_client()
-                recorder.set_telemetry(agent_cold_start=cold_start, agent_reused=not cold_start)
+                agent_client = await EvalAgentFactory.create_client()
+                recorder.set_telemetry(agent_cold_start=True, agent_reused=False)
                 await self._push_setup_progress(
                     client_id,
                     run_id,
-                    "评测 Agent 已就绪" if not cold_start else "评测 Agent 初始化完成",
-                    reused_agent=not cold_start,
+                    "评测 Agent 初始化完成",
+                    reused_agent=False,
                     scenario_id="exploratory",
                     tier="exploratory",
                     recorder=recorder,
@@ -255,27 +258,30 @@ class EvalJobManager:
                     evaluator=evaluator,
                 )
 
-                async def on_progress(event: EvalProgressEvent) -> None:
-                    await self._push_event(client_id, event)
+                try:
+                    async def on_progress(event: EvalProgressEvent) -> None:
+                        await self._push_event(client_id, event)
 
-                response = await session.run(
-                    request,
-                    run_id=run_id,
-                    progress_callback=on_progress,
-                    cancel_event=cancel_event,
-                    recorder=recorder,
-                )
-                judge_overall_passed = (
-                    response.summary.verdict == "pass" if response.summary is not None else None
-                )
-                persist_record_safe(
-                    build_exploratory_record(
-                        recorder,
-                        response,
-                        observations=session.last_observations,
-                        judge_overall_passed=judge_overall_passed,
+                    response = await session.run(
+                        request,
+                        run_id=run_id,
+                        progress_callback=on_progress,
+                        cancel_event=cancel_event,
+                        recorder=recorder,
                     )
-                )
+                    judge_overall_passed = (
+                        response.summary.verdict == "pass" if response.summary is not None else None
+                    )
+                    persist_record_safe(
+                        build_exploratory_record(
+                            recorder,
+                            response,
+                            observations=session.last_observations,
+                            judge_overall_passed=judge_overall_passed,
+                        )
+                    )
+                finally:
+                    await agent_client.aclose()
         except Exception as exc:
             _log.exception("exploratory eval job failed: run_id=%s", run_id)
             if recorder is not None:
@@ -326,7 +332,7 @@ class EvalJobManager:
     async def _push(self, client_id: str, payload: dict[str, object]) -> None:
         sent = await self._notifier.send_to_client(client_id, payload)
         if not sent:
-            _log.debug("eval progress not delivered; client offline: %s", client_id)
+            _log.debug(f"eval progress not delivered; client offline: {client_id}")
 
     def _cleanup_run(self, run_id: str, client_id: str) -> None:
         self._tasks.pop(run_id, None)

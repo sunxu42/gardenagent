@@ -5,7 +5,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from agent.configs.settings import Config
+from shared.config.agent import Config
 
 from eval.infrastructure.record import RunEnvironment
 

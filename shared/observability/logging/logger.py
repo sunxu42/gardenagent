@@ -8,6 +8,33 @@ from shared.observability.logging.context import get_session_id, get_turn_id
 from shared.observability.logging.modules import LogModule
 from shared.observability.logging.record import LogLevel, LogRecord
 
+# stdlib logging kwargs that GardenLogger does not persist on LogRecord.
+_LOGGING_ONLY_KWARGS = frozenset({"exc_info", "stack_info", "stacklevel"})
+
+
+def _format_message(message: str, args: tuple[Any, ...]) -> str:
+    """Support stdlib-style ``logger.info("x=%s", value)`` calls."""
+    if not args:
+        return message
+    try:
+        return message % args
+    except Exception:
+        suffix = " ".join(repr(arg) for arg in args)
+        return f"{message} {suffix}"
+
+
+def _extract_structured_extra(kwargs: dict[str, Any]) -> dict[str, Any]:
+    """Map logging-style ``extra={...}`` into Garden structured fields."""
+    extra: dict[str, Any] = {}
+    for key, value in kwargs.items():
+        if key in _LOGGING_ONLY_KWARGS:
+            continue
+        if key == "extra" and isinstance(value, dict):
+            extra.update(value)
+        else:
+            extra[key] = value
+    return extra
+
 
 class GardenLogger:
     def __init__(self, module: LogModule) -> None:
@@ -25,17 +52,20 @@ class GardenLogger:
         )
         registry.dispatch(rec)
 
-    def debug(self, message: str, **extra: Any) -> None:
-        self._log(LogLevel.DEBUG, message, **extra)
+    def _emit(self, level: LogLevel, message: str, *args: Any, **kwargs: Any) -> None:
+        self._log(level, _format_message(message, args), **_extract_structured_extra(kwargs))
 
-    def info(self, message: str, **extra: Any) -> None:
-        self._log(LogLevel.INFO, message, **extra)
+    def debug(self, message: str, *args: Any, **kwargs: Any) -> None:
+        self._emit(LogLevel.DEBUG, message, *args, **kwargs)
 
-    def warning(self, message: str, **extra: Any) -> None:
-        self._log(LogLevel.WARNING, message, **extra)
+    def info(self, message: str, *args: Any, **kwargs: Any) -> None:
+        self._emit(LogLevel.INFO, message, *args, **kwargs)
 
-    def error(self, message: str, **extra: Any) -> None:
-        self._log(LogLevel.ERROR, message, **extra)
+    def warning(self, message: str, *args: Any, **kwargs: Any) -> None:
+        self._emit(LogLevel.WARNING, message, *args, **kwargs)
+
+    def error(self, message: str, *args: Any, **kwargs: Any) -> None:
+        self._emit(LogLevel.ERROR, message, *args, **kwargs)
 
 
 _loggers: dict[LogModule, GardenLogger] = {}

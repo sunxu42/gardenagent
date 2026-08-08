@@ -81,7 +81,7 @@ async def run_emotion_eval(request: EmotionEvalRequest) -> EmotionEvalResponse:
     from eval.domain.session import EvalSession
     from eval.domain.simulated_user import SimulatedUser
     from shared.config.resolve_agent import resolve_agent_runtime
-    from agent.configs.secrets import load_secrets
+    from shared.config.secrets import load_secrets
     from shared.config.agent import load_agent_settings
 
     settings = load_agent_settings()
@@ -99,12 +99,12 @@ async def run_emotion_eval(request: EmotionEvalRequest) -> EmotionEvalResponse:
 async def run_scenario_eval(request: ScenarioEvalRequest) -> EvalRunResponse:
     """Run one scripted scenario evaluation."""
 
-    from eval.application.agent_pool import EvalAgentPool
+    from eval.application.agent_pool import EvalAgentFactory
     from eval.domain.judge.model_factory import build_eval_model
     from eval.domain.judge.runner import JudgeRunner
     from eval.domain.runner import EvalRunner
     from shared.config.resolve_agent import resolve_agent_runtime
-    from agent.configs.secrets import load_secrets
+    from shared.config.secrets import load_secrets
     from shared.config.agent import load_agent_settings
 
     scenario = resolve_scenario_by_id(request.scenario_id)
@@ -113,12 +113,15 @@ async def run_scenario_eval(request: ScenarioEvalRequest) -> EvalRunResponse:
         config = resolve_agent_runtime(load_agent_settings(), load_secrets())
         judge_runner = JudgeRunner(build_eval_model(config))
 
-    async with EvalAgentPool.run_guard():
-        agent_client, _ = await EvalAgentPool.acquire_client()
-        result = await EvalRunner(
-            agent_client=agent_client,
-            judge_runner=judge_runner,
-        ).run_scenario(scenario, persist=request.persist)
+    async with EvalAgentFactory.run_guard():
+        agent_client = await EvalAgentFactory.create_client()
+        try:
+            result = await EvalRunner(
+                agent_client=agent_client,
+                judge_runner=judge_runner,
+            ).run_scenario(scenario, persist=request.persist)
+        finally:
+            await agent_client.aclose()
     return to_eval_run_response(result)
 
 

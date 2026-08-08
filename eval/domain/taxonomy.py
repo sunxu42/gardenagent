@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -9,8 +8,9 @@ import yaml
 from pydantic import BaseModel, Field
 
 from shared.config.paths import resolve_eval_taxonomy_path
+from shared.observability.logging import LogModule, get_logger
 
-_log = logging.getLogger(__name__)
+_log = get_logger(LogModule.EVAL)
 
 
 class DomainDef(BaseModel):
@@ -85,9 +85,7 @@ class TaxonomyRegistry:
         recommended = set(self.recommended_tags_for(domain))
         if recommended and not recommended.intersection(tags):
             _log.warning(
-                "scenario domain=%s tags=%s have no overlap with recommended_tags",
-                domain,
-                tags,
+                f"scenario domain={domain} tags={tags} have no overlap with recommended_tags",
             )
 
 
@@ -107,7 +105,7 @@ def load_taxonomy(path: Path | None = None) -> TaxonomyRegistry:
 
     taxonomy_path = path or resolve_eval_taxonomy_path()
     if not taxonomy_path.is_file():
-        _log.warning("taxonomy file missing: %s — degraded mode", taxonomy_path)
+        _log.warning(f"taxonomy file missing: {taxonomy_path} — degraded mode")
         return TaxonomyRegistry(domains=(), all_tags=frozenset(), is_degraded=True)
     data = yaml.safe_load(taxonomy_path.read_text(encoding="utf-8"))
     document = TaxonomyDocument.model_validate(data or {})

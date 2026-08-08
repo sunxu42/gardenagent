@@ -38,7 +38,7 @@ flowchart LR
 ### 配置分层原则
 
 1. **`.config.yaml`** — 运行时参数（URL、模型名、功能开关、路径）。**禁止**写入 API Key。
-2. **`.env`** — 密钥与凭证（`GLM_OPENAI_API_KEY`、ASR/TTS Token 等）。
+2. **`.env`** — 密钥与凭证（`DASHSCOPE_API_KEY`、ASR/TTS Token 等）。
 3. **`resolve_*_runtime()`** — 合并配置与密钥，做校验（如 `llm_base_url` 必填）和副作用（如创建 FAISS 目录）。
 
 ### 路径常量（`config/paths.py`）

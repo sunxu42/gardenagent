@@ -60,7 +60,7 @@ async def export_memory_yaml(
     *,
     user_id: str | None = None,
 ) -> Path:
-    """写入 yard/prompts/memory/memory.yaml，返回绝对路径。"""
+    """写入 data/prompts/memory/memory.yaml，返回绝对路径。"""
     uid = user_id or service.default_user_id
     memories = await service.aget_all(user_id=uid, limit=200)
     root = Path(prompts_dir)
@@ -71,3 +71,43 @@ async def export_memory_yaml(
     out_path.write_text(text, encoding="utf-8")
     _log.info(f"Exported {len(memories)} memories to {out_path}")
     return out_path.resolve()
+
+
+async def ensure_memory_yaml_exported(
+    prompts_dir: str | Path,
+    *,
+    user_id: str | None = None,
+    force: bool = False,
+) -> Path:
+    """Ensure memory.yaml exists; export from Mem0 when missing or ``force`` is True."""
+    from shared.config.secrets import load_secrets
+    from shared.config.agent import load_agent_settings
+    from shared.config.resolve_agent import resolve_agent_runtime
+
+    root = Path(prompts_dir)
+    out_path = (root / MEMORY_YAML_REL).resolve()
+    if out_path.is_file() and not force:
+        return out_path
+
+    settings = load_agent_settings()
+    cfg = resolve_agent_runtime(settings, load_secrets())
+    uid = user_id or cfg.mem0_user_id or "default"
+
+    if not cfg.memory_enabled:
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(format_memory_yaml([], user_id=uid), encoding="utf-8")
+        _log.info(f"Wrote empty memory export to {out_path} (memory_enabled=false)")
+        return out_path
+
+    service = Mem0Service.create(cfg)
+    return await export_memory_yaml(service, root, user_id=uid)
+
+
+async def load_memory_yaml_text(
+    prompts_dir: str | Path,
+    *,
+    force: bool = False,
+) -> str:
+    """Return memory.yaml text, exporting from Mem0 first when the file is absent."""
+    out_path = await ensure_memory_yaml_exported(prompts_dir, force=force)
+    return out_path.read_text(encoding="utf-8")

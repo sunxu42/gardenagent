@@ -8,7 +8,7 @@ from langchain.agents.middleware.types import AgentMiddleware, AgentState
 from langgraph.config import get_config
 from typing_extensions import TypedDict
 
-from agent.configs.settings import Config
+from shared.config.agent import Config
 from agent.memory.core.buffer import SessionBuffer
 from agent.memory.core.triggers import ExplicitTriggerConfig, detect_explicit_remember
 from agent.memory.mem0.service import Mem0Service

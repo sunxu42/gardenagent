@@ -35,6 +35,8 @@ class AgentConfig(BaseModel):
 
     llm_base_url: Optional[str] = Field(default=None)
     llm_model_name: Optional[str] = Field(default=_DEFAULT_LLM_MODEL)
+    llm_enable_search: bool = False
+    llm_search_options: Optional[dict[str, Any]] = Field(default=None)
 
     memory_enabled: bool = False
     mem0_user_id: str = "default"
@@ -112,3 +114,6 @@ def load_agent_settings(runtime_overrides: Optional[dict[str, Any]] = None) -> A
         raw = {**raw, **runtime_overrides}
     reject_forbidden_yaml_keys(raw)
     return AgentConfig(**raw)
+
+
+load_settings = load_agent_settings

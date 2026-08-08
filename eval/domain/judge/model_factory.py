@@ -7,7 +7,7 @@ from deepeval.models.llms.openai_model import retry_openai
 from deepeval.models.llms.utils import trim_and_load_json
 from pydantic import BaseModel
 
-from agent.configs.settings import Config
+from shared.config.agent import Config
 
 
 class CompatibleGPTModel(GPTModel):
@@ -85,7 +85,7 @@ def build_eval_model(config: Config) -> CompatibleGPTModel:
     model_name = config.eval_llm_model
     if not api_key or not base_url or not model_name:
         raise ValueError(
-            "eval LLM 配置不完整：请在 .env 配置 EVAL_LLM_API_KEY，"
+            "eval LLM 配置不完整：请在 .env 配置 DASHSCOPE_API_KEY，"
             "在 .config.yaml 配置 eval_llm_base_url / eval_llm_model"
         )
     return CompatibleGPTModel(model=model_name, api_key=api_key, base_url=base_url)

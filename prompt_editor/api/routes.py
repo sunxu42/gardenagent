@@ -59,13 +59,21 @@ def create_prompt_editor_routes(prompts_root: Path) -> list[Route]:
             target = safe_prompts_yaml_path(raw, root)
         except ValueError as e:
             return _error(str(e))
+        rel = normalize_rel_path(raw)
         if not target.is_file():
+            from agent.memory.mem0.export import MEMORY_YAML_REL, load_memory_yaml_text
+
+            if rel == MEMORY_YAML_REL:
+                try:
+                    text = await load_memory_yaml_text(root)
+                except Exception as e:
+                    return _error(str(e), 500)
+                return _json({"path": rel, "content": text, "readonly": True})
             return _error("file not found", 404)
         try:
             text = target.read_text(encoding="utf-8")
         except OSError as e:
             return _error(str(e), 500)
-        rel = normalize_rel_path(raw)
         return _json({"path": rel, "content": text, "readonly": is_readonly_yaml(rel)})
 
     async def put_content(request: Request) -> Response:
@@ -108,19 +116,10 @@ def create_prompt_editor_routes(prompts_root: Path) -> list[Route]:
         return _json({"ok": True, "result": result})
 
     async def post_memory_yaml_refresh(_: Request) -> JSONResponse:
-        from shared.config.resolve_agent import resolve_agent_runtime
-        from agent.configs.secrets import load_secrets
-        from shared.config.agent import load_agent_settings
-        from agent.memory.mem0.export import MEMORY_YAML_REL, export_memory_yaml
-        from agent.memory.mem0.service import Mem0Service
+        from agent.memory.mem0.export import MEMORY_YAML_REL, ensure_memory_yaml_exported
 
-        settings = load_agent_settings()
-        cfg = resolve_agent_runtime(settings, load_secrets())
-        if not cfg.memory_enabled:
-            return _error("memory_enabled 未开启，请在 .config.yaml 中启用 Mem0 记忆")
         try:
-            service = Mem0Service.create(cfg)
-            out_path = await export_memory_yaml(service, root, user_id=cfg.mem0_user_id)
+            out_path = await ensure_memory_yaml_exported(root, force=True)
             rel = out_path.relative_to(root).as_posix()
             return _json({"path": rel or MEMORY_YAML_REL, "readonly": True})
         except Exception as e:

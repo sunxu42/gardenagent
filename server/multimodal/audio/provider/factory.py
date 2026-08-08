@@ -1,16 +1,12 @@
-import importlib
-from typing import Dict, Any, Optional
+from typing import Any, Dict
+
+from server.multimodal.common.importlib_registry import load_class
 
 provider_to_class = {
     "DoubaoStreamingASR": "server.multimodal.audio.provider.doubao_streaming_asr.DoubaoStreamingASR",
     "AliyunStreamingASR": "server.multimodal.audio.provider.aliyun_streaming_asr.AliyunStreamingASR",
+    "DashscopeStreamingASR": "server.multimodal.audio.provider.dashscope_streaming_asr.DashscopeStreamingASR",
 }
-
-def load_class(class_type):
-    module_path, class_name = class_type.rsplit(".", 1)
-    module = importlib.import_module(module_path)
-    return getattr(module, class_name)
-
 
 class ASRFactory:
 
